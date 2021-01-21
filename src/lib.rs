@@ -5,7 +5,7 @@ mod raycast;
 
 pub use crate::bounding::{build_bound_sphere, BoundVol};
 pub use crate::debug::*;
-use crate::primitives::*;
+pub use crate::primitives::*;
 use crate::raycast::*;
 use bevy::{
     prelude::*,
