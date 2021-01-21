@@ -68,7 +68,6 @@ pub fn setup_debug_cursor<T: 'static + Send + Sync>(
     let ball_size = 0.08;
 
     for _source in query.iter() {
-        println!("spawning debug");
         commands
             // cursor
             .spawn(PbrBundle {
