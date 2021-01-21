@@ -11,14 +11,15 @@ fn main() {
             ..Default::default()
         })
         .add_plugins(DefaultPlugins)
-        .add_plugin(PickingPlugin)
-        .add_plugin(DebugPickingPlugin)
-        .add_system(update_raycast::<PickingGroup>.system())
+        .add_plugin(RayCastPlugin)
+        .add_plugin(RayCastDebugPlugin)
+        .add_system(update_raycast::<MyPickingGroup>.system())
+        .add_system(update_debug_cursor::<MyPickingGroup>.system())
         .add_startup_system(setup.system())
         .run();
 }
 
-struct PickingGroup;
+struct MyPickingGroup;
 
 /// set up a simple 3D scene
 fn setup(
@@ -37,7 +38,7 @@ fn setup(
             )),
             ..Default::default()
         })
-        .with(PickSource::<PickingGroup>::new(PickMethod::CameraCursor(
+        .with(RayCastSource::<MyPickingGroup>::new(PickMethod::CameraCursor(
             UpdatePicks::EveryFrame(Vec2::zero()),
             EventReader::default(),
         )))
@@ -47,7 +48,7 @@ fn setup(
             material: materials.add(Color::rgb(1.0, 1.0, 1.0).into()),
             ..Default::default()
         })
-        .with(PickableMesh::<PickingGroup>::default())
+        .with(RayCastMesh::<MyPickingGroup>::default())
         // cube
         .spawn(PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
@@ -55,7 +56,7 @@ fn setup(
             transform: Transform::from_translation(Vec3::new(0.0, 1.0, 0.0)),
             ..Default::default()
         })
-        .with(PickableMesh::<PickingGroup>::default())
+        .with(RayCastMesh::<MyPickingGroup>::default())
         // sphere
         .spawn(PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Icosphere {
@@ -66,7 +67,7 @@ fn setup(
             transform: Transform::from_translation(Vec3::new(1.5, 1.5, 1.5)),
             ..Default::default()
         })
-        .with(PickableMesh::<PickingGroup>::default())
+        .with(RayCastMesh::<MyPickingGroup>::default())
         // light
         .spawn(LightBundle {
             transform: Transform::from_translation(Vec3::new(4.0, 8.0, 4.0)),

@@ -20,21 +20,21 @@ use bevy::{
 use core::convert::TryInto;
 use std::marker::PhantomData;
 
-pub struct PickingPlugin;
-impl Plugin for PickingPlugin {
+pub struct RayCastPlugin;
+impl Plugin for RayCastPlugin {
     fn build(&self, app: &mut AppBuilder) {}
 }
 
 /// Marks a Mesh entity as pickable
 #[derive(Debug)]
-pub struct PickableMesh<T> {
-    phantom: PhantomData<T>,
+pub struct RayCastMesh<T> {
+    _phantom: PhantomData<T>,
 }
 
-impl<T> Default for PickableMesh<T> {
+impl<T> Default for RayCastMesh<T> {
     fn default() -> Self {
-        PickableMesh {
-            phantom: PhantomData::default(),
+        RayCastMesh {
+            _phantom: PhantomData::default(),
         }
     }
 }
@@ -59,18 +59,19 @@ pub enum UpdatePicks {
     OnMouseEvent,
 }
 
-pub struct PickSource<T> {
+pub struct RayCastSource<T> {
     pub pick_method: PickMethod,
     ray: Option<Ray3d>,
     intersections: Vec<(Entity, Intersection)>,
     _phantom: PhantomData<fn() -> T>,
 }
 
-impl<T> PickSource<T> {
+impl<T> RayCastSource<T> {
     pub fn new(pick_method: PickMethod) -> Self {
-        PickSource {
+        RayCastSource {
             pick_method,
             ray: None,
+            intersections: Vec::new(),
             ..Default::default()
         }
     }
@@ -90,9 +91,9 @@ impl<T> PickSource<T> {
     }
 }
 
-impl<T> Default for PickSource<T> {
+impl<T> Default for RayCastSource<T> {
     fn default() -> Self {
-        PickSource {
+        RayCastSource {
             pick_method: PickMethod::CameraCursor(
                 UpdatePicks::EveryFrame(Vec2::default()),
                 EventReader::default(),
@@ -109,7 +110,7 @@ pub fn update_raycast<T: 'static + Send + Sync>(
     windows: Res<Windows>,
     // Queries
     mut pick_source_query: Query<(
-        &mut PickSource<T>,
+        &mut RayCastSource<T>,
         Option<&GlobalTransform>,
         Option<&Camera>,
     )>,
@@ -121,7 +122,7 @@ pub fn update_raycast<T: 'static + Send + Sync>(
             &Visible,
             Option<&BoundVol>,
         ),
-        With<PickableMesh<T>>,
+        With<RayCastMesh<T>>,
     >,
 ) {
     if pick_source_query.iter_mut().count() > 1 {

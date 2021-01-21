@@ -1,9 +1,9 @@
 use bevy::prelude::*;
 
-use crate::PickSource;
+use crate::RayCastSource;
 
-pub struct DebugPickingPlugin;
-impl Plugin for DebugPickingPlugin {
+pub struct RayCastDebugPlugin;
+impl Plugin for RayCastDebugPlugin {
     fn build(&self, app: &mut AppBuilder) {
         app.add_startup_system(setup_debug_cursor.system());
     }
@@ -14,10 +14,10 @@ pub struct DebugCursor;
 pub struct DebugCursorMesh;
 
 /// Updates the 3d cursor to be in the pointed world coordinates
-pub fn update_debug_cursor_position<T: 'static>(
+pub fn update_debug_cursor<T: 'static>(
     mut query: Query<&mut Transform, With<DebugCursor>>,
     mut visibility_query: Query<&mut Visible, With<DebugCursorMesh>>,
-    pick_source_query: Query<&PickSource<T>>,
+    pick_source_query: Query<&RayCastSource<T>>,
 ) {
     // Set the cursor translation to the top pick's world coordinates
     for pick_source in pick_source_query.iter() {
