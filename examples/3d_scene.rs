@@ -3,20 +3,20 @@ use bevy_mod_raycast::*;
 
 fn main() {
     App::build()
-        //.add_resource(Msaa { samples: 4 })
+        .add_resource(Msaa { samples: 4 })
         .add_resource(WindowDescriptor {
             vsync: false,
             ..Default::default()
         })
         .add_plugins(DefaultPlugins)
-        .add_system(update_raycast::<MyPickingGroup>.system())
-        .add_system(update_debug_cursor::<MyPickingGroup>.system())
+        .add_system(update_raycast::<MyRaycastSet>.system())
+        .add_system(update_debug_cursor::<MyRaycastSet>.system())
         .add_startup_system(setup.system())
-        .add_system(setup_debug_cursor::<MyPickingGroup>.system())
+        .add_system(setup_debug_cursor::<MyRaycastSet>.system())
         .run();
 }
 
-struct MyPickingGroup;
+struct MyRaycastSet;
 
 /// set up a simple 3D scene
 fn setup(
@@ -35,7 +35,7 @@ fn setup(
             )),
             ..Default::default()
         })
-        .with(RayCastSource::<MyPickingGroup>::new(
+        .with(RayCastSource::<MyRaycastSet>::new(
             RayCastMethod::CameraCursor(UpdateOn::EveryFrame(Vec2::zero()), EventReader::default()),
         ))
         //plane
@@ -44,7 +44,7 @@ fn setup(
             material: materials.add(Color::rgb(1.0, 1.0, 1.0).into()),
             ..Default::default()
         })
-        .with(RayCastMesh::<MyPickingGroup>::default())
+        .with(RayCastMesh::<MyRaycastSet>::default())
         // cube
         .spawn(PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
@@ -52,7 +52,7 @@ fn setup(
             transform: Transform::from_translation(Vec3::new(0.0, 1.0, 0.0)),
             ..Default::default()
         })
-        .with(RayCastMesh::<MyPickingGroup>::default())
+        .with(RayCastMesh::<MyRaycastSet>::default())
         // sphere
         .spawn(PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Icosphere {
@@ -63,7 +63,7 @@ fn setup(
             transform: Transform::from_translation(Vec3::new(1.5, 1.5, 1.5)),
             ..Default::default()
         })
-        .with(RayCastMesh::<MyPickingGroup>::default())
+        .with(RayCastMesh::<MyRaycastSet>::default())
         // light
         .spawn(LightBundle {
             transform: Transform::from_translation(Vec3::new(4.0, 8.0, 4.0)),
