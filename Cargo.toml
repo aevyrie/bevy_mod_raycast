@@ -1,11 +1,11 @@
 [package]
-name = "bevy_photon"
+name = "bevy_mod_raycast"
 version = "0.1.0"
 authors = ["Aevyrie <aevyrie@gmail.com>"]
 edition = "2018"
 license = "MIT"
-description = "Ray Casting for Bevy Engine."
-repository = "https://github.com/aevyrie/bevy_mod_picking/"
+description = "Ray Casting for the Bevy Engine."
+repository = "https://github.com/aevyrie/bevy_mod_raycast/"
 keywords = ["gamedev", "graphics", "bevy", "3d", "ray cast"]
 categories = ["game-engines", "rendering"]
 

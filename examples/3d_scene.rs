@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bevy_photon::*;
+use bevy_mod_raycast::*;
 
 fn main() {
     App::build()
