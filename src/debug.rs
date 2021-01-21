@@ -56,7 +56,7 @@ pub fn setup_debug_cursor<T: 'static + Send + Sync>(
     commands: &mut Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    query: Query<&RayCastSource<T>>,
+    query: Query<&RayCastSource<T>,Added<RayCastSource<T>>>,
 ) {
     let debug_material = &materials.add(StandardMaterial {
         albedo: Color::rgb(0.0, 1.0, 0.0),
