@@ -23,14 +23,20 @@ use std::marker::PhantomData;
 /// Marks a Mesh entity as pickable
 #[derive(Debug)]
 pub struct RayCastMesh<T> {
+    intersection: Option<Intersection>,
     _marker: PhantomData<T>,
 }
-
 impl<T> Default for RayCastMesh<T> {
     fn default() -> Self {
         RayCastMesh {
+            intersection: None,
             _marker: PhantomData::default(),
         }
+    }
+}
+impl<T> RayCastMesh<T> {
+    pub fn intersection(&self) -> Option<Intersection> {
+        self.intersection
     }
 }
 
@@ -109,15 +115,15 @@ pub fn update_raycast<T: 'static + Send + Sync>(
         Option<&GlobalTransform>,
         Option<&Camera>,
     )>,
-    mesh_query: Query<
+    mut mesh_query: Query<
         (
+            &mut RayCastMesh<T>,
             &Handle<Mesh>,
             &GlobalTransform,
             Entity,
             &Visible,
             Option<&BoundVol>,
-        ),
-        With<RayCastMesh<T>>,
+        )
     >,
 ) {
     // Generate a ray for the picking source based on the pick method
@@ -239,7 +245,7 @@ pub fn update_raycast<T: 'static + Send + Sync>(
 
             // Iterate through each pickable mesh in the scene
             //mesh_query.par_iter_mut(32).for_each(&pool,|(mesh_handle, transform, mut pickable, entity, draw)| {},);
-            for (mesh_handle, transform, entity, visibility, bounding_sphere) in mesh_query.iter() {
+            for (mut pickable, mesh_handle, transform, entity, visibility, bounding_sphere) in mesh_query.iter_mut() {
                 if !visibility.is_visible {
                     continue;
                 }
@@ -295,6 +301,7 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                                 vector,
                             ),
                         };
+                        pickable.intersection = new_intersection;
                         if let Some(new_intersection) = new_intersection {
                             pick_source.intersections.push((entity, new_intersection));
                         }
