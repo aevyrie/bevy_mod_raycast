@@ -100,7 +100,7 @@ impl<T> Default for RayCastSource<T> {
 
 pub fn update_raycast<T: 'static + Send + Sync>(
     // Resources
-    mut meshes: ResMut<Assets<Mesh>>,
+    meshes: ResMut<Assets<Mesh>>,
     cursor: Res<Events<CursorMoved>>,
     windows: Res<Windows>,
     // Queries
@@ -263,7 +263,7 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                 }
 
                 // Use the mesh handle to get a reference to a mesh asset
-                if let Some(mesh) = meshes.get_mut(mesh_handle) {
+                if let Some(mesh) = meshes.get(mesh_handle) {
                     if mesh.primitive_topology() != PrimitiveTopology::TriangleList {
                         panic!("bevy_mod_picking only supports TriangleList topology");
                     }
