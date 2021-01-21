@@ -1,5 +1,3 @@
-use std::default;
-
 use bevy::prelude::*;
 use bevy_photon::*;
 
@@ -11,10 +9,8 @@ fn main() {
             ..Default::default()
         })
         .add_plugins(DefaultPlugins)
-        //.add_plugin(RayCastPlugin)
-        //.add_plugin(RayCastDebugPlugin)
-        //.add_system(update_raycast::<MyPickingGroup>.system())
-        //.add_system(update_debug_cursor::<MyPickingGroup>.system())
+        .add_system(update_raycast::<MyPickingGroup>.system())
+        .add_system(update_debug_cursor::<MyPickingGroup>.system())
         .add_startup_system(setup.system())
         .run();
 }
@@ -38,10 +34,9 @@ fn setup(
             )),
             ..Default::default()
         })
-        .with(RayCastSource::<MyPickingGroup>::new(RayCastMethod::CameraCursor(
-            UpdateOn::EveryFrame(Vec2::zero()),
-            EventReader::default(),
-        )))
+        .with(RayCastSource::<MyPickingGroup>::new(
+            RayCastMethod::CameraCursor(UpdateOn::EveryFrame(Vec2::zero()), EventReader::default()),
+        ))
         //plane
         .spawn(PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Plane { size: 10.0 })),

@@ -1,22 +1,33 @@
-use bevy::prelude::*;
-
 use crate::RayCastSource;
+use bevy::prelude::*;
+use std::marker::PhantomData;
 
-pub struct RayCastDebugPlugin;
-impl Plugin for RayCastDebugPlugin {
-    fn build(&self, app: &mut AppBuilder) {
-        app.add_startup_system(setup_debug_cursor.system());
+pub struct DebugCursor<T> {
+    _phantom: PhantomData<T>,
+}
+impl<T> Default for DebugCursor<T> {
+    fn default() -> Self {
+        DebugCursor {
+            _phantom: PhantomData::default(),
+        }
     }
 }
 
-pub struct DebugCursor;
-
-pub struct DebugCursorMesh;
+pub struct DebugCursorMesh<T> {
+    _phantom: PhantomData<T>,
+}
+impl<T> Default for DebugCursorMesh<T> {
+    fn default() -> Self {
+        DebugCursorMesh {
+            _phantom: PhantomData::default(),
+        }
+    }
+}
 
 /// Updates the 3d cursor to be in the pointed world coordinates
-pub fn update_debug_cursor<T: 'static>(
-    mut query: Query<&mut Transform, With<DebugCursor>>,
-    mut visibility_query: Query<&mut Visible, With<DebugCursorMesh>>,
+pub fn update_debug_cursor<T: 'static + Send + Sync>(
+    mut query: Query<&mut Transform, With<DebugCursor<T>>>,
+    mut visibility_query: Query<&mut Visible, With<DebugCursorMesh<T>>>,
     pick_source_query: Query<&RayCastSource<T>>,
 ) {
     // Set the cursor translation to the top pick's world coordinates
@@ -43,12 +54,13 @@ pub fn update_debug_cursor<T: 'static>(
 }
 
 /// Start up system to create 3d Debug cursor
-fn setup_debug_cursor(
+pub fn setup_debug_cursor<T: 'static + Send + Sync>(
     commands: &mut Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    query: Query<&RayCastSource<T>>,
 ) {
-    let debug_matl = materials.add(StandardMaterial {
+    let debug_material = &materials.add(StandardMaterial {
         albedo: Color::rgb(0.0, 1.0, 0.0),
         shaded: false,
         ..Default::default()
@@ -56,34 +68,37 @@ fn setup_debug_cursor(
     let cube_size = 0.04;
     let cube_tail_scale = 20.0;
     let ball_size = 0.08;
-    commands
-        // cursor
-        .spawn(PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::Icosphere {
-                subdivisions: 4,
-                radius: ball_size,
-            })),
-            material: debug_matl.clone(),
-            ..Default::default()
-        })
-        .with_children(|parent| {
-            let mut transform = Transform::from_translation(Vec3::new(
-                0.0,
-                (cube_size * cube_tail_scale) / 2.0,
-                0.0,
-            ));
-            transform.apply_non_uniform_scale(Vec3::from([1.0, cube_tail_scale, 1.0]));
 
-            // child cube
-            parent
-                .spawn(PbrBundle {
-                    mesh: meshes.add(Mesh::from(shape::Cube { size: cube_size })),
-                    material: debug_matl,
-                    transform,
-                    ..Default::default()
-                })
-                .with(DebugCursorMesh);
-        })
-        .with(DebugCursor)
-        .with(DebugCursorMesh);
+    for _ in query.iter() {
+        commands
+            // cursor
+            .spawn(PbrBundle {
+                mesh: meshes.add(Mesh::from(shape::Icosphere {
+                    subdivisions: 4,
+                    radius: ball_size,
+                })),
+                material: debug_material.clone(),
+                ..Default::default()
+            })
+            .with_children(|parent| {
+                let mut transform = Transform::from_translation(Vec3::new(
+                    0.0,
+                    (cube_size * cube_tail_scale) / 2.0,
+                    0.0,
+                ));
+                transform.apply_non_uniform_scale(Vec3::from([1.0, cube_tail_scale, 1.0]));
+
+                // child cube
+                parent
+                    .spawn(PbrBundle {
+                        mesh: meshes.add(Mesh::from(shape::Cube { size: cube_size })),
+                        material: debug_material.clone(),
+                        transform,
+                        ..Default::default()
+                    })
+                    .with(DebugCursorMesh::<T>::default());
+            })
+            .with(DebugCursor::<T>::default())
+            .with(DebugCursorMesh::<T>::default());
+    }
 }

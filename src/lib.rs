@@ -3,7 +3,7 @@ mod debug;
 mod primitives;
 mod raycast;
 
-use crate::bounding::*;
+pub use crate::bounding::{BoundVol, build_bound_sphere};
 pub use crate::debug::*;
 use crate::primitives::*;
 use crate::raycast::*;
@@ -19,11 +19,6 @@ use bevy::{
 
 use core::convert::TryInto;
 use std::marker::PhantomData;
-
-pub struct RayCastPlugin;
-impl Plugin for RayCastPlugin {
-    fn build(&self, app: &mut AppBuilder) {}
-}
 
 /// Marks a Mesh entity as pickable
 #[derive(Debug)]
@@ -125,10 +120,6 @@ pub fn update_raycast<T: 'static + Send + Sync>(
         With<RayCastMesh<T>>,
     >,
 ) {
-    if pick_source_query.iter_mut().count() > 1 {
-        panic!("Multiple PickSource components of the same type exist");
-    }
-
     // Generate a ray for the picking source based on the pick method
     for (mut pick_source, transform, camera) in &mut pick_source_query.iter_mut() {
         let ray = match &mut pick_source.cast_method {
