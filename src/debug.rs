@@ -1,6 +1,6 @@
 use crate::RayCastSource;
 use bevy::prelude::*;
-use std::{any::type_name, marker::PhantomData};
+use std::marker::PhantomData;
 
 pub struct DebugCursor<T> {
     _phantom: PhantomData<T>,
