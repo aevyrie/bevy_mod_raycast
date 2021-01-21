@@ -33,8 +33,8 @@ pub struct PickableMesh<T> {
 
 impl<T> Default for PickableMesh<T> {
     fn default() -> Self {
-        PickableMesh{
-            phantom: PhantomData::default()
+        PickableMesh {
+            phantom: PhantomData::default(),
         }
     }
 }

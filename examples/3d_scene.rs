@@ -1,6 +1,6 @@
 use std::default;
 
-use bevy::{prelude::*, render::camera::Camera};
+use bevy::prelude::*;
 use bevy_photon::*;
 
 fn main() {
@@ -11,13 +11,14 @@ fn main() {
             ..Default::default()
         })
         .add_plugins(DefaultPlugins)
-        //.add_plugin(PickingPlugin)
-        //.add_plugin(DebugPickingPlugin)
+        .add_plugin(PickingPlugin)
+        .add_plugin(DebugPickingPlugin)
+        .add_system(update_raycast::<PickingGroup>.system())
         .add_startup_system(setup.system())
         .run();
 }
 
-struct DefaultGroup;
+struct PickingGroup;
 
 /// set up a simple 3D scene
 fn setup(
@@ -36,14 +37,17 @@ fn setup(
             )),
             ..Default::default()
         })
-        .with(PickSource::<DefaultGroup>::new(PickMethod::CameraCursor(UpdatePicks::EveryFrame(Vec2::zero()),EventReader::default())))
+        .with(PickSource::<PickingGroup>::new(PickMethod::CameraCursor(
+            UpdatePicks::EveryFrame(Vec2::zero()),
+            EventReader::default(),
+        )))
         //plane
         .spawn(PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Plane { size: 10.0 })),
             material: materials.add(Color::rgb(1.0, 1.0, 1.0).into()),
             ..Default::default()
         })
-        .with(PickableMesh::<DefaultGroup>::default())
+        .with(PickableMesh::<PickingGroup>::default())
         // cube
         .spawn(PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
@@ -51,7 +55,7 @@ fn setup(
             transform: Transform::from_translation(Vec3::new(0.0, 1.0, 0.0)),
             ..Default::default()
         })
-        .with(PickableMesh::<DefaultGroup>::default())
+        .with(PickableMesh::<PickingGroup>::default())
         // sphere
         .spawn(PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Icosphere {
@@ -62,7 +66,7 @@ fn setup(
             transform: Transform::from_translation(Vec3::new(1.5, 1.5, 1.5)),
             ..Default::default()
         })
-        .with(PickableMesh::<DefaultGroup>::default())
+        .with(PickableMesh::<PickingGroup>::default())
         // light
         .spawn(LightBundle {
             transform: Transform::from_translation(Vec3::new(4.0, 8.0, 4.0)),
