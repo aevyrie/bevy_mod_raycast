@@ -1,6 +1,6 @@
 use crate::RayCastSource;
 use bevy::prelude::*;
-use std::marker::PhantomData;
+use std::{any::type_name, marker::PhantomData};
 
 pub struct DebugCursor<T> {
     _phantom: PhantomData<T>,
@@ -35,7 +35,6 @@ pub fn update_debug_cursor<T: 'static + Send + Sync>(
         match pick_source.intersect_top() {
             Some(top_intersection) => {
                 let transform_new = top_intersection.1.normal_ray().to_transform();
-                println!("{:}", transform_new.to_scale_rotation_translation().2);
                 for mut transform in &mut query.iter_mut() {
                     *transform = Transform::from_matrix(transform_new);
                 }
@@ -68,7 +67,8 @@ pub fn setup_debug_cursor<T: 'static + Send + Sync>(
     let cube_tail_scale = 20.0;
     let ball_size = 0.08;
 
-    for _ in query.iter() {
+    for _source in query.iter() {
+        println!("spawning debug");
         commands
             // cursor
             .spawn(PbrBundle {
