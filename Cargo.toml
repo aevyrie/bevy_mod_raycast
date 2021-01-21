@@ -1,0 +1,22 @@
+[package]
+name = "bevy_photon"
+version = "0.1.0"
+authors = ["Aevyrie <aevyrie@gmail.com>"]
+edition = "2018"
+license = "MIT"
+description = "Ray Casting for Bevy Engine."
+repository = "https://github.com/aevyrie/bevy_mod_picking/"
+keywords = ["gamedev", "graphics", "bevy", "3d", "ray cast"]
+categories = ["game-engines", "rendering"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bevy = { version = "0.4", default-features = false, features = ["render"] }
+
+[features]
+ex = [ "bevy/bevy_wgpu", "bevy/bevy_winit", "bevy/bevy_gltf", "bevy/x11" ]
+
+[[example]]
+name = "3d_scene"
+required-features = [ "ex" ]
