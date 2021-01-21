@@ -122,7 +122,7 @@ pub fn update_raycast<T: 'static + Send + Sync>(
 ) {
     // Generate a ray for the picking source based on the pick method
     for (mut pick_source, transform, camera) in &mut pick_source_query.iter_mut() {
-        let ray = match &mut pick_source.cast_method {
+        pick_source.ray = match &mut pick_source.cast_method {
             // Use cursor events and specified window/camera to generate a ray
             RayCastMethod::CameraCursor(update_picks, event_reader) => {
                 let camera = match camera {
@@ -131,7 +131,7 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                         "The PickingSource is a CameraCursor but has no associated Camera component"
                     ),
                 };
-                let cursor_latest = match event_reader.latest(&cursor) {
+                let cursor_latest = match (*event_reader).latest(&cursor) {
                     Some(cursor_moved) => {
                         if cursor_moved.id == camera.window {
                             Some(cursor_moved)
@@ -231,9 +231,8 @@ pub fn update_raycast<T: 'static + Send + Sync>(
             }
         };
 
-        pick_source.ray = ray;
-
         if let Some(ray) = pick_source.ray {
+            pick_source.intersections.clear();
             // Create spans for tracing
             let ray_cull = info_span!("ray culling");
             let raycast = info_span!("raycast");

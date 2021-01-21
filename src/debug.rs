@@ -32,16 +32,15 @@ pub fn update_debug_cursor<T: 'static + Send + Sync>(
 ) {
     // Set the cursor translation to the top pick's world coordinates
     for pick_source in pick_source_query.iter() {
-        match pick_source.intersect_list() {
-            Some(intersection_list) => {
-                for (_entity, intersection) in intersection_list {
-                    let transform_new = intersection.normal_ray().to_transform();
-                    for mut transform in &mut query.iter_mut() {
-                        *transform = Transform::from_matrix(transform_new);
-                    }
-                    for mut visible in &mut visibility_query.iter_mut() {
-                        visible.is_visible = true;
-                    }
+        match pick_source.intersect_top() {
+            Some(top_intersection) => {
+                let transform_new = top_intersection.1.normal_ray().to_transform();
+                println!("{:}", transform_new.to_scale_rotation_translation().2);
+                for mut transform in &mut query.iter_mut() {
+                    *transform = Transform::from_matrix(transform_new);
+                }
+                for mut visible in &mut visibility_query.iter_mut() {
+                    visible.is_visible = true;
                 }
             }
             None => {
