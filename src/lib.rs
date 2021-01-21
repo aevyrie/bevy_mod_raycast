@@ -23,13 +23,13 @@ use std::marker::PhantomData;
 /// Marks a Mesh entity as pickable
 #[derive(Debug)]
 pub struct RayCastMesh<T> {
-    _phantom: PhantomData<T>,
+    _marker: PhantomData<T>,
 }
 
 impl<T> Default for RayCastMesh<T> {
     fn default() -> Self {
         RayCastMesh {
-            _phantom: PhantomData::default(),
+            _marker: PhantomData::default(),
         }
     }
 }
@@ -58,7 +58,7 @@ pub struct RayCastSource<T> {
     pub cast_method: RayCastMethod,
     ray: Option<Ray3d>,
     intersections: Vec<(Entity, Intersection)>,
-    _phantom: PhantomData<fn() -> T>,
+    _marker: PhantomData<T>,
 }
 
 impl<T> RayCastSource<T> {
@@ -67,7 +67,7 @@ impl<T> RayCastSource<T> {
             cast_method: pick_method,
             ray: None,
             intersections: Vec::new(),
-            ..Default::default()
+            _marker: PhantomData::default(),
         }
     }
     pub fn intersect_list(&self) -> Option<&Vec<(Entity, Intersection)>> {
@@ -90,7 +90,7 @@ impl<T> Default for RayCastSource<T> {
     fn default() -> Self {
         RayCastSource {
             cast_method: RayCastMethod::CameraCursor(
-                UpdateOn::EveryFrame(Vec2::default()),
+                UpdateOn::EveryFrame(Vec2::zero()),
                 EventReader::default(),
             ),
             ..Default::default()
