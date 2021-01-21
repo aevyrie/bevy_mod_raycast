@@ -39,10 +39,10 @@ impl<T> Default for RayCastMesh<T> {
     }
 }
 
-/// Specifies the method used to generate pick rays
-pub enum PickMethod {
+/// Specifies the method used to generate rays
+pub enum RayCastMethod {
     /// Use cursor events to get coordinates  relative to a camera
-    CameraCursor(UpdatePicks, EventReader<CursorMoved>),
+    CameraCursor(UpdateOn, EventReader<CursorMoved>),
     /// Manually specify screen coordinates relative to a camera
     CameraScreenSpace(Vec2),
     /// Use a tranform in world space to define pick ray
@@ -54,22 +54,22 @@ pub enum PickMethod {
 // basically, the user is responsible for triggering events. Need a way of having a default every frame method
 
 #[derive(Debug, Clone, Copy)]
-pub enum UpdatePicks {
+pub enum UpdateOn {
     EveryFrame(Vec2),
     OnMouseEvent,
 }
 
 pub struct RayCastSource<T> {
-    pub pick_method: PickMethod,
+    pub cast_method: RayCastMethod,
     ray: Option<Ray3d>,
     intersections: Vec<(Entity, Intersection)>,
     _phantom: PhantomData<fn() -> T>,
 }
 
 impl<T> RayCastSource<T> {
-    pub fn new(pick_method: PickMethod) -> Self {
+    pub fn new(pick_method: RayCastMethod) -> Self {
         RayCastSource {
-            pick_method,
+            cast_method: pick_method,
             ray: None,
             intersections: Vec::new(),
             ..Default::default()
@@ -94,8 +94,8 @@ impl<T> RayCastSource<T> {
 impl<T> Default for RayCastSource<T> {
     fn default() -> Self {
         RayCastSource {
-            pick_method: PickMethod::CameraCursor(
-                UpdatePicks::EveryFrame(Vec2::default()),
+            cast_method: RayCastMethod::CameraCursor(
+                UpdateOn::EveryFrame(Vec2::default()),
                 EventReader::default(),
             ),
             ..Default::default()
@@ -131,9 +131,9 @@ pub fn update_raycast<T: 'static + Send + Sync>(
 
     // Generate a ray for the picking source based on the pick method
     for (mut pick_source, transform, camera) in &mut pick_source_query.iter_mut() {
-        let ray = match &mut pick_source.pick_method {
+        let ray = match &mut pick_source.cast_method {
             // Use cursor events and specified window/camera to generate a ray
-            PickMethod::CameraCursor(update_picks, event_reader) => {
+            RayCastMethod::CameraCursor(update_picks, event_reader) => {
                 let camera = match camera {
                     Some(camera) => camera,
                     None => panic!(
@@ -151,18 +151,18 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                     None => None,
                 };
                 let cursor_pos_screen: Vec2 = match update_picks {
-                    UpdatePicks::EveryFrame(cached_pos) => match cursor_latest {
+                    UpdateOn::EveryFrame(cached_pos) => match cursor_latest {
                         Some(cursor_moved) => {
                             //Updated the cached cursor position
-                            pick_source.pick_method = PickMethod::CameraCursor(
-                                UpdatePicks::EveryFrame(cursor_moved.position),
+                            pick_source.cast_method = RayCastMethod::CameraCursor(
+                                UpdateOn::EveryFrame(cursor_moved.position),
                                 EventReader::default(),
                             );
                             cursor_moved.position
                         }
                         None => *cached_pos,
                     },
-                    UpdatePicks::OnMouseEvent => match cursor_latest {
+                    UpdateOn::OnMouseEvent => match cursor_latest {
                         Some(cursor_moved) => cursor_moved.position,
                         None => continue,
                     },
@@ -196,7 +196,7 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                 Some(Ray3d::new(cursor_pos_near, ray_direction))
             }
             // Use the camera and specified screen coordinates to generate a ray
-            PickMethod::CameraScreenSpace(coordinates_ndc) => {
+            RayCastMethod::CameraScreenSpace(coordinates_ndc) => {
                 let projection_matrix = match camera {
                     Some(camera) => camera.projection_matrix,
                     None => panic!(
@@ -222,7 +222,7 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                 Some(Ray3d::new(cursor_pos_near, ray_direction))
             }
             // Use the specified transform as the origin and direction of the ray
-            PickMethod::Transform => {
+            RayCastMethod::Transform => {
                 let pick_position_ndc = Vec3::from([0.0, 0.0, 1.0]);
                 let source_transform = match transform {
                     Some(matrix) => matrix,

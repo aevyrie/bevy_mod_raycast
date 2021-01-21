@@ -11,10 +11,10 @@ fn main() {
             ..Default::default()
         })
         .add_plugins(DefaultPlugins)
-        .add_plugin(RayCastPlugin)
-        .add_plugin(RayCastDebugPlugin)
-        .add_system(update_raycast::<MyPickingGroup>.system())
-        .add_system(update_debug_cursor::<MyPickingGroup>.system())
+        //.add_plugin(RayCastPlugin)
+        //.add_plugin(RayCastDebugPlugin)
+        //.add_system(update_raycast::<MyPickingGroup>.system())
+        //.add_system(update_debug_cursor::<MyPickingGroup>.system())
         .add_startup_system(setup.system())
         .run();
 }
@@ -38,8 +38,8 @@ fn setup(
             )),
             ..Default::default()
         })
-        .with(RayCastSource::<MyPickingGroup>::new(PickMethod::CameraCursor(
-            UpdatePicks::EveryFrame(Vec2::zero()),
+        .with(RayCastSource::<MyPickingGroup>::new(RayCastMethod::CameraCursor(
+            UpdateOn::EveryFrame(Vec2::zero()),
             EventReader::default(),
         )))
         //plane
