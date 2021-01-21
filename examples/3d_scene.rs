@@ -12,6 +12,7 @@ fn main() {
         .add_system(update_raycast::<MyPickingGroup>.system())
         .add_system(update_debug_cursor::<MyPickingGroup>.system())
         .add_startup_system(setup.system())
+        .add_startup_system(setup_debug_cursor::<MyPickingGroup>.system())
         .run();
 }
 

@@ -3,7 +3,7 @@ mod debug;
 mod primitives;
 mod raycast;
 
-pub use crate::bounding::{BoundVol, build_bound_sphere};
+pub use crate::bounding::{build_bound_sphere, BoundVol};
 pub use crate::debug::*;
 use crate::primitives::*;
 use crate::raycast::*;
