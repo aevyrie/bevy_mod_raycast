@@ -8,8 +8,9 @@ pub enum BoundVol {
     Loading(Handle<Mesh>),
     Loaded(BoundingSphere),
 }
+
 /// Defines a bounding sphere with a center point coordinate and a radius
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct BoundingSphere {
     origin: Vec3,
     radius: f32,
