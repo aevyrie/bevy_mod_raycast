@@ -13,6 +13,17 @@ impl<T> Default for DebugCursor<T> {
     }
 }
 
+pub struct DebugCursorTail<T> {
+    _phantom: PhantomData<T>,
+}
+impl<T> Default for DebugCursorTail<T> {
+    fn default() -> Self {
+        DebugCursorTail {
+            _phantom: PhantomData::default(),
+        }
+    }
+}
+
 pub struct DebugCursorMesh<T> {
     _phantom: PhantomData<T>,
 }
@@ -26,37 +37,14 @@ impl<T> Default for DebugCursorMesh<T> {
 
 /// Updates the 3d cursor to be in the pointed world coordinates
 pub fn update_debug_cursor<T: 'static + Send + Sync>(
-    mut query: Query<&mut Transform, With<DebugCursor<T>>>,
-    mut visibility_query: Query<&mut Visible, With<DebugCursorMesh<T>>>,
-    pick_source_query: Query<&RayCastSource<T>>,
-) {
-    // Set the cursor translation to the top pick's world coordinates
-    for pick_source in pick_source_query.iter() {
-        match pick_source.intersect_top() {
-            Some(top_intersection) => {
-                let transform_new = top_intersection.1.normal_ray().to_transform();
-                for mut transform in query.iter_mut() {
-                    *transform = Transform::from_matrix(transform_new);
-                }
-                for mut visible in &mut visibility_query.iter_mut() {
-                    visible.is_visible = true;
-                }
-            }
-            None => {
-                for mut visible in &mut visibility_query.iter_mut() {
-                    visible.is_visible = false;
-                }
-            }
-        }
-    }
-}
-
-/// Start up system to create 3d Debug cursor
-pub fn setup_debug_cursor<T: 'static + Send + Sync>(
     commands: &mut Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    query: Query<&RayCastSource<T>,Added<RayCastSource<T>>>,
+    added_sources_query: Query<&RayCastSource<T>, Added<RayCastSource<T>>>,
+    mut cursor_query: Query<&mut GlobalTransform, With<DebugCursor<T>>>,
+    mut cursor_tail_query: Query<&mut GlobalTransform, With<DebugCursorTail<T>>>,
+    mut visibility_query: Query<&mut Visible, With<DebugCursorMesh<T>>>,
+    raycast_source_query: Query<&RayCastSource<T>>,
 ) {
     let debug_material = &materials.add(StandardMaterial {
         albedo: Color::rgb(0.0, 1.0, 0.0),
@@ -67,7 +55,7 @@ pub fn setup_debug_cursor<T: 'static + Send + Sync>(
     let cube_tail_scale = 20.0;
     let ball_size = 0.08;
 
-    for _source in query.iter() {
+    for _source in added_sources_query.iter() {
         commands
             // cursor
             .spawn(PbrBundle {
@@ -94,9 +82,38 @@ pub fn setup_debug_cursor<T: 'static + Send + Sync>(
                         transform,
                         ..Default::default()
                     })
+                    .with(DebugCursorTail::<T>::default())
                     .with(DebugCursorMesh::<T>::default());
             })
             .with(DebugCursor::<T>::default())
             .with(DebugCursorMesh::<T>::default());
+    }
+
+    // Set the cursor translation to the top pick's world coordinates
+    for raycast_source in raycast_source_query.iter() {
+        match raycast_source.intersect_top() {
+            Some(top_intersection) => {
+                let transform_new = top_intersection.1.normal_ray().to_transform();
+                for mut transform in cursor_query.iter_mut() {
+                    *transform = GlobalTransform::from_matrix(transform_new);
+                }
+                for mut transform in cursor_tail_query.iter_mut() {
+                    let scale = Vec3::from([1.0, cube_tail_scale, 1.0]);
+                    let rotation = Quat::default();
+                    let translation = Vec3::new(0.0, (cube_size * cube_tail_scale) / 2.0, 0.0);
+                    let transform_move =
+                        Mat4::from_scale_rotation_translation(scale, rotation, translation);
+                    *transform = GlobalTransform::from_matrix(transform_new * transform_move)
+                }
+                for mut visible in &mut visibility_query.iter_mut() {
+                    visible.is_visible = true;
+                }
+            }
+            None => {
+                for mut visible in &mut visibility_query.iter_mut() {
+                    visible.is_visible = false;
+                }
+            }
+        }
     }
 }

@@ -115,16 +115,14 @@ pub fn update_raycast<T: 'static + Send + Sync>(
         Option<&GlobalTransform>,
         Option<&Camera>,
     )>,
-    mut mesh_query: Query<
-        (
-            &mut RayCastMesh<T>,
-            &Handle<Mesh>,
-            &GlobalTransform,
-            Entity,
-            &Visible,
-            Option<&BoundVol>,
-        )
-    >,
+    mut mesh_query: Query<(
+        &mut RayCastMesh<T>,
+        &Handle<Mesh>,
+        &GlobalTransform,
+        Entity,
+        &Visible,
+        Option<&BoundVol>,
+    )>,
 ) {
     // Generate a ray for the picking source based on the pick method
     for (mut pick_source, transform, camera) in &mut pick_source_query.iter_mut() {
@@ -245,7 +243,9 @@ pub fn update_raycast<T: 'static + Send + Sync>(
 
             // Iterate through each pickable mesh in the scene
             //mesh_query.par_iter_mut(32).for_each(&pool,|(mesh_handle, transform, mut pickable, entity, draw)| {},);
-            for (mut pickable, mesh_handle, transform, entity, visibility, bounding_sphere) in mesh_query.iter_mut() {
+            for (mut pickable, mesh_handle, transform, entity, visibility, bounding_sphere) in
+                mesh_query.iter_mut()
+            {
                 if !visibility.is_visible {
                     continue;
                 }
