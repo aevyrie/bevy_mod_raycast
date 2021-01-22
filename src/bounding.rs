@@ -7,7 +7,7 @@ pub struct BoundVol {
     sphere: BoundingSphereState,
 }
 impl BoundVol {
-    pub fn new(mesh_handle: Handle<Mesh>) -> Self {
+    pub fn new_sphere(mesh_handle: Handle<Mesh>) -> Self {
         BoundVol {
             sphere: BoundingSphereState::Loading(mesh_handle),
         }
