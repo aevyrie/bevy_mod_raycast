@@ -9,7 +9,7 @@ pub enum BoundVol {
     Loaded(BoundingSphere),
 }
 /// Defines a bounding sphere with a center point coordinate and a radius
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct BoundingSphere {
     origin: Vec3,
     radius: f32,
