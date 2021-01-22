@@ -2,7 +2,7 @@ use super::*;
 use bevy::prelude::*;
 use core::panic;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct BoundVol {
     pub sphere: Option<BoundingSphere>,
 }
