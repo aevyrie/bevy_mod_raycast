@@ -30,8 +30,10 @@ pub fn update_debug_cursor<T: 'static + Send + Sync>(
     mut visibility_query: Query<&mut Visible, With<DebugCursorMesh<T>>>,
     pick_source_query: Query<&RayCastSource<T>>,
 ) {
+    println!("updating!");
     // Set the cursor translation to the top pick's world coordinates
     for pick_source in pick_source_query.iter() {
+        println!("updating pick source!");
         match pick_source.intersect_top() {
             Some(top_intersection) => {
                 let transform_new = top_intersection.1.normal_ray().to_transform();
@@ -41,6 +43,7 @@ pub fn update_debug_cursor<T: 'static + Send + Sync>(
                 for mut visible in &mut visibility_query.iter_mut() {
                     visible.is_visible = true;
                 }
+                println!("intersect!");
             }
             None => {
                 for mut visible in &mut visibility_query.iter_mut() {
