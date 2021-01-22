@@ -89,7 +89,7 @@ impl<T> RayCastSource<T> {
         if self.intersections.is_empty() {
             None
         } else {
-            self.intersections.first().map(|a| *a)
+            self.intersections.first().copied()
         }
     }
 }
