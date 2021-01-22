@@ -4,9 +4,11 @@ mod primitives;
 mod raycast;
 
 pub use crate::bounding::build_bound_sphere;
+pub use crate::bounding::BoundVol;
 pub use crate::debug::*;
 pub use crate::primitives::*;
-use crate::bounding::BoundVol;
+
+use crate::bounding::{BoundingSphereState};
 use crate::raycast::*;
 use bevy::{
     prelude::*,
@@ -17,7 +19,6 @@ use bevy::{
     },
     window::CursorMoved,
 };
-
 use core::convert::TryInto;
 use std::marker::PhantomData;
 
@@ -244,7 +245,7 @@ pub fn update_raycast<T: 'static + Send + Sync>(
 
             // Iterate through each pickable mesh in the scene
             //mesh_query.par_iter_mut(32).for_each(&pool,|(mesh_handle, transform, mut pickable, entity, draw)| {},);
-            for (mut pickable, mesh_handle, transform, entity, visibility, bounding_sphere) in
+            for (mut pickable, mesh_handle, transform, entity, visibility, bound_vol) in
                 mesh_query.iter_mut()
             {
                 if !visibility.is_visible {
@@ -256,15 +257,18 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                 // Cull pick rays that don't intersect the bounding sphere
                 // NOTE: this might cause stutters on load because bound spheres won't be loaded
                 // and picking will be brute forcing.
-                if let Some(BoundVol::Loaded(sphere)) = bounding_sphere {
-                    let scaled_radius = 1.01 * sphere.radius() * transform.scale.max_element();
-                    let translated_origin =
-                        sphere.origin() * transform.scale + transform.translation;
-                    let det = (ray.direction().dot(ray.origin() - translated_origin)).powi(2)
-                        - (Vec3::length_squared(ray.origin() - translated_origin)
-                            - scaled_radius.powi(2));
-                    if det < 0.0 {
-                        continue; // Ray does not intersect the bounding sphere - skip entity
+                if let Some(bound_vol) = bound_vol
+                {
+                    if let BoundingSphereState::Loaded(sphere) = bound_vol.sphere() {
+                        let scaled_radius = 1.01 * sphere.radius() * transform.scale.max_element();
+                        let translated_origin =
+                            sphere.origin() * transform.scale + transform.translation;
+                        let det = (ray.direction().dot(ray.origin() - translated_origin)).powi(2)
+                            - (Vec3::length_squared(ray.origin() - translated_origin)
+                                - scaled_radius.powi(2));
+                        if det < 0.0 {
+                            continue; // Ray does not intersect the bounding sphere - skip entity
+                        }
                     }
                 }
 

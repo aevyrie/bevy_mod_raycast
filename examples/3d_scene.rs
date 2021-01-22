@@ -10,7 +10,10 @@ fn main() {
         })
         .add_plugins(DefaultPlugins)
         .add_system_to_stage(stage::POST_UPDATE, update_raycast::<MyRaycastSet>.system())
-        .add_system_to_stage(stage::POST_UPDATE, update_debug_cursor::<MyRaycastSet>.system())
+        .add_system_to_stage(
+            stage::POST_UPDATE,
+            update_debug_cursor::<MyRaycastSet>.system(),
+        )
         .add_startup_system(setup.system())
         .run();
 }

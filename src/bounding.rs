@@ -3,7 +3,22 @@ use bevy::prelude::*;
 use core::panic;
 
 #[derive(Debug, Clone)]
-pub enum BoundVol {
+pub struct BoundVol {
+    sphere: BoundingSphereState,
+}
+impl BoundVol {
+    pub fn new(mesh_handle: Handle<Mesh>) -> Self {
+        BoundVol {
+            sphere: BoundingSphereState::Loading(mesh_handle),
+        }
+    }
+    pub fn sphere(&self) -> &BoundingSphereState {
+        &self.sphere
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum BoundingSphereState {
     None,
     Loading(Handle<Mesh>),
     Loaded(BoundingSphere),
@@ -28,13 +43,17 @@ impl BoundingSphere {
 
 pub fn build_bound_sphere(meshes: Res<Assets<Mesh>>, mut bound_query: Query<&mut BoundVol>) {
     for mut bound_vol in &mut bound_query.iter_mut() {
-        let handle = match &*bound_vol {
-            BoundVol::Loading(handle) => handle.clone(),
+        let handle = match &bound_vol.sphere {
+            BoundingSphereState::Loading(handle) => handle.clone(),
             _ => continue,
         };
 
         match meshes.get(handle.clone()) {
-            Some(mesh) => *bound_vol = BoundVol::Loaded(BoundingSphere::from(mesh)),
+            Some(mesh) => {
+                *bound_vol = BoundVol {
+                    sphere: BoundingSphereState::Loaded(BoundingSphere::from(mesh)),
+                }
+            }
             None => {
                 warn!(
                     "Unable to generate bounding sphere, waiting for mesh to load. Handle:{:?}",
