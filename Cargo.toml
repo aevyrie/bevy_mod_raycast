@@ -6,7 +6,7 @@ edition = "2018"
 license = "MIT"
 description = "Ray Casting for the Bevy Engine."
 repository = "https://github.com/aevyrie/bevy_mod_raycast/"
-keywords = ["gamedev", "graphics", "bevy", "3d", "ray cast"]
+keywords = ["gamedev", "graphics", "bevy", "3d", "raycast"]
 categories = ["game-engines", "rendering"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
