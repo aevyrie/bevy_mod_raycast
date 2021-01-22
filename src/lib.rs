@@ -3,12 +3,12 @@ mod debug;
 mod primitives;
 mod raycast;
 
-pub use crate::bounding::build_bound_sphere;
-pub use crate::bounding::BoundVol;
+pub use crate::bounding::{
+    build_new_bound_sphere, update_bound_sphere_changed_mesh, BoundVol, BoundingSphere,
+};
 pub use crate::debug::*;
 pub use crate::primitives::*;
 
-use crate::bounding::{BoundingSphereState};
 use crate::raycast::*;
 use bevy::{
     prelude::*,
@@ -257,9 +257,8 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                 // Cull pick rays that don't intersect the bounding sphere
                 // NOTE: this might cause stutters on load because bound spheres won't be loaded
                 // and picking will be brute forcing.
-                if let Some(bound_vol) = bound_vol
-                {
-                    if let BoundingSphereState::Loaded(sphere) = bound_vol.sphere() {
+                if let Some(bound_vol) = bound_vol {
+                    if let Some(sphere) = &bound_vol.sphere {
                         let scaled_radius = 1.01 * sphere.radius() * transform.scale.max_element();
                         let translated_origin =
                             sphere.origin() * transform.scale + transform.translation;

@@ -4,24 +4,7 @@ use core::panic;
 
 #[derive(Debug, Clone)]
 pub struct BoundVol {
-    sphere: BoundingSphereState,
-}
-impl BoundVol {
-    pub fn new_sphere(mesh_handle: Handle<Mesh>) -> Self {
-        BoundVol {
-            sphere: BoundingSphereState::Loading(mesh_handle),
-        }
-    }
-    pub fn sphere(&self) -> &BoundingSphereState {
-        &self.sphere
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum BoundingSphereState {
-    None,
-    Loading(Handle<Mesh>),
-    Loaded(BoundingSphere),
+    pub sphere: Option<BoundingSphere>,
 }
 
 /// Defines a bounding sphere with a center point coordinate and a radius
@@ -41,26 +24,28 @@ impl BoundingSphere {
     }
 }
 
-pub fn build_bound_sphere(meshes: Res<Assets<Mesh>>, mut bound_query: Query<&mut BoundVol>) {
-    for mut bound_vol in &mut bound_query.iter_mut() {
-        let handle = match &bound_vol.sphere {
-            BoundingSphereState::Loading(handle) => handle.clone(),
-            _ => continue,
-        };
+pub fn build_new_bound_sphere(
+    meshes: Res<Assets<Mesh>>,
+    mut new_bound_vol_query: Query<(&mut BoundVol, &Handle<Mesh>), Added<BoundVol>>,
+) {
+    for (mut bound_vol, mesh_handle) in &mut new_bound_vol_query.iter_mut() {
+        if let Some(mesh) = meshes.get(mesh_handle) {
+            bound_vol.sphere = Some(BoundingSphere::from(mesh));
+        } else {
+            continue;
+        }
+    }
+}
 
-        match meshes.get(handle.clone()) {
-            Some(mesh) => {
-                *bound_vol = BoundVol {
-                    sphere: BoundingSphereState::Loaded(BoundingSphere::from(mesh)),
-                }
-            }
-            None => {
-                warn!(
-                    "Unable to generate bounding sphere, waiting for mesh to load. Handle:{:?}",
-                    &handle
-                );
-                continue;
-            }
+pub fn update_bound_sphere_changed_mesh(
+    meshes: Res<Assets<Mesh>>,
+    mut changed_mesh_query: Query<(&mut BoundVol, &Handle<Mesh>), Changed<Handle<Mesh>>>,
+) {
+    for (mut bound_vol, mesh_handle) in &mut changed_mesh_query.iter_mut() {
+        if let Some(mesh) = meshes.get(mesh_handle) {
+            bound_vol.sphere = Some(BoundingSphere::from(mesh));
+        } else {
+            continue;
         }
     }
 }
