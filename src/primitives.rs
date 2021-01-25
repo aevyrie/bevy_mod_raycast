@@ -43,7 +43,7 @@ pub mod rays {
     use bevy::prelude::*;
 
     /// A 3D ray, with an origin and direction. The direction is guaranteed to be normalized.
-    #[derive(Debug, PartialOrd, PartialEq, Copy, Clone)]
+    #[derive(Debug, PartialOrd, PartialEq, Copy, Clone, Default)]
     pub struct Ray3d {
         origin: Vec3,
         direction: Vec3,

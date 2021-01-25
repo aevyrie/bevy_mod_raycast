@@ -13,6 +13,7 @@ categories = ["game-engines", "rendering"]
 
 [dependencies]
 bevy = { version = "0.4", default-features = false, features = ["render"] }
+rayon = "1.5.0"
 
 [features]
 ex = [ "bevy/bevy_wgpu", "bevy/bevy_winit", "bevy/bevy_gltf", "bevy/x11" ]
