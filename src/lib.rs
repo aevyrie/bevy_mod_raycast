@@ -346,8 +346,8 @@ fn ray_mesh_intersection(
 ) -> Option<Intersection> {
     // The ray cast can hit the same mesh many times, so we need to track which hit is
     // closest to the camera, and record that.
-    let mut min_pick_distance = f32::MAX;
-    let mut pick_intersection: Option<Intersection> = None;
+    let mut min_pick_distance_squared = f32::MAX;
+    let mut pick_intersection = None;
 
     // Make sure this chunk has 3 vertices to avoid a panic.
     if indices.len() % 3 == 0 {
@@ -362,22 +362,23 @@ fn ray_mesh_intersection(
                 world_vertices[i] =
                     mesh_to_world.transform_point3(Vec3::from(vertex_positions[vertex_index]));
             }
-            let world_triangle = Triangle::from(world_vertices);
+            // If all vertices in the triangle are further away than the nearest hit, skip
             if world_vertices
                 .iter()
-                .map(|vert| (*vert - pick_ray.origin()).length().abs())
+                .map(|vert| (*vert - pick_ray.origin()).length_squared().abs())
                 .fold(f32::INFINITY, |a, b| a.min(b))
-                > min_pick_distance
+                > min_pick_distance_squared
             {
                 continue;
             }
+            let world_triangle = Triangle::from(world_vertices);
             // Run the raycast on the ray and triangle
             if let Some(intersection) =
                 ray_triangle_intersection(pick_ray, &world_triangle, RaycastAlgorithm::default())
             {
-                let distance: f32 = (intersection.origin() - pick_ray.origin()).length().abs();
-                if distance < min_pick_distance {
-                    min_pick_distance = distance;
+                let distance: f32 = (intersection.origin() - pick_ray.origin()).length_squared().abs();
+                if distance < min_pick_distance_squared {
+                    min_pick_distance_squared = distance;
                     pick_intersection =
                         Some(Intersection::new(intersection, distance, world_triangle));
                 }
