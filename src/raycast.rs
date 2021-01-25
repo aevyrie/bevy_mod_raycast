@@ -1,7 +1,10 @@
+use std::f32::EPSILON;
+
 use crate::primitives::*;
 use bevy::prelude::*;
 
 #[allow(dead_code)]
+#[non_exhaustive]
 pub enum RaycastAlgorithm {
     Geometric,
     MollerTrumbore(Backfaces),
@@ -40,7 +43,6 @@ pub fn raycast_moller_trumbore(
     backface_culling: Backfaces,
 ) -> Option<Ray3d> {
     // Source: https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/moller-trumbore-ray-triangle-intersection
-    let epsilon: f32 = 0.000001;
     let vector_v0_to_v1: Vec3 = triangle.v1 - triangle.v0;
     let vector_v0_to_v2: Vec3 = triangle.v2 - triangle.v0;
     let p_vec: Vec3 = ray.direction().cross(vector_v0_to_v2);
@@ -51,13 +53,13 @@ pub fn raycast_moller_trumbore(
             // if the determinant is negative the triangle is backfacing
             // if the determinant is close to 0, the ray misses the triangle
             // This test checks both cases
-            if determinant < epsilon {
+            if determinant < EPSILON {
                 return None;
             }
         }
         Backfaces::Include => {
             // ray and triangle are parallel if det is close to 0
-            if determinant.abs() < epsilon {
+            if determinant.abs() < EPSILON {
                 return None;
             }
         }
@@ -90,8 +92,6 @@ pub fn raycast_moller_trumbore(
 /// Geometric method of computing a ray-triangle intersection
 pub fn raycast_geometric(ray: &Ray3d, triangle: &Triangle) -> Option<Ray3d> {
     // Source: https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/ray-triangle-intersection-geometric-solution
-    let epsilon = 0.000001;
-
     // compute plane's normal
     let vector_v0_to_v1: Vec3 = triangle.v1 - triangle.v0;
     let vector_v0_to_v2: Vec3 = triangle.v2 - triangle.v0;
@@ -102,7 +102,7 @@ pub fn raycast_geometric(ray: &Ray3d, triangle: &Triangle) -> Option<Ray3d> {
 
     // check if ray and plane are parallel ?
     let n_dot_ray_direction = triangle_normal.dot(ray.direction());
-    if n_dot_ray_direction.abs() < epsilon {
+    if n_dot_ray_direction.abs() < EPSILON {
         return None;
     }
 
