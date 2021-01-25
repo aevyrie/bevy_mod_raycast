@@ -3,9 +3,7 @@ mod debug;
 mod primitives;
 mod raycast;
 
-pub use crate::bounding::{
-    build_new_bound_sphere, update_bound_sphere_changed_mesh, BoundVol, BoundingSphere,
-};
+pub use crate::bounding::{update_bound_sphere, BoundVol, BoundingSphere};
 pub use crate::debug::*;
 pub use crate::primitives::*;
 

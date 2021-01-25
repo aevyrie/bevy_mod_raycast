@@ -24,24 +24,14 @@ impl BoundingSphere {
     }
 }
 
-pub fn build_new_bound_sphere(
+pub fn update_bound_sphere(
     meshes: Res<Assets<Mesh>>,
-    mut new_bound_vol_query: Query<(&mut BoundVol, &Handle<Mesh>), Added<BoundVol>>,
+    mut new_bound_vol_query: Query<
+        (&mut BoundVol, &Handle<Mesh>),
+        Or<(Added<BoundVol>, Changed<Handle<Mesh>>)>,
+    >,
 ) {
     for (mut bound_vol, mesh_handle) in &mut new_bound_vol_query.iter_mut() {
-        if let Some(mesh) = meshes.get(mesh_handle) {
-            bound_vol.sphere = Some(BoundingSphere::from(mesh));
-        } else {
-            continue;
-        }
-    }
-}
-
-pub fn update_bound_sphere_changed_mesh(
-    meshes: Res<Assets<Mesh>>,
-    mut changed_mesh_query: Query<(&mut BoundVol, &Handle<Mesh>), Changed<Handle<Mesh>>>,
-) {
-    for (mut bound_vol, mesh_handle) in &mut changed_mesh_query.iter_mut() {
         if let Some(mesh) = meshes.get(mesh_handle) {
             bound_vol.sphere = Some(BoundingSphere::from(mesh));
         } else {
@@ -99,7 +89,7 @@ impl From<&Mesh> for BoundingSphere {
                     acc
                 }
             });
-            // If the furthest point is outside the sphere, we need to sdjust it
+            // If the furthest point is outside the sphere, we need to adjust it
             let point_dist = point_n.distance(sphere.origin);
             if point_dist > sphere.radius {
                 let radius_new = (sphere.radius + point_dist) / 2.0;
