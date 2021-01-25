@@ -363,6 +363,14 @@ fn ray_mesh_intersection(
                     mesh_to_world.transform_point3(Vec3::from(vertex_positions[vertex_index]));
             }
             let world_triangle = Triangle::from(world_vertices);
+            if world_vertices
+                .iter()
+                .map(|vert| (*vert - pick_ray.origin()).length().abs())
+                .fold(f32::INFINITY, |a, b| a.min(b))
+                > min_pick_distance
+            {
+                continue;
+            }
             // Run the raycast on the ray and triangle
             if let Some(intersection) =
                 ray_triangle_intersection(pick_ray, &world_triangle, RaycastAlgorithm::default())
