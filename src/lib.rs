@@ -116,7 +116,7 @@ pub fn update_raycast<T: 'static + Send + Sync>(
         Option<&GlobalTransform>,
         Option<&Camera>,
     )>,
-    cull_query: Query<
+    culling_query: Query<
         (&Visible, Option<&BoundVol>, &GlobalTransform, Entity),
         With<RayCastMesh<T>>,
     >,
@@ -239,58 +239,55 @@ pub fn update_raycast<T: 'static + Send + Sync>(
             let ray_cull = info_span!("ray culling");
             let raycast = info_span!("raycast");
 
-            // Iterate through each pickable mesh in the scene
-            //mesh_query.par_iter_mut(32).for_each(&pool,|(mesh_handle, transform, mut pickable, entity, draw)| {},);
-            let culled_list: Vec<Entity> = cull_query
-                .par_iter(32)
-                .map(|(visibility, bound_vol, transform, entity)| {
-                    let _ray_cull_guard = ray_cull.enter();
-                    let visible = visibility.is_visible;
-                    // Check for a pick ray in each pick group(s) this mesh belongs to
-                    // Cull pick rays that don't intersect the bounding sphere
-                    // NOTE: this might cause stutters on load because bound spheres won't be loaded
-                    // and picking will be brute forcing.
-                    let bound_hit = if let Some(bound_vol) = bound_vol {
-                        if let Some(sphere) = &bound_vol.sphere {
-                            let scaled_radius: f32 =
-                                1.01 * sphere.radius() * transform.scale.max_element();
-                            let translated_origin =
-                                sphere.origin() * transform.scale + transform.translation;
-                            let det = (ray.direction().dot(ray.origin() - translated_origin))
-                                .powi(2)
-                                - (Vec3::length_squared(ray.origin() - translated_origin)
-                                    - scaled_radius.powi(2));
-                            if det < 0.0 {
-                                false // Ray does not intersect the bounding sphere - skip entity
+            // Check all entities to see if the source ray intersects the bounding sphere, use this
+            // to build a short list of entities that are in the path of the ray.
+            let culled_list: Vec<Entity> = {
+                let _ray_cull_guard = ray_cull.enter();
+                culling_query
+                    .par_iter(32)
+                    .map(|(visibility, bound_vol, transform, entity)| {
+                        let visible = visibility.is_visible;
+                        let bound_hit = if let Some(bound_vol) = bound_vol {
+                            if let Some(sphere) = &bound_vol.sphere {
+                                let scaled_radius: f32 =
+                                    1.01 * sphere.radius() * transform.scale.max_element();
+                                let translated_origin =
+                                    sphere.origin() * transform.scale + transform.translation;
+                                let det = (ray.direction().dot(ray.origin() - translated_origin))
+                                    .powi(2)
+                                    - (Vec3::length_squared(ray.origin() - translated_origin)
+                                        - scaled_radius.powi(2));
+                                if det < 0.0 {
+                                    false // Ray does not intersect the bounding sphere - skip entity
+                                } else {
+                                    true // Ray intersects the bounding sphere!
+                                }
                             } else {
-                                true
+                                true // This bounding volume's sphere is not yet defined
                             }
                         } else {
-                            true
+                            true // This entity has no bounding volume
+                        };
+                        if visible && bound_hit {
+                            Some(entity)
+                        } else {
+                            None
                         }
-                    } else {
-                        true
-                    };
-                    if visible && bound_hit {
-                        Some(entity)
-                    } else {
-                        None
-                    }
-                })
-                .filter_map(|value| value)
-                .collect(&pool);
+                    })
+                    .filter_map(|value| value)
+                    .collect(&pool)
+            };
 
             for (mut pickable, mesh_handle, transform, entity) in mesh_query.iter_mut() {
                 if !culled_list.contains(&entity) {
                     continue;
                 }
+                let _raycast_guard = raycast.enter();
                 // Use the mesh handle to get a reference to a mesh asset
                 if let Some(mesh) = meshes.get(mesh_handle) {
                     if mesh.primitive_topology() != PrimitiveTopology::TriangleList {
                         panic!("bevy_mod_picking only supports TriangleList topology");
                     }
-
-                    let _raycast_guard = raycast.enter();
                     // Get the vertex positions from the mesh reference resolved from the mesh handle
                     let vertex_positions: Vec<[f32; 3]> =
                         match mesh.attribute(Mesh::ATTRIBUTE_POSITION) {
@@ -300,7 +297,6 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                                 _ => panic!("Unexpected vertex types in ATTRIBUTE_POSITION"),
                             },
                         };
-
                     if let Some(indices) = &mesh.indices() {
                         // Iterate over the list of pick rays that belong to the same group as this mesh
                         let mesh_to_world = transform.compute_matrix();
