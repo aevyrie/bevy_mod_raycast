@@ -8,17 +8,12 @@ pub use crate::debug::*;
 pub use crate::primitives::*;
 
 use crate::raycast::*;
-use bevy::{
-    prelude::*,
-    render::{
+use bevy::{prelude::*, render::{
         camera::Camera,
         mesh::{Indices, Mesh, VertexAttributeValues},
         pipeline::PrimitiveTopology,
-    },
-    window::CursorMoved,
-};
+    }, tasks::{ComputeTaskPool, ParallelIterator}, window::CursorMoved};
 use std::marker::PhantomData;
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 /// Marks a Mesh entity as pickable
 #[derive(Debug)]
@@ -106,6 +101,7 @@ impl<T> Default for RayCastSource<T> {
 
 pub fn update_raycast<T: 'static + Send + Sync>(
     // Resources
+    pool: Res<ComputeTaskPool>,
     meshes: ResMut<Assets<Mesh>>,
     cursor: Res<Events<CursorMoved>>,
     windows: Res<Windows>,
@@ -115,13 +111,12 @@ pub fn update_raycast<T: 'static + Send + Sync>(
         Option<&GlobalTransform>,
         Option<&Camera>,
     )>,
+    cull_query: Query<(&Visible, Option<&BoundVol>, &GlobalTransform, Entity), With<RayCastMesh<T>>>,
     mut mesh_query: Query<(
         &mut RayCastMesh<T>,
         &Handle<Mesh>,
         &GlobalTransform,
         Entity,
-        &Visible,
-        Option<&BoundVol>,
     )>,
 ) {
     // Generate a ray for the picking source based on the pick method
@@ -243,32 +238,47 @@ pub fn update_raycast<T: 'static + Send + Sync>(
 
             // Iterate through each pickable mesh in the scene
             //mesh_query.par_iter_mut(32).for_each(&pool,|(mesh_handle, transform, mut pickable, entity, draw)| {},);
-            for (mut pickable, mesh_handle, transform, entity, visibility, bound_vol) in
-                mesh_query.iter_mut()
-            {
-                if !visibility.is_visible {
-                    continue;
-                }
-
-                // Check for a pick ray in each pick group(s) this mesh belongs to
+            let culled_list: Vec<Entity> = cull_query.par_iter(32).map(|(visibility, bound_vol, transform, entity)| {
                 let _ray_cull_guard = ray_cull.enter();
+                let visible = visibility.is_visible;
+                // Check for a pick ray in each pick group(s) this mesh belongs to
                 // Cull pick rays that don't intersect the bounding sphere
                 // NOTE: this might cause stutters on load because bound spheres won't be loaded
                 // and picking will be brute forcing.
-                if let Some(bound_vol) = bound_vol {
+                let bound_hit = if let Some(bound_vol) = bound_vol {
                     if let Some(sphere) = &bound_vol.sphere {
-                        let scaled_radius = 1.01 * sphere.radius() * transform.scale.max_element();
+                        let scaled_radius: f32 = 1.01 * sphere.radius() * transform.scale.max_element();
                         let translated_origin =
                             sphere.origin() * transform.scale + transform.translation;
                         let det = (ray.direction().dot(ray.origin() - translated_origin)).powi(2)
                             - (Vec3::length_squared(ray.origin() - translated_origin)
                                 - scaled_radius.powi(2));
                         if det < 0.0 {
-                            continue; // Ray does not intersect the bounding sphere - skip entity
+                            false // Ray does not intersect the bounding sphere - skip entity
+                        } else {
+                            true
                         }
+                    } else {
+                        true
                     }
+                } else {
+                    true
+                };
+                if visible && bound_hit {
+                    Some(entity)
+                } else {
+                    None
                 }
+            }).filter_map(|value| {
+                value
+            }).collect(&pool);
 
+            for (mut pickable, mesh_handle, transform, entity) in
+                mesh_query.iter_mut()
+            {
+                if !culled_list.contains(&entity) {
+                    continue;
+                }
                 // Use the mesh handle to get a reference to a mesh asset
                 if let Some(mesh) = meshes.get(mesh_handle) {
                     if mesh.primitive_topology() != PrimitiveTopology::TriangleList {
@@ -368,6 +378,7 @@ fn ray_mesh_intersection(
     pick_intersection
 }
 
+/*
 fn par_ray_mesh_intersection(
     mesh_to_world: &Mat4,
     vertex_positions: &[[f32; 3]],
@@ -417,3 +428,4 @@ fn par_ray_mesh_intersection(
     
     pick_intersection
 }
+*/
