@@ -306,11 +306,11 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                         panic!("bevy_mod_picking only supports TriangleList topology");
                     }
                     // Get the vertex positions from the mesh reference resolved from the mesh handle
-                    let vertex_positions: Vec<[f32; 3]> =
+                    let vertex_positions: &Vec<[f32; 3]> =
                         match mesh.attribute(Mesh::ATTRIBUTE_POSITION) {
                             None => panic!("Mesh does not contain vertex positions"),
                             Some(vertex_values) => match &vertex_values {
-                                VertexAttributeValues::Float3(positions) => positions.clone(),
+                                VertexAttributeValues::Float3(positions) => positions,
                                 _ => panic!("Unexpected vertex types in ATTRIBUTE_POSITION"),
                             },
                         };
@@ -320,13 +320,13 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                         let new_intersection = match indices {
                             Indices::U16(vector) => ray_mesh_intersection(
                                 &mesh_to_world,
-                                &vertex_positions,
+                                vertex_positions,
                                 &ray,
                                 &vector.iter().map(|x| *x as u32).collect(),
                             ),
                             Indices::U32(vector) => ray_mesh_intersection(
                                 &mesh_to_world,
-                                &vertex_positions,
+                                vertex_positions,
                                 &ray,
                                 vector,
                             ),
