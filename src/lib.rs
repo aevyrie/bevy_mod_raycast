@@ -295,13 +295,12 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                     .collect(&pool)
             };
 
-            let mut picks = mesh_query.par_iter(4)
+            let _raycast_guard = raycast.enter();
+            let mut picks = mesh_query.par_iter(1)
                 .filter(|(_mesh_handle, _transform, entity)|{
                     culled_list.contains(&entity)
                 })
                 .filter_map(|(mesh_handle, transform, entity)|{
-                
-                let _raycast_guard = raycast.enter();
                 // Use the mesh handle to get a reference to a mesh asset
                 if let Some(mesh) = meshes.get(mesh_handle) {
                     if mesh.primitive_topology() != PrimitiveTopology::TriangleList {
