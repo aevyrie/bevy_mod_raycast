@@ -295,7 +295,7 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                     .collect(&pool)
             };
 
-            let mut picks = mesh_query.par_iter(2)
+            let mut picks = mesh_query.par_iter(1)
                 .filter(|(_mesh_handle, _transform, entity)|{
                     culled_list.contains(&entity)
                 })
