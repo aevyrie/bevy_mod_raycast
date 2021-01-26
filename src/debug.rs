@@ -1,4 +1,4 @@
-use crate::RayCastSource;
+use crate::{RayCastSource, PluginState};
 use bevy::prelude::*;
 use std::marker::PhantomData;
 
@@ -38,6 +38,7 @@ impl<T> Default for DebugCursorMesh<T> {
 /// Updates the 3d cursor to be in the pointed world coordinates
 pub fn update_debug_cursor<T: 'static + Send + Sync>(
     commands: &mut Commands,
+    state: Res<PluginState<T>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     added_sources_query: Query<&RayCastSource<T>, Added<RayCastSource<T>>>,
@@ -46,16 +47,20 @@ pub fn update_debug_cursor<T: 'static + Send + Sync>(
     mut visibility_query: Query<&mut Visible, With<DebugCursorMesh<T>>>,
     raycast_source_query: Query<&RayCastSource<T>>,
 ) {
-    let debug_material = &materials.add(StandardMaterial {
-        albedo: Color::rgb(0.0, 1.0, 0.0),
-        shaded: false,
-        ..Default::default()
-    });
+    if !state.enabled {
+        return;
+    }
+
     let cube_size = 0.04;
     let cube_tail_scale = 20.0;
     let ball_size = 0.08;
 
     for _source in added_sources_query.iter() {
+        let debug_material = &materials.add(StandardMaterial {
+            albedo: Color::rgb(0.0, 1.0, 0.0),
+            shaded: false,
+            ..Default::default()
+        });
         commands
             // cursor
             .spawn(PbrBundle {

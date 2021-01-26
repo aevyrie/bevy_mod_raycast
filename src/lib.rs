@@ -40,6 +40,19 @@ impl<T> RayCastMesh<T> {
     }
 }
 
+pub struct PluginState<T>{
+    pub enabled: bool,
+    _marker: PhantomData<T>,
+}
+impl<T> Default for PluginState<T> {
+    fn default() -> Self {
+        PluginState{
+            enabled: true,
+            _marker: PhantomData::<T>::default(),
+        }
+    }
+}
+
 /// Specifies the method used to generate rays
 pub enum RayCastMethod {
     /// Use cursor events to get coordinates  relative to a camera
@@ -106,6 +119,7 @@ impl<T> Default for RayCastSource<T> {
 
 pub fn update_raycast<T: 'static + Send + Sync>(
     // Resources
+    state: Res<PluginState<T>>,
     pool: Res<ComputeTaskPool>,
     meshes: ResMut<Assets<Mesh>>,
     cursor: Res<Events<CursorMoved>>,
@@ -122,6 +136,9 @@ pub fn update_raycast<T: 'static + Send + Sync>(
     >,
     mut mesh_query: Query<(&mut RayCastMesh<T>, &Handle<Mesh>, &GlobalTransform, Entity)>,
 ) {
+    if !state.enabled {
+        return;
+    }
     // Generate a ray for the picking source based on the pick method
     for (mut pick_source, transform, camera) in &mut pick_source_query.iter_mut() {
         pick_source.ray = match &mut pick_source.cast_method {
@@ -387,55 +404,3 @@ fn ray_mesh_intersection(
     }
     pick_intersection
 }
-
-/*
-fn par_ray_mesh_intersection(
-    mesh_to_world: &Mat4,
-    vertex_positions: &[[f32; 3]],
-    pick_ray: &Ray3d,
-    indices: &Vec<u32>,
-) -> Option<Intersection> {
-    // Make sure this chunk has 3 vertices to avoid a panic.
-    let indices: &Vec<Vec<u32>> = &indices.chunks(3).map(|x| x.to_vec()).collect();
-
-    // Now that we're in the vector of vertex indices, we want to look at the vertex
-    // positions for each triangle, so we'll take indices in chunks of three, where each
-    // chunk of three indices are references to the three vertices of a triangle.
-    let pick_intersection = indices.par_iter().map( |index| {
-        // Construct a triangle in world space using the mesh data
-        let mut world_vertices: [Vec3; 3] = [Vec3::zero(), Vec3::zero(), Vec3::zero()];
-        for i in 0..3 {
-            let vertex_index: usize = index[i] as usize;
-            world_vertices[i] =
-                    mesh_to_world.transform_point3(Vec3::from(vertex_positions[vertex_index]));
-        }
-        let world_triangle = Triangle::from(world_vertices);
-        // Run the raycast on the ray and triangle
-        let intersection = ray_triangle_intersection(pick_ray, &world_triangle, RaycastAlgorithm::default());
-        match intersection {
-            Some(intersection) => {
-                let distance = (intersection.origin() - pick_ray.origin()).length().abs();
-                Some(Intersection::new(intersection, distance, world_triangle))
-            }
-            None => None,
-        }
-    })
-    .filter_map(Option::Some)
-    .reduce(|| None, |a,b| {
-        if let Some(a) = a {
-            match b {
-                None => Some(a),
-                Some(b) => if a.distance()<b.distance() {
-                    Some(a)
-                } else {
-                    Some(b)
-                }
-            }
-        } else {
-            b
-        }
-    });
-
-    pick_intersection
-}
-*/

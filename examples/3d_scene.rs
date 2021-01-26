@@ -8,9 +8,10 @@ fn main() {
             ..Default::default()
         })
         .add_plugins(DefaultPlugins)
+        .init_resource::<PluginState<MyRaycastSet>>()
         .add_system_to_stage(stage::POST_UPDATE, update_raycast::<MyRaycastSet>.system())
         .add_system_to_stage(
-            stage::POST_UPDATE,
+           stage::POST_UPDATE,
             update_debug_cursor::<MyRaycastSet>.system(),
         )
         .add_startup_system(setup.system())

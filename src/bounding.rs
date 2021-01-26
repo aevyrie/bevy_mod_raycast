@@ -1,6 +1,7 @@
-use super::*;
-use bevy::prelude::*;
+use bevy::{prelude::*, render::{mesh::VertexAttributeValues, pipeline::PrimitiveTopology}};
 use core::panic;
+
+use crate::PluginState;
 
 #[derive(Debug, Clone, Default)]
 pub struct BoundVol {
@@ -24,13 +25,17 @@ impl BoundingSphere {
     }
 }
 
-pub fn update_bound_sphere(
+pub fn update_bound_sphere<T: 'static + Send + Sync>(
+    state: Res<PluginState<T>>,
     meshes: Res<Assets<Mesh>>,
     mut new_bound_vol_query: Query<
         (&mut BoundVol, &Handle<Mesh>),
         Or<(Added<BoundVol>, Changed<Handle<Mesh>>)>,
     >,
 ) {
+    if !state.enabled {
+        return;
+    }
     for (mut bound_vol, mesh_handle) in &mut new_bound_vol_query.iter_mut() {
         if let Some(mesh) = meshes.get(mesh_handle) {
             bound_vol.sphere = Some(BoundingSphere::from(mesh));
