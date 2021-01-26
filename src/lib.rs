@@ -121,7 +121,7 @@ pub fn update_raycast<T: 'static + Send + Sync>(
     // Resources
     state: Res<PluginState<T>>,
     pool: Res<ComputeTaskPool>,
-    meshes: ResMut<Assets<Mesh>>,
+    meshes: Res<Assets<Mesh>>,
     cursor: Res<Events<CursorMoved>>,
     windows: Res<Windows>,
     // Queries
@@ -134,7 +134,7 @@ pub fn update_raycast<T: 'static + Send + Sync>(
         (&Visible, Option<&BoundVol>, &GlobalTransform, Entity),
         With<RayCastMesh<T>>,
     >,
-    mut mesh_query: Query<(&mut RayCastMesh<T>, &Handle<Mesh>, &GlobalTransform, Entity)>,
+    mesh_query: Query<(&Handle<Mesh>, &GlobalTransform, Entity), With<RayCastMesh<T>>>,
 ) {
     if !state.enabled {
         return;
@@ -295,10 +295,12 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                     .collect(&pool)
             };
 
-            for (mut pickable, mesh_handle, transform, entity) in mesh_query.iter_mut() {
-                if !culled_list.contains(&entity) {
-                    continue;
-                }
+            let mut picks = mesh_query.par_iter(2)
+                .filter(|(_mesh_handle, _transform, entity)|{
+                    culled_list.contains(&entity)
+                })
+                .filter_map(|(mesh_handle, transform, entity)|{
+                
                 let _raycast_guard = raycast.enter();
                 // Use the mesh handle to get a reference to a mesh asset
                 if let Some(mesh) = meshes.get(mesh_handle) {
@@ -331,9 +333,11 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                                 vector,
                             ),
                         };
-                        pickable.intersection = new_intersection;
+                        //pickable.intersection = new_intersection;
                         if let Some(new_intersection) = new_intersection {
-                            pick_source.intersections.push((entity, new_intersection));
+                            Some((entity, new_intersection))
+                        } else {
+                            None
                         }
                     } else {
                         // If we get here the mesh doesn't have an index list!
@@ -342,15 +346,17 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                             mesh_handle, mesh
                         );
                     }
+                } else {
+                    None
                 }
-            }
-
-            // Sort the pick list
-            pick_source.intersections.sort_by(|a, b| {
+            }).collect::<Vec<(Entity, Intersection)>>(&pool);
+            picks.sort_by(|a, b| {
                 a.1.distance()
                     .partial_cmp(&b.1.distance())
                     .unwrap_or(std::cmp::Ordering::Equal)
             });
+
+            pick_source.intersections = picks;
         }
     }
 }
