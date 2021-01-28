@@ -1,4 +1,7 @@
-use bevy::{prelude::*, render::{mesh::VertexAttributeValues, pipeline::PrimitiveTopology}};
+use bevy::{
+    prelude::*,
+    render::{mesh::VertexAttributeValues, pipeline::PrimitiveTopology},
+};
 use core::panic;
 
 use crate::PluginState;

@@ -11,7 +11,7 @@ fn main() {
         .init_resource::<PluginState<MyRaycastSet>>()
         .add_system_to_stage(stage::POST_UPDATE, update_raycast::<MyRaycastSet>.system())
         .add_system_to_stage(
-           stage::POST_UPDATE,
+            stage::POST_UPDATE,
             update_debug_cursor::<MyRaycastSet>.system(),
         )
         .add_startup_system(setup.system())
@@ -38,7 +38,7 @@ fn setup(
             ..Default::default()
         })
         .with(RayCastSource::<MyRaycastSet>::new(
-            RayCastMethod::CameraCursor(UpdateOn::EveryFrame(Vec2::zero()), EventReader::default()),
+            RayCastMethod::Screenspace(Vec2::new(300.0, 100.0)),
         ))
         //plane
         .spawn(PbrBundle {

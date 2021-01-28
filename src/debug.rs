@@ -1,4 +1,4 @@
-use crate::{RayCastSource, PluginState};
+use crate::{PluginState, RayCastSource};
 use bevy::prelude::*;
 use std::marker::PhantomData;
 
