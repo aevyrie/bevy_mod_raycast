@@ -85,11 +85,7 @@ impl<T> RayCastSource<T> {
         }
     }
     pub fn intersect_primitive(&self, shape: Primitive3d) -> Option<Intersection> {
-        let ray = if let Some(ray) = self.ray {
-            ray
-        } else {
-            return None;
-        };
+        let ray = self.ray?;
         match shape {
             Primitive3d::Plane {
                 point: plane_origin,
