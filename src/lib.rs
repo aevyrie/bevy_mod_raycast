@@ -91,14 +91,21 @@ impl<T> RayCastSource<T> {
             return None;
         };
         match shape {
-            Primitive3d::Plane{ point:plane_origin, normal:plane_normal} => {
+            Primitive3d::Plane {
+                point: plane_origin,
+                normal: plane_normal,
+            } => {
                 // assuming vectors are all normalized
-                let denominator = ray.direction().dot(plane_normal); 
-                if denominator > f32::EPSILON { 
-                    let point_to_point = plane_origin - ray.origin(); 
+                let denominator = ray.direction().dot(plane_normal);
+                if denominator > f32::EPSILON {
+                    let point_to_point = plane_origin - ray.origin();
                     let intersect_dist = plane_normal.dot(point_to_point) / denominator;
-                    let intersect_position = ray.direction()*intersect_dist + ray.origin();
-                    Some(Intersection::new(Ray3d::new(intersect_position, plane_normal), intersect_dist, None))
+                    let intersect_position = ray.direction() * intersect_dist + ray.origin();
+                    Some(Intersection::new(
+                        Ray3d::new(intersect_position, plane_normal),
+                        intersect_dist,
+                        None,
+                    ))
                 } else {
                     None
                 }
@@ -343,8 +350,11 @@ fn ray_mesh_intersection(
                     .abs();
                 if distance < min_pick_distance_squared {
                     min_pick_distance_squared = distance;
-                    pick_intersection =
-                        Some(Intersection::new(intersection, distance, Some(world_triangle)));
+                    pick_intersection = Some(Intersection::new(
+                        intersection,
+                        distance,
+                        Some(world_triangle),
+                    ));
                 }
             }
         }

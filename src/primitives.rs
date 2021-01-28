@@ -1,9 +1,9 @@
 use bevy::prelude::*;
 pub use rays::*;
 
-pub enum Primitive3d{
+pub enum Primitive3d {
     ///Sphere{ radius: f32, position: Vec3 },
-    Plane{ point: Vec3, normal: Vec3 }
+    Plane { point: Vec3, normal: Vec3 },
 }
 
 /// Holds computed intersection information
