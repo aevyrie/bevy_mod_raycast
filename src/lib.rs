@@ -48,12 +48,6 @@ pub enum RayCastMethod {
 // instead of making user specify when to update the picks, have it be event driven in the bevy ecs system
 // basically, the user is responsible for triggering events. Need a way of having a default every frame method
 
-#[derive(Debug, Clone, Copy)]
-pub enum UpdateOn {
-    EveryFrame(Vec2),
-    OnMouseEvent,
-}
-
 pub struct RayCastSource<T> {
     pub cast_method: RayCastMethod,
     ray: Option<Ray3d>,
