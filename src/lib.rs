@@ -20,24 +20,8 @@ use bevy::{
 use std::marker::PhantomData;
 
 /// Marks a Mesh entity as pickable
-#[derive(Debug)]
-pub struct RayCastMesh<T> {
-    intersection: Option<Intersection>,
-    _marker: PhantomData<T>,
-}
-impl<T> Default for RayCastMesh<T> {
-    fn default() -> Self {
-        RayCastMesh {
-            intersection: None,
-            _marker: PhantomData::default(),
-        }
-    }
-}
-impl<T> RayCastMesh<T> {
-    pub fn intersection(&self) -> Option<Intersection> {
-        self.intersection
-    }
-}
+#[derive(Debug, Default)]
+pub struct RayCastMesh<T>(PhantomData<T>);
 
 pub struct PluginState<T> {
     pub enabled: bool,
@@ -54,11 +38,9 @@ impl<T> Default for PluginState<T> {
 
 /// Specifies the method used to generate rays
 pub enum RayCastMethod {
-    /// Use cursor events to get coordinates  relative to a camera
-    //CameraCursor(UpdateOn, EventReader<CursorMoved>),
-    /// Manually specify screen coordinates relative to a camera
+    /// Specify screen coordinates relative to the camera component associated with this entity.
     Screenspace(Vec2),
-    /// Use a tranform in world space to define pick ray
+    /// Use a tranform in world space to define pick ray.
     Transform,
 }
 
@@ -100,6 +82,27 @@ impl<T> RayCastSource<T> {
             None
         } else {
             self.intersections.first().copied()
+        }
+    }
+    pub fn intersect_primitive(&self, shape: Primitive3d) -> Option<Intersection> {
+        let ray = if let Some(ray) = self.ray {
+            ray
+        } else {
+            return None;
+        };
+        match shape {
+            Primitive3d::Plane{ point:plane_origin, normal:plane_normal} => {
+                // assuming vectors are all normalized
+                let denominator = ray.direction().dot(plane_normal); 
+                if denominator > f32::EPSILON { 
+                    let point_to_point = plane_origin - ray.origin(); 
+                    let intersect_dist = plane_normal.dot(point_to_point) / denominator;
+                    let intersect_position = ray.direction()*intersect_dist + ray.origin();
+                    Some(Intersection::new(Ray3d::new(intersect_position, plane_normal), intersect_dist, None))
+                } else {
+                    None
+                }
+            }
         }
     }
 }
@@ -341,7 +344,7 @@ fn ray_mesh_intersection(
                 if distance < min_pick_distance_squared {
                     min_pick_distance_squared = distance;
                     pick_intersection =
-                        Some(Intersection::new(intersection, distance, world_triangle));
+                        Some(Intersection::new(intersection, distance, Some(world_triangle)));
                 }
             }
         }

@@ -1,15 +1,20 @@
 use bevy::prelude::*;
 pub use rays::*;
 
+pub enum Primitive3d{
+    ///Sphere{ radius: f32, position: Vec3 },
+    Plane{ point: Vec3, normal: Vec3 }
+}
+
 /// Holds computed intersection information
 #[derive(Debug, PartialOrd, PartialEq, Copy, Clone)]
 pub struct Intersection {
     normal: Ray3d,
     pick_distance: f32,
-    triangle: Triangle,
+    triangle: Option<Triangle>,
 }
 impl Intersection {
-    pub fn new(normal: Ray3d, pick_distance: f32, triangle: Triangle) -> Self {
+    pub fn new(normal: Ray3d, pick_distance: f32, triangle: Option<Triangle>) -> Self {
         Intersection {
             normal,
             pick_distance,
@@ -32,7 +37,7 @@ impl Intersection {
         self.pick_distance
     }
     /// Triangle that was intersected with in World coordinates
-    pub fn world_triangle(&self) -> Triangle {
+    pub fn world_triangle(&self) -> Option<Triangle> {
         self.triangle
     }
 }
@@ -88,7 +93,6 @@ pub struct Triangle {
     pub v1: Vec3,
     pub v2: Vec3,
 }
-
 impl From<(Vec3, Vec3, Vec3)> for Triangle {
     fn from(vertices: (Vec3, Vec3, Vec3)) -> Self {
         Triangle {
@@ -98,7 +102,6 @@ impl From<(Vec3, Vec3, Vec3)> for Triangle {
         }
     }
 }
-
 impl From<Vec<Vec3>> for Triangle {
     fn from(vertices: Vec<Vec3>) -> Self {
         Triangle {
@@ -108,7 +111,6 @@ impl From<Vec<Vec3>> for Triangle {
         }
     }
 }
-
 impl From<[Vec3; 3]> for Triangle {
     fn from(vertices: [Vec3; 3]) -> Self {
         Triangle {
