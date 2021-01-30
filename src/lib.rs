@@ -20,8 +20,18 @@ use bevy::{
 use std::marker::PhantomData;
 
 /// Marks a Mesh entity as pickable
-#[derive(Debug, Default)]
-pub struct RayCastMesh<T>(PhantomData<T>);
+#[derive(Debug)]
+pub struct RayCastMesh<T> {
+    _marker: PhantomData<T>,
+}
+
+impl<T> RayCastMesh<T> {
+    pub fn new() -> Self {
+        RayCastMesh {
+            _marker: PhantomData::default(),
+        }
+    }
+}
 
 pub struct PluginState<T> {
     pub enabled: bool,
@@ -56,13 +66,45 @@ pub struct RayCastSource<T> {
 }
 
 impl<T> RayCastSource<T> {
-    pub fn new(pick_method: RayCastMethod) -> Self {
+    pub fn new() -> Self {
         RayCastSource {
-            cast_method: pick_method,
+            cast_method: RayCastMethod::Screenspace(Vec2::zero()),
             ray: None,
             intersections: Vec::new(),
             _marker: PhantomData::default(),
         }
+    }
+    pub fn with_screenspace_ray(
+        &self,
+        cursor_pos_screen: Vec2,
+        windows: &Res<Windows>,
+        camera: &Camera,
+        camera_transform: &GlobalTransform,
+    ) -> Self {
+        RayCastSource {
+            cast_method: RayCastMethod::Screenspace(cursor_pos_screen),
+            ray: Some(Ray3d::from_screenspace(
+                cursor_pos_screen,
+                windows,
+                camera,
+                camera_transform,
+            )),
+            intersections: self.intersections.clone(),
+            _marker: self._marker,
+        }
+    }
+    pub fn new_screenspace(
+        cursor_pos_screen: Vec2,
+        windows: &Res<Windows>,
+        camera: &Camera,
+        camera_transform: &GlobalTransform,
+    ) -> Self {
+        RayCastSource::new().with_screenspace_ray(
+            cursor_pos_screen,
+            windows,
+            camera,
+            camera_transform,
+        )
     }
     pub fn intersect_list(&self) -> Option<&Vec<(Entity, Intersection)>> {
         if self.intersections.is_empty() {
@@ -104,15 +146,6 @@ impl<T> RayCastSource<T> {
     }
 }
 
-impl<T> Default for RayCastSource<T> {
-    fn default() -> Self {
-        RayCastSource {
-            cast_method: RayCastMethod::Screenspace(Vec2::zero()),
-            ..Default::default()
-        }
-    }
-}
-
 pub fn update_raycast<T: 'static + Send + Sync>(
     // Resources
     state: Res<PluginState<T>>,
@@ -145,32 +178,18 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                         "The PickingSource is a CameraScreenSpace but has no associated Camera component"
                     ),
                 };
-                let window = windows
-                    .get(camera.window)
-                    .unwrap_or_else(|| panic!("WindowId {} does not exist", camera.window));
-                let screen_size = Vec2::from([window.width() as f32, window.height() as f32]);
-                let projection_matrix = camera.projection_matrix;
-                let camera_position = match transform {
+                let camera_transform = match transform {
                     Some(transform) => transform,
                     None => panic!(
                         "The PickingSource is a CameraScreenSpace but has no associated GlobalTransform component"
                     ),
-                }
-                .compute_matrix();
-
-                // Normalized device coordinate cursor position from (-1, -1, -1) to (1, 1, 1)
-                let cursor_ndc = (*cursor_pos_screen / screen_size) * 2.0 - Vec2::from([1.0, 1.0]);
-                let cursor_pos_ndc_near: Vec3 = cursor_ndc.extend(-1.0);
-                let cursor_pos_ndc_far: Vec3 = cursor_ndc.extend(1.0);
-
-                // Use near and far ndc points to generate a ray in world space
-                // This method is more robust than using the location of the camera as the start of
-                // the ray, because ortho cameras have a focal point at infinity!
-                let ndc_to_world: Mat4 = camera_position * projection_matrix.inverse();
-                let cursor_pos_near: Vec3 = ndc_to_world.transform_point3(cursor_pos_ndc_near);
-                let cursor_pos_far: Vec3 = ndc_to_world.transform_point3(cursor_pos_ndc_far);
-                let ray_direction = cursor_pos_far - cursor_pos_near;
-                Some(Ray3d::new(cursor_pos_near, ray_direction))
+                };
+                Some(Ray3d::from_screenspace(
+                    *cursor_pos_screen,
+                    &windows,
+                    camera,
+                    camera_transform,
+                ))
             }
             // Use the specified transform as the origin and direction of the ray
             RayCastMethod::Transform => {

@@ -37,16 +37,14 @@ fn setup(
             )),
             ..Default::default()
         })
-        .with(RayCastSource::<MyRaycastSet>::new(
-            RayCastMethod::Screenspace(Vec2::new(300.0, 100.0)),
-        ))
+        .with(RayCastSource::<MyRaycastSet>::new())
         //plane
         .spawn(PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Plane { size: 10.0 })),
             material: materials.add(Color::rgb(1.0, 1.0, 1.0).into()),
             ..Default::default()
         })
-        .with(RayCastMesh::<MyRaycastSet>::default())
+        .with(RayCastMesh::<MyRaycastSet>::new())
         // cube
         .spawn(PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
@@ -54,7 +52,7 @@ fn setup(
             transform: Transform::from_translation(Vec3::new(0.0, 1.0, 0.0)),
             ..Default::default()
         })
-        .with(RayCastMesh::<MyRaycastSet>::default())
+        .with(RayCastMesh::<MyRaycastSet>::new())
         // sphere
         .spawn(PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Icosphere {
@@ -65,7 +63,7 @@ fn setup(
             transform: Transform::from_translation(Vec3::new(1.5, 1.5, 1.5)),
             ..Default::default()
         })
-        .with(RayCastMesh::<MyRaycastSet>::default())
+        .with(RayCastMesh::<MyRaycastSet>::new())
         // light
         .spawn(LightBundle {
             transform: Transform::from_translation(Vec3::new(4.0, 8.0, 4.0)),
