@@ -19,20 +19,6 @@ use bevy::{
 };
 use std::marker::PhantomData;
 
-/// Marks a Mesh entity as pickable
-#[derive(Debug)]
-pub struct RayCastMesh<T> {
-    _marker: PhantomData<T>,
-}
-
-impl<T> Default for RayCastMesh<T> {
-    fn default() -> Self {
-        RayCastMesh {
-            _marker: PhantomData::default(),
-        }
-    }
-}
-
 /// Global plugin state used to enable or disable all ray casting for a given type T.
 pub struct PluginState<T> {
     pub enabled: bool,
@@ -47,28 +33,23 @@ impl<T> Default for PluginState<T> {
     }
 }
 
-/// Specifies the method used to generate rays.
-pub enum RayCastMethod {
-    /// Specify screen coordinates relative to the camera component associated with this entity.
-    ///
-    /// # Component Requirements
-    ///
-    /// This requires a [Windows](Windows) resource to convert the cursor coordinates to NDC, and a [Camera](Camera)
-    /// component associated with this [RayCastSource](RayCastSource)'s entity, to determine where
-    /// the screenspace ray is firing from in the world.
-    Screenspace(Vec2),
-    /// Use a tranform in world space to define pick ray.
-    ///
-    /// # Component Requirements
-    ///
-    /// Requires a [GlobalTransform](GlobalTransform) component associated with this
-    /// [RayCastSource](RayCastSource)'s entity.
-    Transform,
+/// Marks an entity as pickable, with type T.
+///
+/// # Requirements
+/// 
+/// The marked entity must also have a [Mesh] component.
+#[derive(Debug)]
+pub struct RayCastMesh<T> {
+    _marker: PhantomData<T>,
 }
 
-// TODO instead of making user specify when to update the picks, have it be event driven in the
-// bevy ecs system basically, the user is responsible for triggering events. Need a way of having a
-// default every frame method
+impl<T> Default for RayCastMesh<T> {
+    fn default() -> Self {
+        RayCastMesh {
+            _marker: PhantomData::default(),
+        }
+    }
+}
 
 /// The `RayCastSource` component is used to generate rays with the specified `cast_method`. A `ray`
 /// is generated when the RayCastSource is initialized, either by waiting for update_raycast system
@@ -174,6 +155,28 @@ impl<T> RayCastSource<T> {
     }
 }
 
+/// Specifies the method used to generate rays.
+pub enum RayCastMethod {
+    /// Specify screen coordinates relative to the camera component associated with this entity.
+    ///
+    /// # Component Requirements
+    ///
+    /// This requires a [Windows] resource to convert the cursor coordinates to NDC, and a [Camera]
+    /// component associated with this [RayCastSource]'s entity, to determine where the screenspace
+    /// ray is firing from in the world.
+    Screenspace(Vec2),
+    /// Use a tranform in world space to define a pick ray. This transform is applied to a vector
+    /// at the origin pointing into the screen to generate a ray.
+    ///
+    /// # Component Requirements
+    ///
+    /// Requires a [GlobalTransform] component associated with this [RayCastSource]'s entity.
+    Transform,
+}
+
+/// Generate updated rays for each ray casting source, then iterate through all entities with the
+/// [RayCastMesh](RayCastMesh) component, checking for intersections. If these entities have
+/// bounding volumes, these will be checked first, greatly accelerating the process.
 pub fn update_raycast<T: 'static + Send + Sync>(
     // Resources
     state: Res<PluginState<T>>,
@@ -195,7 +198,6 @@ pub fn update_raycast<T: 'static + Send + Sync>(
     if !state.enabled {
         return;
     }
-    // Generate a ray for the picking source based on the pick method
     for (mut pick_source, transform, camera) in &mut pick_source_query.iter_mut() {
         pick_source.ray = match &mut pick_source.cast_method {
             RayCastMethod::Screenspace(cursor_pos_screen) => {
@@ -338,6 +340,7 @@ pub fn update_raycast<T: 'static + Send + Sync>(
     }
 }
 
+/// Checks if a ray intersects a mesh, and returns the nearest intersection if one exists.
 fn ray_mesh_intersection(
     mesh_to_world: &Mat4,
     vertex_positions: &[[f32; 3]],
