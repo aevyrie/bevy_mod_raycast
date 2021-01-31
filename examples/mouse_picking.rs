@@ -19,7 +19,8 @@ fn main() {
         .add_system(update_raycast_with_cursor.system()) // Update our ray casting source in the UPDATE stage
         .add_system_to_stage(
             stage::POST_UPDATE, // We want this system to run after we've updated our ray casting source
-            update_raycast::<MyRaycastSet>.system()) // This provided system does the ray casting
+            update_raycast::<MyRaycastSet>.system(),
+        ) // This provided system does the ray casting
         .add_system_to_stage(
             stage::POST_UPDATE, // We want this system to run after ray casting has been computed
             update_debug_cursor::<MyRaycastSet>.system(), // Update the debug cursor location
