@@ -84,6 +84,13 @@ pub mod rays {
             };
             Mat4::from_rotation_translation(new_rotation, position)
         }
+        pub fn from_transform(transform: Mat4) -> Self {
+            let pick_position_ndc = Vec3::from([0.0, 0.0, 1.0]);
+            let pick_position = transform.transform_point3(pick_position_ndc);
+            let (_, _, source_origin) = transform.to_scale_rotation_translation();
+            let ray_direction = pick_position - source_origin;
+            Ray3d::new(source_origin, ray_direction)
+        }
         pub fn from_screenspace(
             cursor_pos_screen: Vec2,
             windows: &Res<Windows>,
