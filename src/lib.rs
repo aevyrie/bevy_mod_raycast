@@ -25,7 +25,7 @@ pub struct RayCastMesh<T> {
     _marker: PhantomData<T>,
 }
 
-impl<T> Default for  RayCastMesh<T> {
+impl<T> Default for RayCastMesh<T> {
     fn default() -> Self {
         RayCastMesh {
             _marker: PhantomData::default(),
@@ -33,6 +33,7 @@ impl<T> Default for  RayCastMesh<T> {
     }
 }
 
+/// Global plugin state used to enable or disable all ray casting for a given type T.
 pub struct PluginState<T> {
     pub enabled: bool,
     _marker: PhantomData<T>,
@@ -46,18 +47,32 @@ impl<T> Default for PluginState<T> {
     }
 }
 
-/// Specifies the method used to generate rays
+/// Specifies the method used to generate rays.
 pub enum RayCastMethod {
     /// Specify screen coordinates relative to the camera component associated with this entity.
+    ///
+    /// # Component Requirements
+    ///
+    /// This requires a [Windows](Windows) resource to convert the cursor coordinates to NDC, and a [Camera](Camera)
+    /// component associated with this [RayCastSource](RayCastSource)'s entity, to determine where
+    /// the screenspace ray is firing from in the world.
     Screenspace(Vec2),
     /// Use a tranform in world space to define pick ray.
+    ///
+    /// # Component Requirements
+    ///
+    /// Requires a [GlobalTransform](GlobalTransform) component associated with this
+    /// [RayCastSource](RayCastSource)'s entity.
     Transform,
 }
 
-// TODO
-// instead of making user specify when to update the picks, have it be event driven in the bevy ecs system
-// basically, the user is responsible for triggering events. Need a way of having a default every frame method
+// TODO instead of making user specify when to update the picks, have it be event driven in the
+// bevy ecs system basically, the user is responsible for triggering events. Need a way of having a
+// default every frame method
 
+/// The `RayCastSource` component is used to generate rays with the specified `cast_method`. A `ray`
+/// is generated when the RayCastSource is initialized, either by waiting for update_raycast system
+/// to process the ray, or by using a `with_ray` function.
 pub struct RayCastSource<T> {
     pub cast_method: RayCastMethod,
     ray: Option<Ray3d>,
@@ -66,6 +81,8 @@ pub struct RayCastSource<T> {
 }
 
 impl<T> RayCastSource<T> {
+    /// Instantiates a RayCastSource. It will not be initialized until the update_raycast system
+    /// runs, or one of the `with_ray` functions is run.
     pub fn new() -> Self {
         RayCastSource {
             cast_method: RayCastMethod::Screenspace(Vec2::zero()),
@@ -74,7 +91,8 @@ impl<T> RayCastSource<T> {
             _marker: PhantomData::default(),
         }
     }
-    pub fn with_screenspace_ray(
+    /// Initializes a RayCastSource with a valid screenspace ray.
+    pub fn with_ray_screenspace(
         &self,
         cursor_pos_screen: Vec2,
         windows: &Res<Windows>,
@@ -93,13 +111,23 @@ impl<T> RayCastSource<T> {
             _marker: self._marker,
         }
     }
+    /// Initializes a RayCastSource with a valid ray derived from a transform.
+    pub fn with_ray_transform(&self, transform: Mat4) -> Self {
+        RayCastSource {
+            cast_method: RayCastMethod::Transform,
+            ray: Some(Ray3d::from_transform(transform)),
+            intersections: self.intersections.clone(),
+            _marker: self._marker,
+        }
+    }
+    /// Instantiates and initializes a RayCastSource with a valid screenspace ray.
     pub fn new_screenspace(
         cursor_pos_screen: Vec2,
         windows: &Res<Windows>,
         camera: &Camera,
         camera_transform: &GlobalTransform,
     ) -> Self {
-        RayCastSource::new().with_screenspace_ray(
+        RayCastSource::new().with_ray_screenspace(
             cursor_pos_screen,
             windows,
             camera,
@@ -193,20 +221,14 @@ pub fn update_raycast<T: 'static + Send + Sync>(
             }
             // Use the specified transform as the origin and direction of the ray
             RayCastMethod::Transform => {
-                let pick_position_ndc = Vec3::from([0.0, 0.0, 1.0]);
-                let source_transform = match transform {
+                let transform = match transform {
                     Some(matrix) => matrix,
                     None => panic!(
                         "The PickingSource is a Transform but has no associated GlobalTransform component"
                     ),
                 }
                 .compute_matrix();
-                let pick_position = source_transform.transform_point3(pick_position_ndc);
-
-                let (_, _, source_origin) = source_transform.to_scale_rotation_translation();
-                let ray_direction = pick_position - source_origin;
-
-                Some(Ray3d::new(source_origin, ray_direction))
+                Some(Ray3d::from_transform(transform))
             }
         };
 
