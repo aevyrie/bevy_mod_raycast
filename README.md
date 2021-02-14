@@ -1,6 +1,8 @@
-# Raycasting for Bevy
+# Ray Casting for Bevy
 
-Unofficial plugin for raycasting in Bevy
+Unofficial plugin for ray casting in Bevy
+
+This plugin allows you to construct ray casting sources
 
 ## Demo
 
