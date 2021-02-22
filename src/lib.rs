@@ -36,7 +36,7 @@ impl<T> Default for PluginState<T> {
 /// Marks an entity as pickable, with type T.
 ///
 /// # Requirements
-/// 
+///
 /// The marked entity must also have a [Mesh] component.
 #[derive(Debug)]
 pub struct RayCastMesh<T> {
