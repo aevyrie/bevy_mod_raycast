@@ -87,7 +87,7 @@ pub mod rays {
         }
         pub fn from_transform(transform: Mat4) -> Self {
             let pick_position_ndc = Vec3::from([0.0, 0.0, 1.0]);
-            let pick_position = transform.transform_point3(pick_position_ndc);
+            let pick_position = transform.project_point3(pick_position_ndc);
             let (_, _, source_origin) = transform.to_scale_rotation_translation();
             let ray_direction = pick_position - source_origin;
             Ray3d::new(source_origin, ray_direction)
@@ -114,8 +114,8 @@ pub mod rays {
             // This method is more robust than using the location of the camera as the start of
             // the ray, because ortho cameras have a focal point at infinity!
             let ndc_to_world: Mat4 = camera_position * projection_matrix.inverse();
-            let cursor_pos_near: Vec3 = ndc_to_world.transform_point3(cursor_pos_ndc_near);
-            let cursor_pos_far: Vec3 = ndc_to_world.transform_point3(cursor_pos_ndc_far);
+            let cursor_pos_near: Vec3 = ndc_to_world.project_point3(cursor_pos_ndc_near);
+            let cursor_pos_far: Vec3 = ndc_to_world.project_point3(cursor_pos_ndc_far);
             let ray_direction = cursor_pos_far - cursor_pos_near;
             Ray3d::new(cursor_pos_near, ray_direction)
         }

@@ -18,11 +18,11 @@ fn main() {
         // the positions of your meshes have been updated in the UPDATE stage.
         .add_system(update_raycast_with_cursor.system()) // Update our ray casting source in the UPDATE stage
         .add_system_to_stage(
-            stage::POST_UPDATE, // We want this system to run after we've updated our ray casting source
+            CoreStage::PostUpdate, // We want this system to run after we've updated our ray casting source
             update_raycast::<MyRaycastSet>.system(), // This provided system does the ray casting
         )
         .add_system_to_stage(
-            stage::POST_UPDATE, // We want this system to run after ray casting has been computed
+            CoreStage::PostUpdate, // We want this system to run after ray casting has been computed
             update_debug_cursor::<MyRaycastSet>.system(), // Update the debug cursor location
         )
         .add_startup_system(setup.system())
@@ -49,7 +49,7 @@ fn update_raycast_with_cursor(
 
 // Set up a simple 3D scene
 fn setup(
-    commands: &mut Commands,
+    mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
@@ -69,7 +69,7 @@ fn setup(
                 radius: 2.0,
             })),
             material: materials.add(Color::rgb(1.0, 1.0, 1.0).into()),
-            transform: Transform::from_translation(Vec3::zero()),
+            transform: Transform::from_translation(Vec3::ZERO),
             ..Default::default()
         })
         .with(RayCastMesh::<MyRaycastSet>::default()) // Make this mesh ray cast-able

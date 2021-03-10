@@ -15,7 +15,6 @@ use bevy::{
         mesh::{Indices, Mesh, VertexAttributeValues},
         pipeline::PrimitiveTopology,
     },
-    tasks::{ComputeTaskPool, ParallelIterator},
 };
 use std::marker::PhantomData;
 
@@ -66,7 +65,7 @@ impl<T> RayCastSource<T> {
     /// runs, or one of the `with_ray` functions is run.
     pub fn new() -> Self {
         RayCastSource {
-            cast_method: RayCastMethod::Screenspace(Vec2::zero()),
+            cast_method: RayCastMethod::Screenspace(Vec2::ZERO),
             ray: None,
             intersections: Vec::new(),
             _marker: PhantomData::default(),
@@ -180,7 +179,6 @@ pub enum RayCastMethod {
 pub fn update_raycast<T: 'static + Send + Sync>(
     // Resources
     state: Res<PluginState<T>>,
-    pool: Res<ComputeTaskPool>,
     meshes: Res<Assets<Mesh>>,
     windows: Res<Windows>,
     // Queries
@@ -245,7 +243,7 @@ pub fn update_raycast<T: 'static + Send + Sync>(
             let culled_list: Vec<Entity> = {
                 let _ray_cull_guard = ray_cull.enter();
                 culling_query
-                    .par_iter(32)
+                    .iter()
                     .map(|(visibility, bound_vol, transform, entity)| {
                         let visible = visibility.is_visible;
                         let bound_hit = if let Some(bound_vol) = bound_vol {
@@ -272,11 +270,11 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                         }
                     })
                     .filter_map(|value| value)
-                    .collect(&pool)
+                    .collect()
             };
 
             let mut picks = mesh_query
-                .par_iter(8)
+                .iter()
                 .filter(|(_mesh_handle, _transform, entity)| culled_list.contains(&entity))
                 .filter_map(|(mesh_handle, transform, entity)| {
                     let _raycast_guard = raycast.enter();
@@ -328,7 +326,7 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                         None
                     }
                 })
-                .collect::<Vec<(Entity, Intersection)>>(&pool);
+                .collect::<Vec<(Entity, Intersection)>>();
             picks.sort_by(|a, b| {
                 a.1.distance()
                     .partial_cmp(&b.1.distance())
@@ -359,11 +357,11 @@ fn ray_mesh_intersection(
         // chunk of three indices are references to the three vertices of a triangle.
         for index in indices.chunks(3) {
             // Construct a triangle in world space using the mesh data
-            let mut world_vertices: [Vec3; 3] = [Vec3::zero(), Vec3::zero(), Vec3::zero()];
+            let mut world_vertices: [Vec3; 3] = [Vec3::ZERO, Vec3::ZERO, Vec3::ZERO];
             for i in 0..3 {
                 let vertex_index = index[i] as usize;
                 world_vertices[i] =
-                    mesh_to_world.transform_point3(Vec3::from(vertex_positions[vertex_index]));
+                    mesh_to_world.project_point3(Vec3::from(vertex_positions[vertex_index]));
             }
             // If all vertices in the triangle are further away than the nearest hit, skip
             if world_vertices
