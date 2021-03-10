@@ -12,7 +12,7 @@ pub enum RaycastAlgorithm {
 
 impl Default for RaycastAlgorithm {
     fn default() -> Self {
-        RaycastAlgorithm::MollerTrumbore(Backfaces::Cull)
+        RaycastAlgorithm::MollerTrumbore(Backfaces::Include)
     }
 }
 
@@ -160,7 +160,7 @@ mod tests {
     #[test]
     fn raycast_triangle_mt() {
         let triangle = Triangle::from([V0.into(), V1.into(), V2.into()]);
-        let ray = Ray3d::new(Vec3::zero(), Vec3::unit_x());
+        let ray = Ray3d::new(Vec3::ZERO, Vec3::X);
         let algorithm = RaycastAlgorithm::MollerTrumbore(Backfaces::Include);
         let result = ray_triangle_intersection(&ray, &triangle, algorithm);
         assert_eq!(
@@ -172,7 +172,7 @@ mod tests {
     #[test]
     fn raycast_triangle_mt_culling() {
         let triangle = Triangle::from([V2.into(), V1.into(), V0.into()]);
-        let ray = Ray3d::new(Vec3::zero(), Vec3::unit_x());
+        let ray = Ray3d::new(Vec3::ZERO, Vec3::X);
         let algorithm = RaycastAlgorithm::MollerTrumbore(Backfaces::Cull);
         let result = ray_triangle_intersection(&ray, &triangle, algorithm);
         assert_eq!(result, None);
@@ -181,7 +181,7 @@ mod tests {
     #[test]
     fn raycast_triangle_geometric() {
         let triangle = Triangle::from([V0.into(), V1.into(), V2.into()]);
-        let ray = Ray3d::new(Vec3::zero(), Vec3::unit_x());
+        let ray = Ray3d::new(Vec3::ZERO, Vec3::X);
         let algorithm = RaycastAlgorithm::Geometric;
         let result = ray_triangle_intersection(&ray, &triangle, algorithm);
         assert_eq!(

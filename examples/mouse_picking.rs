@@ -69,7 +69,7 @@ fn setup(
                 radius: 2.0,
             })),
             material: materials.add(Color::rgb(1.0, 1.0, 1.0).into()),
-            transform: Transform::from_translation(Vec3::zero()),
+            transform: Transform::from_translation(Vec3::ZERO),
             ..Default::default()
         })
         .with(RayCastMesh::<MyRaycastSet>::default()) // Make this mesh ray cast-able
