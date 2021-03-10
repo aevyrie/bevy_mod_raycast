@@ -43,7 +43,10 @@ pub fn update_debug_cursor<T: 'static + Send + Sync>(
     mut materials: ResMut<Assets<StandardMaterial>>,
     added_sources_query: Query<&RayCastSource<T>, Added<RayCastSource<T>>>,
     mut cursor_query: Query<&mut GlobalTransform, With<DebugCursor<T>>>,
-    mut cursor_tail_query: Query<&mut GlobalTransform, (With<DebugCursorTail<T>>, Without<DebugCursor<T>>)>,
+    mut cursor_tail_query: Query<
+        &mut GlobalTransform,
+        (With<DebugCursorTail<T>>, Without<DebugCursor<T>>),
+    >,
     mut visibility_query: Query<&mut Visible, With<DebugCursorMesh<T>>>,
     raycast_source_query: Query<&RayCastSource<T>>,
 ) {
