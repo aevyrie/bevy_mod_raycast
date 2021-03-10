@@ -60,16 +60,22 @@ pub struct RayCastSource<T> {
     _marker: PhantomData<T>,
 }
 
-impl<T> RayCastSource<T> {
-    /// Instantiates a RayCastSource. It will not be initialized until the update_raycast system
-    /// runs, or one of the `with_ray` functions is run.
-    pub fn new() -> Self {
+impl<T> Default for RayCastSource<T> {
+    fn default() -> Self {
         RayCastSource {
             cast_method: RayCastMethod::Screenspace(Vec2::ZERO),
             ray: None,
             intersections: Vec::new(),
             _marker: PhantomData::default(),
         }
+    }
+}
+
+impl<T> RayCastSource<T> {
+    /// Instantiates a RayCastSource. It will not be initialized until the update_raycast system
+    /// runs, or one of the `with_ray` functions is run.
+    pub fn new() -> RayCastSource<T> {
+        RayCastSource::default()
     }
     /// Initializes a RayCastSource with a valid screenspace ray.
     pub fn with_ray_screenspace(
@@ -165,7 +171,7 @@ pub enum RayCastMethod {
     /// ray is firing from in the world.
     Screenspace(Vec2),
     /// Use a tranform in world space to define a pick ray. This transform is applied to a vector
-    /// at the origin pointing into the screen to generate a ray.
+    /// at the origin pointing up to generate a ray.
     ///
     /// # Component Requirements
     ///
@@ -176,6 +182,7 @@ pub enum RayCastMethod {
 /// Generate updated rays for each ray casting source, then iterate through all entities with the
 /// [RayCastMesh](RayCastMesh) component, checking for intersections. If these entities have
 /// bounding volumes, these will be checked first, greatly accelerating the process.
+#[allow(clippy::type_complexity)]
 pub fn update_raycast<T: 'static + Send + Sync>(
     // Resources
     state: Res<PluginState<T>>,
@@ -339,6 +346,7 @@ pub fn update_raycast<T: 'static + Send + Sync>(
 }
 
 /// Checks if a ray intersects a mesh, and returns the nearest intersection if one exists.
+#[allow(clippy::ptr_arg)]
 fn ray_mesh_intersection(
     mesh_to_world: &Mat4,
     vertex_positions: &[[f32; 3]],

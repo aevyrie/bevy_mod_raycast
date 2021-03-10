@@ -28,6 +28,7 @@ impl BoundingSphere {
     }
 }
 
+#[allow(clippy::type_complexity)]
 pub fn update_bound_sphere<T: 'static + Send + Sync>(
     state: Res<PluginState<T>>,
     meshes: Res<Assets<Mesh>>,
