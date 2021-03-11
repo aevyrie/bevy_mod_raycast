@@ -11,7 +11,7 @@ categories = ["game-engines", "rendering"]
 
 [dependencies]
 #bevy = { version = "0.4", default-features = false, features = ["render"] }
-bevy = { git = "https://github.com/bevyengine/bevy", rev = "b17f8a4", default-features = false, features = ["render"] }
+bevy = { git = "https://github.com/bevyengine/bevy", branch = "main", rev = "b17f8a4", default-features = false, features = ["render"] }
 
 [features]
 ex = ["bevy/bevy_wgpu", "bevy/bevy_winit", "bevy/bevy_gltf", "bevy/x11"]
