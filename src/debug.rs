@@ -68,7 +68,7 @@ pub fn update_debug_cursor<T: 'static + Send + Sync>(
         });
         commands
             // cursor
-            .spawn(PbrBundle {
+            .spawn_bundle(PbrBundle {
                 mesh: meshes.add(Mesh::from(shape::Icosphere {
                     subdivisions: 4,
                     radius: ball_size,
@@ -86,17 +86,17 @@ pub fn update_debug_cursor<T: 'static + Send + Sync>(
 
                 // child cube
                 parent
-                    .spawn(PbrBundle {
+                    .spawn_bundle(PbrBundle {
                         mesh: meshes.add(Mesh::from(shape::Cube { size: cube_size })),
                         material: debug_material.clone(),
                         transform,
                         ..Default::default()
                     })
-                    .with(DebugCursorTail::<T>::default())
-                    .with(DebugCursorMesh::<T>::default());
+                    .insert(DebugCursorTail::<T>::default())
+                    .insert(DebugCursorMesh::<T>::default());
             })
-            .with(DebugCursor::<T>::default())
-            .with(DebugCursorMesh::<T>::default());
+            .insert(DebugCursor::<T>::default())
+            .insert(DebugCursorMesh::<T>::default());
     }
 
     // Set the cursor translation to the top pick's world coordinates

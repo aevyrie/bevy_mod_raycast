@@ -54,7 +54,7 @@ fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     commands
-        .spawn(PerspectiveCameraBundle {
+        .spawn_bundle(PerspectiveCameraBundle {
             transform: Transform::from_matrix(Mat4::face_toward(
                 Vec3::new(-3.0, 5.0, 8.0),
                 Vec3::new(0.0, 0.0, 0.0),
@@ -62,8 +62,9 @@ fn setup(
             )),
             ..Default::default()
         })
-        .with(RayCastSource::<MyRaycastSet>::new()) // Designate the camera as our source
-        .spawn(PbrBundle {
+        .insert(RayCastSource::<MyRaycastSet>::new()); // Designate the camera as our source
+    commands
+        .spawn_bundle(PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Icosphere {
                 subdivisions: 20,
                 radius: 2.0,
@@ -72,9 +73,9 @@ fn setup(
             transform: Transform::from_translation(Vec3::ZERO),
             ..Default::default()
         })
-        .with(RayCastMesh::<MyRaycastSet>::default()) // Make this mesh ray cast-able
-        .spawn(LightBundle {
-            transform: Transform::from_translation(Vec3::new(4.0, 8.0, 4.0)),
-            ..Default::default()
-        });
+        .insert(RayCastMesh::<MyRaycastSet>::default()); // Make this mesh ray cast-able
+    commands.spawn_bundle(LightBundle {
+        transform: Transform::from_translation(Vec3::new(4.0, 8.0, 4.0)),
+        ..Default::default()
+    });
 }
