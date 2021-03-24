@@ -158,6 +158,11 @@ impl<T> RayCastSource<T> {
             }
         }
     }
+
+    /// Get a reference to the ray cast source's ray.
+    pub fn ray(&self) -> Option<Ray3d> {
+        self.ray
+    }
 }
 
 /// Specifies the method used to generate rays.
