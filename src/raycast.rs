@@ -50,7 +50,7 @@ pub fn raycast_moller_trumbore(
 
     match backface_culling {
         Backfaces::Cull => {
-            // if the determinant is negative the triangle is backfacing
+            // if the determinant is negative the triangle is back facing
             // if the determinant is close to 0, the ray misses the triangle
             // This test checks both cases
             if determinant < EPSILON {

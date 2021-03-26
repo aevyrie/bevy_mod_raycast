@@ -175,7 +175,7 @@ pub enum RayCastMethod {
     /// component associated with this [RayCastSource]'s entity, to determine where the screenspace
     /// ray is firing from in the world.
     Screenspace(Vec2),
-    /// Use a tranform in world space to define a pick ray. This transform is applied to a vector
+    /// Use a transform in world space to define a pick ray. This transform is applied to a vector
     /// at the origin pointing up to generate a ray.
     ///
     /// # Component Requirements
@@ -184,30 +184,15 @@ pub enum RayCastMethod {
     Transform,
 }
 
-/// Generate updated rays for each ray casting source, then iterate through all entities with the
-/// [RayCastMesh](RayCastMesh) component, checking for intersections. If these entities have
-/// bounding volumes, these will be checked first, greatly accelerating the process.
 #[allow(clippy::type_complexity)]
-pub fn update_raycast<T: 'static + Send + Sync>(
-    // Resources
-    state: Res<PluginState<T>>,
-    meshes: Res<Assets<Mesh>>,
+pub fn build_rays<T: 'static + Send + Sync>(
     windows: Res<Windows>,
-    // Queries
     mut pick_source_query: Query<(
         &mut RayCastSource<T>,
         Option<&GlobalTransform>,
         Option<&Camera>,
     )>,
-    culling_query: Query<
-        (&Visible, Option<&BoundVol>, &GlobalTransform, Entity),
-        With<RayCastMesh<T>>,
-    >,
-    mesh_query: Query<(&Handle<Mesh>, &GlobalTransform, Entity), With<RayCastMesh<T>>>,
 ) {
-    if !state.enabled {
-        return;
-    }
     for (mut pick_source, transform, camera) in &mut pick_source_query.iter_mut() {
         pick_source.ray = match &mut pick_source.cast_method {
             RayCastMethod::Screenspace(cursor_pos_screen) => {
@@ -243,7 +228,29 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                 Some(Ray3d::from_transform(transform))
             }
         };
+    }
+}
 
+/// Generate updated rays for each ray casting source, then iterate through all entities with the
+/// [RayCastMesh](RayCastMesh) component, checking for intersections. If these entities have
+/// bounding volumes, these will be checked first, greatly accelerating the process.
+#[allow(clippy::type_complexity)]
+pub fn update_raycast<T: 'static + Send + Sync>(
+    // Resources
+    state: Res<PluginState<T>>,
+    meshes: Res<Assets<Mesh>>,
+    // Queries
+    mut pick_source_query: Query<&mut RayCastSource<T>>,
+    culling_query: Query<
+        (&Visible, Option<&BoundVol>, &GlobalTransform, Entity),
+        With<RayCastMesh<T>>,
+    >,
+    mesh_query: Query<(&Handle<Mesh>, &GlobalTransform, Entity), With<RayCastMesh<T>>>,
+) {
+    if !state.enabled {
+        return;
+    }
+    for mut pick_source in pick_source_query.iter_mut() {
         if let Some(ray) = pick_source.ray {
             pick_source.intersections.clear();
             // Create spans for tracing

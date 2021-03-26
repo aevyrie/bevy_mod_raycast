@@ -16,17 +16,43 @@ fn main() {
         // You will need to pay attention to what order you add systems! Putting them in the wrong
         // order can result in multiple frames of latency. Ray casting should probably happen after
         // the positions of your meshes have been updated in the UPDATE stage.
-        .add_system(update_raycast_with_cursor.system()) // Update our ray casting source in the UPDATE stage
+        .add_system_to_stage(
+            CoreStage::PostUpdate,
+            update_raycast_with_cursor
+                .system()
+                .label(MousePickingSystem::UpdateRayCastSource),
+        ) // Update our ray casting source with the mouse position, in the UPDATE stage.
         .add_system_to_stage(
             CoreStage::PostUpdate, // We want this system to run after we've updated our ray casting source
-            update_raycast::<MyRaycastSet>.system(), // This provided system does the ray casting
+            build_rays::<MyRaycastSet> // This provided system builds 3D rays from ray casting sources
+                .system()
+                .label(MousePickingSystem::BuildRays)
+                .after(MousePickingSystem::UpdateRayCastSource),
+        )
+        .add_system_to_stage(
+            CoreStage::PostUpdate,
+            update_raycast::<MyRaycastSet> // This provided system does the ray casting
+                .system()
+                .label(MousePickingSystem::UpdateRaycast)
+                .after(MousePickingSystem::BuildRays),
         )
         .add_system_to_stage(
             CoreStage::PostUpdate, // We want this system to run after ray casting has been computed
-            update_debug_cursor::<MyRaycastSet>.system(), // Update the debug cursor location
+            update_debug_cursor::<MyRaycastSet> // Update the debug cursor location
+                .system()
+                .label(MousePickingSystem::UpdateDebugCursor)
+                .after(MousePickingSystem::UpdateRaycast),
         )
         .add_startup_system(setup.system())
         .run();
+}
+
+#[derive(Debug, Hash, PartialEq, Eq, Clone, SystemLabel)]
+enum MousePickingSystem {
+    UpdateRayCastSource,
+    BuildRays,
+    UpdateRaycast,
+    UpdateDebugCursor,
 }
 
 // This is a unit struct we will use to mark our generic `RayCastMesh`s and `RayCastSource` as part
