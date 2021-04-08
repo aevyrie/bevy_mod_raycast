@@ -1,5 +1,7 @@
 use bevy::prelude::*;
-use bevy_mod_raycast::*;
+use bevy_mod_raycast::{
+    DefaultRaycastingPlugin, RayCastMesh, RayCastMethod, RayCastSource, RaycastSystem,
+};
 
 // This example will show you how to use your mouse cursor as a ray casting source, cast into the
 // scene, intersect a mesh, and mark the intersection with the built in debug cursor. If you are
@@ -12,7 +14,7 @@ fn main() {
             ..Default::default()
         })
         .add_plugins(DefaultPlugins)
-        .add_plugin(DefaultRaycastingPlugin::<MyRaycastSet>::new())
+        .add_plugin(DefaultRaycastingPlugin::<MyRaycastSet>::default())
         // You will need to pay attention to what order you add systems! Putting them in the wrong
         // order can result in multiple frames of latency. Ray casting should probably happen after
         // the positions of your meshes have been updated in the UPDATE stage.

@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bevy_mod_raycast::*;
+use bevy_mod_raycast::{DefaultRaycastingPlugin, RayCastMesh, RayCastSource};
 
 // This example casts a ray from the camera using its transform, intersecting a mesh, and displays
 // the debug cursor at the intersection.
@@ -7,7 +7,7 @@ use bevy_mod_raycast::*;
 fn main() {
     App::build()
         .add_plugins(DefaultPlugins)
-        .add_plugin(DefaultRaycastingPlugin::<MyRaycastSet>::new())
+        .add_plugin(DefaultRaycastingPlugin::<MyRaycastSet>::default())
         .add_startup_system(setup.system())
         .add_system(rotator.system())
         .run();
