@@ -24,10 +24,16 @@ I intend to track the `main` branch of Bevy. PRs supporting this are welcome!
 |0.5|0.2|
 |0.4|0.1|
 
-## Demo
+## Examples
 
-Run a rudimentary mouse picking example with:
+Mouse picking using a ray cast built using screen space coordinates:
 
 ```shell
-cargo run --example mouse_picking --features="ex"
+cargo run --example mouse_picking --features ex
+```
+
+Ray casting from a camera using ray casts from the camera entity's GlobalTransform:
+
+```shell
+cargo run --example minimal --features ex
 ```
