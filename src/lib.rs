@@ -18,6 +18,43 @@ use bevy::{
 };
 use std::marker::PhantomData;
 
+pub struct DefaultRaycastingPlugin<T: 'static + Send + Sync>(pub PhantomData<T>);
+impl<T: 'static + Send + Sync> Plugin for DefaultRaycastingPlugin<T> {
+    fn build(&self, app: &mut AppBuilder) {
+        app.init_resource::<PluginState<T>>()
+            .add_system_to_stage(
+                CoreStage::PostUpdate,
+                build_rays::<T>.system().label(RaycastSystem::BuildRays),
+            )
+            .add_system_to_stage(
+                CoreStage::PostUpdate,
+                update_raycast::<T>
+                    .system()
+                    .label(RaycastSystem::UpdateRaycast)
+                    .after(RaycastSystem::BuildRays),
+            )
+            .add_system_to_stage(
+                CoreStage::PostUpdate,
+                update_debug_cursor::<T>
+                    .system()
+                    .label(RaycastSystem::UpdateDebugCursor)
+                    .after(RaycastSystem::UpdateRaycast),
+            );
+    }
+}
+impl<T: 'static + Send + Sync> DefaultRaycastingPlugin<T> {
+    pub fn new() -> Self {
+        DefaultRaycastingPlugin(PhantomData::<T>)
+    }
+}
+
+#[derive(Debug, Hash, PartialEq, Eq, Clone, SystemLabel)]
+pub enum RaycastSystem {
+    BuildRays,
+    UpdateRaycast,
+    UpdateDebugCursor,
+}
+
 /// Global plugin state used to enable or disable all ray casting for a given type T.
 pub struct PluginState<T> {
     pub enabled: bool,
@@ -72,12 +109,12 @@ impl<T> Default for RayCastSource<T> {
 }
 
 impl<T> RayCastSource<T> {
-    /// Instantiates a RayCastSource. It will not be initialized until the update_raycast system
+    /// Instantiates a [RayCastSource]. It will not be initialized until the update_raycast system
     /// runs, or one of the `with_ray` functions is run.
     pub fn new() -> RayCastSource<T> {
         RayCastSource::default()
     }
-    /// Initializes a RayCastSource with a valid screenspace ray.
+    /// Initializes a [RayCastSource] with a valid screenspace ray.
     pub fn with_ray_screenspace(
         &self,
         cursor_pos_screen: Vec2,
@@ -87,17 +124,12 @@ impl<T> RayCastSource<T> {
     ) -> Self {
         RayCastSource {
             cast_method: RayCastMethod::Screenspace(cursor_pos_screen),
-            ray: Some(Ray3d::from_screenspace(
-                cursor_pos_screen,
-                windows,
-                camera,
-                camera_transform,
-            )),
+            ray: Ray3d::from_screenspace(cursor_pos_screen, windows, camera, camera_transform),
             intersections: self.intersections.clone(),
             _marker: self._marker,
         }
     }
-    /// Initializes a RayCastSource with a valid ray derived from a transform.
+    /// Initializes a [RayCastSource] with a valid ray derived from a transform.
     pub fn with_ray_transform(&self, transform: Mat4) -> Self {
         RayCastSource {
             cast_method: RayCastMethod::Transform,
@@ -106,7 +138,7 @@ impl<T> RayCastSource<T> {
             _marker: self._marker,
         }
     }
-    /// Instantiates and initializes a RayCastSource with a valid screenspace ray.
+    /// Instantiates and initializes a [RayCastSource] with a valid screenspace ray.
     pub fn new_screenspace(
         cursor_pos_screen: Vec2,
         windows: &Res<Windows>,
@@ -119,6 +151,23 @@ impl<T> RayCastSource<T> {
             camera,
             camera_transform,
         )
+    }
+    /// Initializes a [RayCastSource] with a valid ray derived from a transform.
+    pub fn new_transform(transform: Mat4) -> Self {
+        RayCastSource::new().with_ray_transform(transform)
+    }
+    /// Instantiates a [RayCastSource] with [RayCastMethod::Transform], and an empty ray. It will not
+    /// be initialized until the [update_raycast] system is run and a [GlobalTransform] is present on
+    /// this entity. 
+    /// # Warning
+    /// Only use this if the entity this is associated with will have its [Transform] or
+    /// [GlobalTransform] specified elsewhere. If the [GlobalTransform] is not set, this ray casting
+    /// source will never be able to generate a raycast.
+    pub fn new_transform_empty() -> Self {
+        RayCastSource{
+            cast_method: RayCastMethod::Transform,
+            ..Default::default()
+        }
     }
     pub fn intersect_list(&self) -> Option<&Vec<(Entity, Intersection)>> {
         if self.intersections.is_empty() {
@@ -199,30 +248,34 @@ pub fn build_rays<T: 'static + Send + Sync>(
                 // Get all the info we need from the camera and window
                 let camera = match camera {
                     Some(camera) => camera,
-                    None => panic!(
+                    None => {
+                        error!(
                         "The PickingSource is a CameraScreenSpace but has no associated Camera component"
-                    ),
+                    );
+                        return;
+                    }
                 };
                 let camera_transform = match transform {
                     Some(transform) => transform,
-                    None => panic!(
+                    None => {
+                        error!(
                         "The PickingSource is a CameraScreenSpace but has no associated GlobalTransform component"
-                    ),
+                    );
+                        return;
+                    }
                 };
-                Some(Ray3d::from_screenspace(
-                    *cursor_pos_screen,
-                    &windows,
-                    camera,
-                    camera_transform,
-                ))
+                Ray3d::from_screenspace(*cursor_pos_screen, &windows, camera, camera_transform)
             }
             // Use the specified transform as the origin and direction of the ray
             RayCastMethod::Transform => {
                 let transform = match transform {
                     Some(matrix) => matrix,
-                    None => panic!(
+                    None => {
+                        error!(
                         "The PickingSource is a Transform but has no associated GlobalTransform component"
-                    ),
+                    ); 
+                        return
+                    }
                 }
                 .compute_matrix();
                 Some(Ray3d::from_transform(transform))
@@ -300,7 +353,7 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                     // Use the mesh handle to get a reference to a mesh asset
                     if let Some(mesh) = meshes.get(mesh_handle) {
                         if mesh.primitive_topology() != PrimitiveTopology::TriangleList {
-                            panic!("bevy_mod_picking only supports TriangleList topology");
+                            error!("bevy_mod_picking only supports TriangleList mesh topology");
                         }
                         // Get the vertex positions from the mesh reference resolved from the mesh handle
                         let vertex_positions: &Vec<[f32; 3]> =

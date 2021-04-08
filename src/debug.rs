@@ -59,13 +59,13 @@ pub fn update_debug_cursor<T: 'static + Send + Sync>(
     let cube_size = 0.04;
     let cube_tail_scale = 20.0;
     let ball_size = 0.08;
+    let debug_material = &materials.add(StandardMaterial {
+        base_color: Color::rgb(0.0, 1.0, 0.0),
+        unlit: true,
+        ..Default::default()
+    });
 
     for _source in added_sources_query.iter() {
-        let debug_material = &materials.add(StandardMaterial {
-            base_color: Color::rgb(0.0, 1.0, 0.0),
-            unlit: true,
-            ..Default::default()
-        });
         commands
             // cursor
             .spawn_bundle(PbrBundle {

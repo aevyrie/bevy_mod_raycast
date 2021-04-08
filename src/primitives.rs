@@ -86,7 +86,7 @@ pub mod rays {
             Mat4::from_rotation_translation(new_rotation, position)
         }
         pub fn from_transform(transform: Mat4) -> Self {
-            let pick_position_ndc = Vec3::from([0.0, 0.0, 1.0]);
+            let pick_position_ndc = Vec3::from([0.0, 0.0, -1.0]);
             let pick_position = transform.project_point3(pick_position_ndc);
             let (_, _, source_origin) = transform.to_scale_rotation_translation();
             let ray_direction = pick_position - source_origin;
@@ -97,11 +97,15 @@ pub mod rays {
             windows: &Res<Windows>,
             camera: &Camera,
             camera_transform: &GlobalTransform,
-        ) -> Self {
+        ) -> Option<Self> {
             let camera_position = camera_transform.compute_matrix();
-            let window = windows
-                .get(camera.window)
-                .unwrap_or_else(|| panic!("WindowId {} does not exist", camera.window));
+            let window = match windows.get(camera.window) {
+                Some(window) => window,
+                None => {
+                    error!("WindowId {} does not exist", camera.window);
+                    return None;
+                }
+            };
             let screen_size = Vec2::from([window.width() as f32, window.height() as f32]);
             let projection_matrix = camera.projection_matrix;
 
@@ -117,7 +121,8 @@ pub mod rays {
             let cursor_pos_near: Vec3 = ndc_to_world.project_point3(cursor_pos_ndc_near);
             let cursor_pos_far: Vec3 = ndc_to_world.project_point3(cursor_pos_ndc_far);
             let ray_direction = cursor_pos_far - cursor_pos_near;
-            Ray3d::new(cursor_pos_near, ray_direction)
+            info!("{:?}{:?}", cursor_pos_near, ray_direction);
+            Some(Ray3d::new(cursor_pos_near, ray_direction))
         }
     }
 }

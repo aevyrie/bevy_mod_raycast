@@ -12,7 +12,7 @@ fn main() {
             ..Default::default()
         })
         .add_plugins(DefaultPlugins)
-        .init_resource::<PluginState<MyRaycastSet>>() // We can use this state to enable/disable picking
+        .add_plugin(DefaultRaycastingPlugin::<MyRaycastSet>::new())
         // You will need to pay attention to what order you add systems! Putting them in the wrong
         // order can result in multiple frames of latency. Ray casting should probably happen after
         // the positions of your meshes have been updated in the UPDATE stage.
@@ -20,39 +20,10 @@ fn main() {
             CoreStage::PostUpdate,
             update_raycast_with_cursor
                 .system()
-                .label(MousePickingSystem::UpdateRayCastSource),
-        ) // Update our ray casting source with the mouse position, in the UPDATE stage.
-        .add_system_to_stage(
-            CoreStage::PostUpdate, // We want this system to run after we've updated our ray casting source
-            build_rays::<MyRaycastSet> // This provided system builds 3D rays from ray casting sources
-                .system()
-                .label(MousePickingSystem::BuildRays)
-                .after(MousePickingSystem::UpdateRayCastSource),
-        )
-        .add_system_to_stage(
-            CoreStage::PostUpdate,
-            update_raycast::<MyRaycastSet> // This provided system does the ray casting
-                .system()
-                .label(MousePickingSystem::UpdateRaycast)
-                .after(MousePickingSystem::BuildRays),
-        )
-        .add_system_to_stage(
-            CoreStage::PostUpdate, // We want this system to run after ray casting has been computed
-            update_debug_cursor::<MyRaycastSet> // Update the debug cursor location
-                .system()
-                .label(MousePickingSystem::UpdateDebugCursor)
-                .after(MousePickingSystem::UpdateRaycast),
+                .before(RaycastSystem::BuildRays),
         )
         .add_startup_system(setup.system())
         .run();
-}
-
-#[derive(Debug, Hash, PartialEq, Eq, Clone, SystemLabel)]
-enum MousePickingSystem {
-    UpdateRayCastSource,
-    BuildRays,
-    UpdateRaycast,
-    UpdateDebugCursor,
 }
 
 // This is a unit struct we will use to mark our generic `RayCastMesh`s and `RayCastSource` as part
@@ -80,23 +51,13 @@ fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     commands
-        .spawn_bundle(PerspectiveCameraBundle {
-            transform: Transform::from_matrix(Mat4::face_toward(
-                Vec3::new(-3.0, 5.0, 8.0),
-                Vec3::new(0.0, 0.0, 0.0),
-                Vec3::new(0.0, 1.0, 0.0),
-            )),
-            ..Default::default()
-        })
+        .spawn_bundle(PerspectiveCameraBundle::default())
         .insert(RayCastSource::<MyRaycastSet>::new()); // Designate the camera as our source
     commands
         .spawn_bundle(PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::Icosphere {
-                subdivisions: 20,
-                radius: 2.0,
-            })),
+            mesh: meshes.add(Mesh::from(shape::Icosphere::default())),
             material: materials.add(Color::rgb(1.0, 1.0, 1.0).into()),
-            transform: Transform::from_translation(Vec3::ZERO),
+            transform: Transform::from_translation(Vec3::new(0.0, 0.0, -5.0)),
             ..Default::default()
         })
         .insert(RayCastMesh::<MyRaycastSet>::default()); // Make this mesh ray cast-able
