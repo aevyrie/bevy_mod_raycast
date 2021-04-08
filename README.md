@@ -6,7 +6,7 @@
 [![docs.rs](https://docs.rs/bevy_mod_raycast/badge.svg)](https://docs.rs/bevy_mod_raycast)
 [![Bevy tracking](https://img.shields.io/badge/Bevy%20tracking-main-lightblue)](https://github.com/bevyengine/bevy/blob/main/docs/plugins_guidelines.md#main-branch-tracking)
 
-A [Bevy](https://github.com/bevyengine/bevy) plugin for 3D ray casting. Used to build [`bevy_mod_picking`](https://github.com/aevyrie/bevy_mod_picking). Contributions welcome!
+A [Bevy](https://github.com/bevyengine/bevy) plugin for 3D ray casting against meshes. Used to build [`bevy_mod_picking`](https://github.com/aevyrie/bevy_mod_picking). Contributions welcome!
 
 ![Raycast Demo](https://user-images.githubusercontent.com/2632925/113971363-7de2f000-97ed-11eb-8d82-58e2146caea8.gif)
 
