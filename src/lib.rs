@@ -158,13 +158,13 @@ impl<T> RayCastSource<T> {
     }
     /// Instantiates a [RayCastSource] with [RayCastMethod::Transform], and an empty ray. It will not
     /// be initialized until the [update_raycast] system is run and a [GlobalTransform] is present on
-    /// this entity. 
+    /// this entity.
     /// # Warning
     /// Only use this if the entity this is associated with will have its [Transform] or
     /// [GlobalTransform] specified elsewhere. If the [GlobalTransform] is not set, this ray casting
     /// source will never be able to generate a raycast.
     pub fn new_transform_empty() -> Self {
-        RayCastSource{
+        RayCastSource {
             cast_method: RayCastMethod::Transform,
             ..Default::default()
         }
@@ -273,7 +273,7 @@ pub fn build_rays<T: 'static + Send + Sync>(
                     None => {
                         error!(
                         "The PickingSource is a Transform but has no associated GlobalTransform component"
-                    ); 
+                    );
                         return
                     }
                 }
