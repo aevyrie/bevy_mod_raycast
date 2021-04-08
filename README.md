@@ -8,6 +8,8 @@
 
 A [Bevy](https://github.com/bevyengine/bevy) plugin for 3D ray casting. Used to build [`bevy_mod_picking`](https://github.com/aevyrie/bevy_mod_picking). Contributions welcome!
 
+## Uses
+
 This plugin makes it simple to create ray casting sources, such as a transform (first person, third person shooter), or screenspace coordinates (mouse picking). Rays are shot from these sources every frame using a bevy system, and the intersections are stored in the ray casting source's component. 
 
 - Only meshes that you mark with a component will be checked for intersections. 
