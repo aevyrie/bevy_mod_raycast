@@ -42,8 +42,8 @@ impl<T: 'static + Send + Sync> Plugin for DefaultRaycastingPlugin<T> {
             );
     }
 }
-impl<T: 'static + Send + Sync> DefaultRaycastingPlugin<T> {
-    pub fn new() -> Self {
+impl<T: 'static + Send + Sync> Default for DefaultRaycastingPlugin<T> {
+    fn default() -> Self {
         DefaultRaycastingPlugin(PhantomData::<T>)
     }
 }
