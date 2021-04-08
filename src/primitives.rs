@@ -121,7 +121,6 @@ pub mod rays {
             let cursor_pos_near: Vec3 = ndc_to_world.project_point3(cursor_pos_ndc_near);
             let cursor_pos_far: Vec3 = ndc_to_world.project_point3(cursor_pos_ndc_far);
             let ray_direction = cursor_pos_far - cursor_pos_near;
-            info!("{:?}{:?}", cursor_pos_near, ray_direction);
             Some(Ray3d::new(cursor_pos_near, ray_direction))
         }
     }
