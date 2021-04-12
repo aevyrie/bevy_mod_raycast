@@ -192,7 +192,7 @@ impl<T> RayCastSource<T> {
             } => {
                 // assuming vectors are all normalized
                 let denominator = ray.direction().dot(plane_normal);
-                if denominator > f32::EPSILON {
+                if denominator.abs() > f32::EPSILON {
                     let point_to_point = plane_origin - ray.origin();
                     let intersect_dist = plane_normal.dot(point_to_point) / denominator;
                     let intersect_position = ray.direction() * intersect_dist + ray.origin();
