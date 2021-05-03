@@ -360,7 +360,7 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                             match mesh.attribute(Mesh::ATTRIBUTE_POSITION) {
                                 None => panic!("Mesh does not contain vertex positions"),
                                 Some(vertex_values) => match &vertex_values {
-                                    VertexAttributeValues::Float3(positions) => positions,
+                                    VertexAttributeValues::Float32x3(positions) => positions,
                                     _ => panic!("Unexpected vertex types in ATTRIBUTE_POSITION"),
                                 },
                             };
