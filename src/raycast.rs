@@ -23,6 +23,7 @@ pub enum Backfaces {
 }
 
 /// Takes a ray and triangle and computes the intersection and normal
+#[inline]
 pub fn ray_triangle_intersection(
     ray: &Ray3d,
     triangle: &Triangle,
@@ -37,6 +38,7 @@ pub fn ray_triangle_intersection(
 }
 
 /// Implementation of the Möller-Trumbore ray-triangle intersection test
+#[inline]
 pub fn raycast_moller_trumbore(
     ray: &Ray3d,
     triangle: &Triangle,
@@ -90,6 +92,7 @@ pub fn raycast_moller_trumbore(
 }
 
 /// Geometric method of computing a ray-triangle intersection
+#[inline]
 pub fn raycast_geometric(ray: &Ray3d, triangle: &Triangle) -> Option<Ray3d> {
     // Source: https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/ray-triangle-intersection-geometric-solution
     // compute plane's normal
