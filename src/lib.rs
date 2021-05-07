@@ -1,13 +1,5 @@
-mod bounding;
-mod debug;
-mod primitives;
-mod raycast;
+use std::marker::PhantomData;
 
-pub use crate::bounding::{update_bound_sphere, BoundVol, BoundingSphere};
-pub use crate::debug::*;
-pub use crate::primitives::*;
-
-use crate::raycast::*;
 use bevy::{
     prelude::*,
     render::{
@@ -16,9 +8,21 @@ use bevy::{
         pipeline::PrimitiveTopology,
     },
 };
-use std::marker::PhantomData;
+
+pub use crate::bounding::{BoundingSphere, BoundVol, update_bound_sphere};
+#[cfg(feature = "debug")]
+pub use crate::debug::*;
+pub use crate::primitives::*;
+use crate::raycast::*;
+
+mod bounding;
+#[cfg(feature = "debug")]
+mod debug;
+mod primitives;
+mod raycast;
 
 pub struct DefaultRaycastingPlugin<T: 'static + Send + Sync>(pub PhantomData<T>);
+
 impl<T: 'static + Send + Sync> Plugin for DefaultRaycastingPlugin<T> {
     fn build(&self, app: &mut AppBuilder) {
         app.init_resource::<PluginState<T>>()
@@ -32,16 +36,28 @@ impl<T: 'static + Send + Sync> Plugin for DefaultRaycastingPlugin<T> {
                     .system()
                     .label(RaycastSystem::UpdateRaycast)
                     .after(RaycastSystem::BuildRays),
-            )
-            .add_system_to_stage(
-                CoreStage::PostUpdate,
-                update_debug_cursor::<T>
-                    .system()
-                    .label(RaycastSystem::UpdateDebugCursor)
-                    .after(RaycastSystem::UpdateRaycast),
             );
+
+        #[cfg(feature = "debug")]
+            {
+                app.add_system_to_stage(
+                    CoreStage::PostUpdate,
+                    remove_debug_cursors::<T>
+                        .system()
+                        .label(RaycastSystem::RemoveDebugCursors)
+                        .after(RaycastSystem::UpdateRaycast),
+                )
+                    .add_system_to_stage(
+                        CoreStage::PostUpdate,
+                        update_debug_cursor::<T>
+                            .system()
+                            .label(RaycastSystem::UpdateDebugCursor)
+                            .after(RaycastSystem::RemoveDebugCursors),
+                    );
+            }
     }
 }
+
 impl<T: 'static + Send + Sync> Default for DefaultRaycastingPlugin<T> {
     fn default() -> Self {
         DefaultRaycastingPlugin(PhantomData::<T>)
@@ -52,18 +68,45 @@ impl<T: 'static + Send + Sync> Default for DefaultRaycastingPlugin<T> {
 pub enum RaycastSystem {
     BuildRays,
     UpdateRaycast,
+    #[cfg(feature = "debug")]
+    RemoveDebugCursors,
+    #[cfg(feature = "debug")]
     UpdateDebugCursor,
 }
 
 /// Global plugin state used to enable or disable all ray casting for a given type T.
 pub struct PluginState<T> {
     pub enabled: bool,
+    #[cfg(feature = "debug")]
+    pub debug: bool,
     _marker: PhantomData<T>,
 }
+
+impl<T> PluginState<T> {
+    #[cfg(feature = "debug")]
+    pub fn new(enabled: bool, debug: bool) -> Self {
+        Self {
+            enabled,
+            debug,
+            _marker: Default::default(),
+        }
+    }
+
+    #[cfg(not(feature = "debug"))]
+    pub fn new(enabled: bool, _debug: bool) -> Self {
+        Self {
+            enabled,
+            _marker: Default::default(),
+        }
+    }
+}
+
 impl<T> Default for PluginState<T> {
     fn default() -> Self {
         PluginState {
             enabled: true,
+            #[cfg(feature = "debug")]
+            debug: true,
             _marker: PhantomData::<T>::default(),
         }
     }
@@ -250,8 +293,8 @@ pub fn build_rays<T: 'static + Send + Sync>(
                     Some(camera) => camera,
                     None => {
                         error!(
-                        "The PickingSource is a CameraScreenSpace but has no associated Camera component"
-                    );
+                            "The PickingSource is a CameraScreenSpace but has no associated Camera component"
+                        );
                         return;
                     }
                 };
@@ -259,8 +302,8 @@ pub fn build_rays<T: 'static + Send + Sync>(
                     Some(transform) => transform,
                     None => {
                         error!(
-                        "The PickingSource is a CameraScreenSpace but has no associated GlobalTransform component"
-                    );
+                            "The PickingSource is a CameraScreenSpace but has no associated GlobalTransform component"
+                        );
                         return;
                     }
                 };
@@ -272,12 +315,12 @@ pub fn build_rays<T: 'static + Send + Sync>(
                     Some(matrix) => matrix,
                     None => {
                         error!(
-                        "The PickingSource is a Transform but has no associated GlobalTransform component"
-                    );
-                        return
+                            "The PickingSource is a Transform but has no associated GlobalTransform component"
+                        );
+                        return;
                     }
                 }
-                .compute_matrix();
+                    .compute_matrix();
                 Some(Ray3d::from_transform(transform))
             }
         };
@@ -327,7 +370,7 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                                 let det = (ray.direction().dot(ray.origin() - translated_origin))
                                     .powi(2)
                                     - (Vec3::length_squared(ray.origin() - translated_origin)
-                                        - scaled_radius.powi(2));
+                                    - scaled_radius.powi(2));
                                 det >= 0.0 // Ray intersects the bounding sphere if det>=0
                             } else {
                                 true // This bounding volume's sphere is not yet defined
@@ -448,7 +491,7 @@ fn ray_mesh_intersection(
             let world_triangle = Triangle::from(world_vertices);
             // Run the raycast on the ray and triangle
             if let Some(intersection) =
-                ray_triangle_intersection(pick_ray, &world_triangle, RaycastAlgorithm::default())
+            ray_triangle_intersection(pick_ray, &world_triangle, RaycastAlgorithm::default())
             {
                 let distance: f32 = (intersection.origin() - pick_ray.origin())
                     .length_squared()

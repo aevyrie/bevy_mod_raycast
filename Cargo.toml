@@ -1,6 +1,6 @@
 [package]
 name = "bevy_mod_raycast"
-version = "0.2.2"
+version = "0.3.0"
 authors = ["Aevyrie <aevyrie@gmail.com>"]
 edition = "2018"
 license = "MIT"
@@ -8,6 +8,10 @@ description = "Ray Casting for the Bevy Engine."
 repository = "https://github.com/aevyrie/bevy_mod_raycast/"
 keywords = ["gamedev", "graphics", "bevy", "3d", "raycast"]
 categories = ["game-engines", "rendering"]
+
+[features]
+default = ["debug"]
+debug = []
 
 [dependencies]
 bevy = { git = "https://github.com/bevyengine/bevy", branch = "main", version = "0.5", default-features = false, features = ["render"] }

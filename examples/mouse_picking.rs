@@ -1,7 +1,6 @@
 use bevy::prelude::*;
-use bevy_mod_raycast::{
-    DefaultRaycastingPlugin, RayCastMesh, RayCastMethod, RayCastSource, RaycastSystem,
-};
+
+use bevy_mod_raycast::{DefaultRaycastingPlugin, PluginState, RayCastMesh, RayCastMethod, RayCastSource, RaycastSystem};
 
 // This example will show you how to use your mouse cursor as a ray casting source, cast into the
 // scene, intersect a mesh, and mark the intersection with the built in debug cursor. If you are
@@ -52,6 +51,7 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
+    commands.insert_resource(PluginState::<MyRaycastSet>::new(true, true));
     commands
         .spawn_bundle(PerspectiveCameraBundle::default())
         .insert(RayCastSource::<MyRaycastSet>::new()); // Designate the camera as our source

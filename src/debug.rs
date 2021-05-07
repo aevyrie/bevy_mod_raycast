@@ -1,3 +1,5 @@
+#![cfg(feature = "debug")]
+
 use crate::{PluginState, RayCastSource};
 use bevy::prelude::*;
 use std::marker::PhantomData;
@@ -5,6 +7,7 @@ use std::marker::PhantomData;
 pub struct DebugCursor<T> {
     _phantom: PhantomData<T>,
 }
+
 impl<T> Default for DebugCursor<T> {
     fn default() -> Self {
         DebugCursor {
@@ -16,6 +19,7 @@ impl<T> Default for DebugCursor<T> {
 pub struct DebugCursorTail<T> {
     _phantom: PhantomData<T>,
 }
+
 impl<T> Default for DebugCursorTail<T> {
     fn default() -> Self {
         DebugCursorTail {
@@ -27,11 +31,26 @@ impl<T> Default for DebugCursorTail<T> {
 pub struct DebugCursorMesh<T> {
     _phantom: PhantomData<T>,
 }
+
 impl<T> Default for DebugCursorMesh<T> {
     fn default() -> Self {
         DebugCursorMesh {
             _phantom: PhantomData::default(),
         }
+    }
+}
+
+pub fn remove_debug_cursors<T: 'static + Send + Sync>(
+    mut commands: Commands,
+    state: Res<PluginState<T>>,
+    cursor_query: Query<&Entity, With<DebugCursor<T>>>,
+) {
+    if state.enabled && state.debug {
+        return;
+    }
+
+    for cursor in cursor_query.iter() {
+        commands.entity(cursor.clone()).despawn();
     }
 }
 
@@ -52,7 +71,7 @@ pub fn update_debug_cursor<T: 'static + Send + Sync>(
     mut visibility_query: Query<&mut Visible, With<DebugCursorMesh<T>>>,
     raycast_source_query: Query<&RayCastSource<T>>,
 ) {
-    if !state.enabled {
+    if !state.enabled || !state.debug {
         return;
     }
 
