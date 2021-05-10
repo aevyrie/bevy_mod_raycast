@@ -9,7 +9,7 @@ use bevy::{
     },
 };
 
-pub use crate::bounding::{BoundingSphere, BoundVol, update_bound_sphere};
+pub use crate::bounding::{update_bound_sphere, BoundVol, BoundingSphere};
 #[cfg(feature = "debug")]
 pub use crate::debug::*;
 pub use crate::primitives::*;
@@ -39,22 +39,38 @@ impl<T: 'static + Send + Sync> Plugin for DefaultRaycastingPlugin<T> {
             );
 
         #[cfg(feature = "debug")]
-            {
-                app.add_system_to_stage(
-                    CoreStage::PostUpdate,
-                    remove_debug_cursors::<T>
+        {
+            app.init_resource::<DebugResource>()
+                .init_resource::<SourceToCursorMap<T>>()
+                .add_startup_system(startup_debug_global.system())
+                .add_system(
+                    add_debug_cursors_to_new_sources::<T>
                         .system()
-                        .label(RaycastSystem::RemoveDebugCursors)
-                        .after(RaycastSystem::UpdateRaycast),
+                        .label(RaycastSystem::AddOrRemoveDebugCursors),
                 )
-                    .add_system_to_stage(
-                        CoreStage::PostUpdate,
-                        update_debug_cursor::<T>
-                            .system()
-                            .label(RaycastSystem::UpdateDebugCursor)
-                            .after(RaycastSystem::RemoveDebugCursors),
-                    );
-            }
+                .add_system_to_stage(
+                    CoreStage::PostUpdate,
+                    remove_debug_cursors_of_removed_sources::<T>
+                        .system()
+                        .label(RaycastSystem::AddOrRemoveDebugCursors),
+                )
+                .add_system(
+                    change_cursors_by_changed_state::<T>
+                        .system()
+                        .label(RaycastSystem::EnableOrDisableDebugCursors)
+                        .after(RaycastSystem::AddOrRemoveDebugCursors),
+                )
+                .add_system_set_to_stage(
+                    CoreStage::PostUpdate,
+                    SystemSet::new()
+                        .with_run_criteria(run_if_debug_enabled::<T>.system())
+                        .with_system(
+                            update_debug_cursor_position::<T>
+                                .system()
+                                .after(RaycastSystem::UpdateRaycast),
+                        ),
+                );
+        }
     }
 }
 
@@ -69,22 +85,38 @@ pub enum RaycastSystem {
     BuildRays,
     UpdateRaycast,
     #[cfg(feature = "debug")]
-    RemoveDebugCursors,
+    AddOrRemoveDebugCursors,
     #[cfg(feature = "debug")]
-    UpdateDebugCursor,
+    EnableOrDisableDebugCursors,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum Enabled {
+    /// Ray casting enabled
+    Enabled,
+    /// Ray casting disabled
+    Disabled,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum Debug {
+    /// No debugging visuals
+    None,
+    /// Cursor pointing at the intersected mesh
+    Cursor,
 }
 
 /// Global plugin state used to enable or disable all ray casting for a given type T.
 pub struct PluginState<T> {
-    pub enabled: bool,
+    pub enabled: Enabled,
     #[cfg(feature = "debug")]
-    pub debug: bool,
+    pub debug: Debug,
     _marker: PhantomData<T>,
 }
 
 impl<T> PluginState<T> {
     #[cfg(feature = "debug")]
-    pub fn new(enabled: bool, debug: bool) -> Self {
+    pub fn new(enabled: Enabled, debug: Debug) -> Self {
         Self {
             enabled,
             debug,
@@ -93,7 +125,7 @@ impl<T> PluginState<T> {
     }
 
     #[cfg(not(feature = "debug"))]
-    pub fn new(enabled: bool, _debug: bool) -> Self {
+    pub fn new(enabled: Enabled) -> Self {
         Self {
             enabled,
             _marker: Default::default(),
@@ -104,9 +136,9 @@ impl<T> PluginState<T> {
 impl<T> Default for PluginState<T> {
     fn default() -> Self {
         PluginState {
-            enabled: true,
+            enabled: Enabled::Enabled,
             #[cfg(feature = "debug")]
-            debug: true,
+            debug: Debug::Cursor,
             _marker: PhantomData::<T>::default(),
         }
     }
@@ -137,6 +169,8 @@ pub struct RayCastSource<T> {
     pub cast_method: RayCastMethod,
     ray: Option<Ray3d>,
     intersections: Vec<(Entity, Intersection)>,
+    #[cfg(feature = "debug")]
+    debug_entity: Option<Entity>,
     _marker: PhantomData<T>,
 }
 
@@ -146,6 +180,8 @@ impl<T> Default for RayCastSource<T> {
             cast_method: RayCastMethod::Screenspace(Vec2::ZERO),
             ray: None,
             intersections: Vec::new(),
+            #[cfg(feature = "debug")]
+            debug_entity: None,
             _marker: PhantomData::default(),
         }
     }
@@ -169,6 +205,8 @@ impl<T> RayCastSource<T> {
             cast_method: RayCastMethod::Screenspace(cursor_pos_screen),
             ray: Ray3d::from_screenspace(cursor_pos_screen, windows, camera, camera_transform),
             intersections: self.intersections.clone(),
+            #[cfg(feature = "debug")]
+            debug_entity: None,
             _marker: self._marker,
         }
     }
@@ -178,6 +216,8 @@ impl<T> RayCastSource<T> {
             cast_method: RayCastMethod::Transform,
             ray: Some(Ray3d::from_transform(transform)),
             intersections: self.intersections.clone(),
+            #[cfg(feature = "debug")]
+            debug_entity: None,
             _marker: self._marker,
         }
     }
@@ -343,9 +383,10 @@ pub fn update_raycast<T: 'static + Send + Sync>(
     >,
     mesh_query: Query<(&Handle<Mesh>, &GlobalTransform, Entity), With<RayCastMesh<T>>>,
 ) {
-    if !state.enabled {
+    if state.enabled == Enabled::Disabled {
         return;
     }
+
     for mut pick_source in pick_source_query.iter_mut() {
         if let Some(ray) = pick_source.ray {
             pick_source.intersections.clear();
@@ -370,7 +411,7 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                                 let det = (ray.direction().dot(ray.origin() - translated_origin))
                                     .powi(2)
                                     - (Vec3::length_squared(ray.origin() - translated_origin)
-                                    - scaled_radius.powi(2));
+                                        - scaled_radius.powi(2));
                                 det >= 0.0 // Ray intersects the bounding sphere if det>=0
                             } else {
                                 true // This bounding volume's sphere is not yet defined
@@ -384,7 +425,7 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                             None
                         }
                     })
-                    .filter_map(|value| value)
+                    .flatten()
                     .collect()
             };
 
@@ -424,12 +465,7 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                                     vector,
                                 ),
                             };
-                            //pickable.intersection = new_intersection;
-                            if let Some(new_intersection) = new_intersection {
-                                Some((entity, new_intersection))
-                            } else {
-                                None
-                            }
+                            new_intersection.map(|new_intersection| (entity, new_intersection))
                         } else {
                             // If we get here the mesh doesn't have an index list!
                             panic!(
@@ -491,7 +527,7 @@ fn ray_mesh_intersection(
             let world_triangle = Triangle::from(world_vertices);
             // Run the raycast on the ray and triangle
             if let Some(intersection) =
-            ray_triangle_intersection(pick_ray, &world_triangle, RaycastAlgorithm::default())
+                ray_triangle_intersection(pick_ray, &world_triangle, RaycastAlgorithm::default())
             {
                 let distance: f32 = (intersection.origin() - pick_ray.origin())
                     .length_squared()

@@ -1,8 +1,9 @@
+use core::panic;
+
 use bevy::{
     prelude::*,
     render::{mesh::VertexAttributeValues, pipeline::PrimitiveTopology},
 };
-use core::panic;
 
 use crate::PluginState;
 
@@ -37,9 +38,10 @@ pub fn update_bound_sphere<T: 'static + Send + Sync>(
         //Or<(Added<BoundVol>, Changed<Handle<Mesh>>)>, Broken in bevy due to unsoundness, see #9
     >,
 ) {
-    if !state.enabled {
+    if state.enabled == crate::Enabled::Disabled {
         return;
     }
+
     for (mut bound_vol, mesh_handle) in &mut new_bound_vol_query.iter_mut() {
         if bound_vol.is_added() || mesh_handle.is_changed() {
             if let Some(mesh) = meshes.get(mesh_handle.clone()) {
