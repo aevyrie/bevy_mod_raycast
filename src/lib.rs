@@ -207,10 +207,14 @@ impl<T> RayCastSource<T> {
             }
         }
     }
-
     /// Get a reference to the ray cast source's ray.
     pub fn ray(&self) -> Option<Ray3d> {
         self.ray
+    }
+
+    /// Get a mutable reference to the ray cast source's intersections.
+    pub fn intersections_mut(&mut self) -> &mut Vec<(Entity, Intersection)> {
+        &mut self.intersections
     }
 }
 
