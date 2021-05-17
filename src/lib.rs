@@ -288,9 +288,9 @@ pub fn build_rays<T: 'static + Send + Sync>(
     }
 }
 
-/// Generate updated rays for each ray casting source, then iterate through all entities with the
-/// [RayCastMesh](RayCastMesh) component, checking for intersections. If these entities have
-/// bounding volumes, these will be checked first, greatly accelerating the process.
+/// Iterates through all entities with the [RayCastMesh] component, checking for
+/// intersections. If these entities have bounding volumes, these will be checked first, greatly
+/// accelerating the process.
 #[allow(clippy::type_complexity)]
 pub fn update_raycast<T: 'static + Send + Sync>(
     // Resources
