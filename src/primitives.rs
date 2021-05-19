@@ -8,7 +8,7 @@ pub enum Primitive3d {
 }
 
 /// Holds computed intersection information
-#[derive(Debug, PartialOrd, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub struct Intersection {
     normal: Ray3d,
     pick_distance: f32,
@@ -49,7 +49,7 @@ pub mod rays {
     use bevy::{prelude::*, render::camera::Camera};
 
     /// A 3D ray, with an origin and direction. The direction is guaranteed to be normalized.
-    #[derive(Debug, PartialOrd, PartialEq, Copy, Clone, Default)]
+    #[derive(Debug, PartialEq, Copy, Clone, Default)]
     pub struct Ray3d {
         origin: Vec3,
         direction: Vec3,
@@ -126,7 +126,7 @@ pub mod rays {
     }
 }
 
-#[derive(Debug, PartialOrd, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub struct Triangle {
     pub v0: Vec3,
     pub v1: Vec3,
