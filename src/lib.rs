@@ -23,18 +23,18 @@ impl<T: 'static + Send + Sync> Plugin for DefaultRaycastingPlugin<T> {
     fn build(&self, app: &mut AppBuilder) {
         app.init_resource::<PluginState<T>>()
             .add_system_to_stage(
-                CoreStage::PostUpdate,
+                CoreStage::PreUpdate,
                 build_rays::<T>.system().label(RaycastSystem::BuildRays),
             )
             .add_system_to_stage(
-                CoreStage::PostUpdate,
+                CoreStage::PreUpdate,
                 update_raycast::<T>
                     .system()
                     .label(RaycastSystem::UpdateRaycast)
                     .after(RaycastSystem::BuildRays),
             )
             .add_system_to_stage(
-                CoreStage::PostUpdate,
+                CoreStage::PreUpdate,
                 update_debug_cursor::<T>
                     .system()
                     .label(RaycastSystem::UpdateDebugCursor)
@@ -345,7 +345,7 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                             None
                         }
                     })
-                    .filter_map(|value| value)
+                    .flatten()
                     .collect()
             };
 
@@ -368,9 +368,9 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                                     _ => panic!("Unexpected vertex types in ATTRIBUTE_POSITION"),
                                 },
                             };
+                        let mesh_to_world = transform.compute_matrix();
                         if let Some(indices) = &mesh.indices() {
                             // Iterate over the list of pick rays that belong to the same group as this mesh
-                            let mesh_to_world = transform.compute_matrix();
                             let new_intersection = match indices {
                                 Indices::U16(vector) => ray_mesh_intersection(
                                     &mesh_to_world,
@@ -385,18 +385,11 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                                     Some(vector),
                                 ),
                             };
-                            //pickable.intersection = new_intersection;
-                            if let Some(new_intersection) = new_intersection {
-                                Some((entity, new_intersection))
-                            } else {
-                                None
-                            }
+                            new_intersection.map(|new_intersection| (entity, new_intersection))
                         } else {
-                            // If we get here the mesh doesn't have an index list!
-                            panic!(
-                                "No index matrix found in mesh {:?}\n{:?}",
-                                mesh_handle, mesh
-                            );
+                            let new_intersection =
+                                ray_mesh_intersection(&mesh_to_world, vertex_positions, &ray, None);
+                            new_intersection.map(|new_intersection| (entity, new_intersection))
                         }
                     } else {
                         None

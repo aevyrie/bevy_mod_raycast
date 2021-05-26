@@ -19,7 +19,7 @@ fn main() {
         // order can result in multiple frames of latency. Ray casting should probably happen after
         // the positions of your meshes have been updated in the UPDATE stage.
         .add_system_to_stage(
-            CoreStage::PostUpdate,
+            CoreStage::PreUpdate,
             update_raycast_with_cursor
                 .system()
                 .before(RaycastSystem::BuildRays),
