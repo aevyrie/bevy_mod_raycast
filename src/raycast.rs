@@ -23,7 +23,7 @@ pub enum Backfaces {
 }
 
 /// Takes a ray and triangle and computes the intersection and normal
-#[inline]
+#[inline(always)]
 pub fn ray_triangle_intersection(
     ray: &Ray3d,
     triangle: &Triangle,
@@ -38,7 +38,7 @@ pub fn ray_triangle_intersection(
 }
 
 /// Implementation of the Möller-Trumbore ray-triangle intersection test
-#[inline]
+#[inline(always)]
 pub fn raycast_moller_trumbore(
     ray: &Ray3d,
     triangle: &Triangle,
