@@ -10,32 +10,39 @@ pub enum Primitive3d {
 /// Holds computed intersection information
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub struct Intersection {
-    normal: Ray3d,
-    pick_distance: f32,
+    position: Vec3,
+    normal: Vec3,
+    distance: f32,
     triangle: Option<Triangle>,
 }
 impl Intersection {
-    pub fn new(normal: Ray3d, pick_distance: f32, triangle: Option<Triangle>) -> Self {
+    pub fn new(
+        position: Vec3,
+        normal: Vec3,
+        pick_distance: f32,
+        triangle: Option<Triangle>,
+    ) -> Self {
         Intersection {
+            position,
             normal,
-            pick_distance,
+            distance: pick_distance,
             triangle,
         }
     }
     /// Position vector describing the intersection position.
     pub fn position(&self) -> Vec3 {
-        self.normal.origin()
+        self.position
     }
     /// Unit vector describing the normal of the intersected triangle.
-    pub fn unit_normal(&self) -> Vec3 {
-        self.normal.direction()
+    pub fn normal(&self) -> Vec3 {
+        self.normal
     }
-    pub fn normal_ray(&self) -> &Ray3d {
-        &self.normal
+    pub fn normal_ray(&self) -> Ray3d {
+        Ray3d::new(self.position, self.normal)
     }
     /// Distance from the picking source to the entity.
     pub fn distance(&self) -> f32 {
-        self.pick_distance
+        self.distance
     }
     /// Triangle that was intersected with in World coordinates
     pub fn world_triangle(&self) -> Option<Triangle> {
@@ -70,6 +77,9 @@ pub mod rays {
         /// Unit vector describing the ray direction
         pub fn direction(&self) -> Vec3 {
             self.direction
+        }
+        pub fn position(&self, distance: f32) -> Vec3 {
+            self.origin + self.direction * distance
         }
         pub fn to_transform(&self) -> Mat4 {
             let position = self.origin;

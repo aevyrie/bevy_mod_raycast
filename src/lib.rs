@@ -197,7 +197,8 @@ impl<T> RayCastSource<T> {
                     let intersect_dist = plane_normal.dot(point_to_point) / denominator;
                     let intersect_position = ray.direction() * intersect_dist + ray.origin();
                     Some(Intersection::new(
-                        Ray3d::new(intersect_position, plane_normal),
+                        intersect_position,
+                        plane_normal,
                         intersect_dist,
                         None,
                     ))
@@ -365,30 +366,46 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                                 None => panic!("Mesh does not contain vertex positions"),
                                 Some(vertex_values) => match &vertex_values {
                                     VertexAttributeValues::Float32x3(positions) => positions,
-                                    _ => panic!("Unexpected vertex types in ATTRIBUTE_POSITION"),
+                                    _ => panic!("Unexpected types in {}", Mesh::ATTRIBUTE_POSITION),
                                 },
+                            };
+                        let vertex_normals: Option<&[[f32; 3]]> =
+                            if let Some(normal_values) = mesh.attribute(Mesh::ATTRIBUTE_NORMAL) {
+                                match &normal_values {
+                                    VertexAttributeValues::Float32x3(normals) => Some(normals),
+                                    _ => None,
+                                }
+                            } else {
+                                None
                             };
                         let mesh_to_world = transform.compute_matrix();
                         if let Some(indices) = &mesh.indices() {
                             // Iterate over the list of pick rays that belong to the same group as this mesh
                             let new_intersection = match indices {
-                                Indices::U16(vector) => ray_mesh_intersection(
+                                Indices::U16(vertex_indices) => ray_mesh_intersection(
                                     &mesh_to_world,
                                     vertex_positions,
+                                    vertex_normals,
                                     &ray,
-                                    Some(&vector.iter().map(|x| *x as u32).collect()),
+                                    Some(&vertex_indices.iter().map(|x| *x as u32).collect()),
                                 ),
-                                Indices::U32(vector) => ray_mesh_intersection(
+                                Indices::U32(vertex_indices) => ray_mesh_intersection(
                                     &mesh_to_world,
                                     vertex_positions,
+                                    vertex_normals,
                                     &ray,
-                                    Some(vector),
+                                    Some(vertex_indices),
                                 ),
                             };
                             new_intersection.map(|new_intersection| (entity, new_intersection))
                         } else {
-                            let new_intersection =
-                                ray_mesh_intersection(&mesh_to_world, vertex_positions, &ray, None);
+                            let new_intersection = ray_mesh_intersection(
+                                &mesh_to_world,
+                                vertex_positions,
+                                vertex_normals,
+                                &ray,
+                                None,
+                            );
                             new_intersection.map(|new_intersection| (entity, new_intersection))
                         }
                     } else {
@@ -412,17 +429,18 @@ pub fn update_raycast<T: 'static + Send + Sync>(
 fn ray_mesh_intersection(
     mesh_to_world: &Mat4,
     vertex_positions: &[[f32; 3]],
+    vertex_normals: Option<&[[f32; 3]]>,
     pick_ray: &Ray3d,
     indices: Option<&Vec<u32>>,
 ) -> Option<Intersection> {
     // The ray cast can hit the same mesh many times, so we need to track which hit is
     // closest to the camera, and record that.
-    let mut min_pick_distance_squared = f32::MAX;
+    let mut min_pick_distance = f32::MAX;
     let mut pick_intersection = None;
 
     let world_to_mesh = mesh_to_world.inverse();
 
-    let pick_ray_mesh = Ray3d::new(
+    let mesh_space_ray = Ray3d::new(
         world_to_mesh.transform_point3(pick_ray.origin()),
         world_to_mesh.transform_vector3(pick_ray.direction()),
     );
@@ -431,7 +449,7 @@ fn ray_mesh_intersection(
         // Make sure this chunk has 3 vertices to avoid a panic.
         if indices.len() % 3 != 0 {
             warn!("Index list not a multiple of 3");
-            return pick_intersection;
+            return None;
         }
         // Now that we're in the vector of vertex indices, we want to look at the vertex
         // positions for each triangle, so we'll take indices in chunks of three, where each
@@ -442,13 +460,38 @@ fn ray_mesh_intersection(
                 Vec3::from(vertex_positions[index[1] as usize]),
                 Vec3::from(vertex_positions[index[2] as usize]),
             ];
-            triangle_intersection(
+            let tri_normals = if let Some(normals) = vertex_normals {
+                Some([
+                    Vec3::from(normals[index[0] as usize]),
+                    Vec3::from(normals[index[1] as usize]),
+                    Vec3::from(normals[index[2] as usize]),
+                ])
+            } else {
+                None
+            };
+            let intersection = triangle_intersection(
                 tri_vertex_positions,
-                pick_ray_mesh,
-                &mut min_pick_distance_squared,
-                &mut pick_intersection,
-                mesh_to_world,
+                tri_normals,
+                min_pick_distance,
+                mesh_space_ray,
             );
+            if let Some(i) = intersection {
+                pick_intersection = Some(Intersection::new(
+                    mesh_to_world.transform_point3(i.position()),
+                    mesh_to_world.transform_vector3(i.normal()),
+                    mesh_to_world
+                        .transform_vector3(mesh_space_ray.direction() * i.distance())
+                        .length(),
+                    i.world_triangle().map(|tri| {
+                        Triangle::from([
+                            mesh_to_world.transform_point3(tri.v0),
+                            mesh_to_world.transform_point3(tri.v1),
+                            mesh_to_world.transform_point3(tri.v2),
+                        ])
+                    }),
+                ));
+                min_pick_distance = i.distance();
+            }
         }
     } else {
         for vertex in vertex_positions.chunks(3) {
@@ -457,56 +500,77 @@ fn ray_mesh_intersection(
                 Vec3::from(vertex[1]),
                 Vec3::from(vertex[2]),
             ];
-            triangle_intersection(
+            let tri_normals = if let Some(normals) = vertex_normals {
+                Some([
+                    Vec3::from(normals[0]),
+                    Vec3::from(normals[1]),
+                    Vec3::from(normals[2]),
+                ])
+            } else {
+                None
+            };
+            let intersection = triangle_intersection(
                 tri_vertex_positions,
-                pick_ray_mesh,
-                &mut min_pick_distance_squared,
-                &mut pick_intersection,
-                mesh_to_world,
+                tri_normals,
+                min_pick_distance,
+                mesh_space_ray,
             );
+            if let Some(i) = intersection {
+                pick_intersection = Some(Intersection::new(
+                    mesh_to_world.transform_point3(i.position()),
+                    mesh_to_world.transform_vector3(i.normal()),
+                    mesh_to_world
+                        .transform_vector3(mesh_space_ray.direction() * i.distance())
+                        .length(),
+                    i.world_triangle().map(|tri| {
+                        Triangle::from([
+                            mesh_to_world.transform_point3(tri.v0),
+                            mesh_to_world.transform_point3(tri.v1),
+                            mesh_to_world.transform_point3(tri.v2),
+                        ])
+                    }),
+                ));
+                min_pick_distance = i.distance();
+            }
         }
     }
     pick_intersection
 }
 
 fn triangle_intersection(
-    tri_vertex_positions: [Vec3; 3],
-    pick_ray_mesh: Ray3d,
-    min_pick_distance_squared: &mut f32,
-    pick_intersection: &mut Option<Intersection>,
-    mesh_to_world: &Mat4,
-) {
-    if tri_vertex_positions
+    tri_vertices: [Vec3; 3],
+    tri_normals: Option<[Vec3; 3]>,
+    max_distance: f32,
+    ray: Ray3d,
+) -> Option<Intersection> {
+    if tri_vertices
         .iter()
-        .filter(|vert| {
-            (**vert - pick_ray_mesh.origin()).length_squared() < *min_pick_distance_squared
-        })
+        .filter(|&&vertex| (vertex - ray.origin()).length_squared() < max_distance.powi(2))
         .count()
         != 0
     {
-        let mesh_triangle = Triangle::from(tri_vertex_positions);
+        let triangle = Triangle::from(tri_vertices);
         // Run the raycast on the ray and triangle
-        if let Some(intersection) =
-            ray_triangle_intersection(&pick_ray_mesh, &mesh_triangle, RaycastAlgorithm::default())
+        if let Some(ray_hit) =
+            ray_triangle_intersection(&ray, &triangle, RaycastAlgorithm::default())
         {
-            let distance = (intersection.origin() - pick_ray_mesh.origin()).length_squared();
-            if distance < *min_pick_distance_squared {
-                *min_pick_distance_squared = distance;
-                *pick_intersection = Some(Intersection::new(
-                    Ray3d::new(
-                        mesh_to_world.transform_point3(intersection.origin()),
-                        mesh_to_world.transform_vector3(intersection.direction()),
-                    ),
-                    (mesh_to_world.transform_point3(intersection.origin())
-                        - mesh_to_world.transform_point3(pick_ray_mesh.origin()))
-                    .length(),
-                    Some(Triangle::from([
-                        mesh_to_world.transform_point3(mesh_triangle.v0),
-                        mesh_to_world.transform_point3(mesh_triangle.v1),
-                        mesh_to_world.transform_point3(mesh_triangle.v2),
-                    ])),
-                ));
+            let distance = *ray_hit.distance();
+            if distance > 0.0 && distance < max_distance {
+                let position = ray.position(distance);
+                let normal = if let Some(normals) = tri_normals {
+                    let u = ray_hit.uv_coords().0;
+                    let v = ray_hit.uv_coords().1;
+                    let w = 1.0 - u - v;
+                    normals[1] * u + normals[2] * v + normals[0] * w
+                } else {
+                    (triangle.v1 - triangle.v0)
+                        .cross(triangle.v2 - triangle.v0)
+                        .normalize()
+                };
+                let intersection = Intersection::new(position, normal, distance, Some(triangle));
+                return Some(intersection);
             }
         }
     }
+    None
 }
