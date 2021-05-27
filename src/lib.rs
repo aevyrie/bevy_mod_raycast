@@ -425,7 +425,7 @@ pub fn update_raycast<T: 'static + Send + Sync>(
 }
 
 /// Checks if a ray intersects a mesh, and returns the nearest intersection if one exists.
-#[allow(clippy::ptr_arg)]
+#[inline(always)]
 fn ray_mesh_intersection(
     mesh_to_world: &Mat4,
     vertex_positions: &[[f32; 3]],
@@ -537,6 +537,7 @@ fn ray_mesh_intersection(
     pick_intersection
 }
 
+#[inline(always)]
 fn triangle_intersection(
     tri_vertices: [Vec3; 3],
     tri_normals: Option<[Vec3; 3]>,
