@@ -15,8 +15,10 @@ use bevy::{
         mesh::{Indices, Mesh, VertexAttributeValues},
         pipeline::PrimitiveTopology,
     },
+    tasks::prelude::*,
 };
 use std::marker::PhantomData;
+use std::sync::{Arc, Mutex};
 
 pub struct DefaultRaycastingPlugin<T: 'static + Send + Sync>(pub PhantomData<T>);
 impl<T: 'static + Send + Sync> Plugin for DefaultRaycastingPlugin<T> {
@@ -295,6 +297,7 @@ pub fn build_rays<T: 'static + Send + Sync>(
 #[allow(clippy::type_complexity)]
 pub fn update_raycast<T: 'static + Send + Sync>(
     // Resources
+    pool: Res<ComputeTaskPool>,
     state: Res<PluginState<T>>,
     meshes: Res<Assets<Mesh>>,
     // Queries
@@ -350,11 +353,11 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                     .collect()
             };
 
-            let mut picks = mesh_query
-                .iter()
-                .filter(|(_mesh_handle, _transform, entity)| culled_list.contains(&entity))
-                .filter_map(|(mesh_handle, transform, entity)| {
-                    let _raycast_guard = raycast.enter();
+            let picks = Arc::new(Mutex::new(Vec::new()));
+
+            mesh_query.par_for_each(&pool, 32, |(mesh_handle, transform, entity)| {
+                let _raycast_guard = raycast.enter();
+                if culled_list.contains(&entity) {
                     // Use the mesh handle to get a reference to a mesh asset
                     if let Some(mesh) = meshes.get(mesh_handle) {
                         if mesh.primitive_topology() != PrimitiveTopology::TriangleList {
@@ -397,7 +400,9 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                                     Some(vertex_indices),
                                 ),
                             };
-                            new_intersection.map(|new_intersection| (entity, new_intersection))
+                            if let Some(intersection) = new_intersection {
+                                picks.clone().lock().unwrap().push((entity, intersection))
+                            }
                         } else {
                             let new_intersection = ray_mesh_intersection(
                                 &mesh_to_world,
@@ -406,13 +411,14 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                                 &ray,
                                 None,
                             );
-                            new_intersection.map(|new_intersection| (entity, new_intersection))
+                            if let Some(intersection) = new_intersection {
+                                picks.clone().lock().unwrap().push((entity, intersection))
+                            }
                         }
-                    } else {
-                        None
                     }
-                })
-                .collect::<Vec<(Entity, Intersection)>>();
+                }
+            });
+            let mut picks = Arc::try_unwrap(picks).unwrap().into_inner().unwrap();
             picks.sort_by(|a, b| {
                 a.1.distance()
                     .partial_cmp(&b.1.distance())
