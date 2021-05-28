@@ -356,8 +356,8 @@ pub fn update_raycast<T: 'static + Send + Sync>(
             let picks = Arc::new(Mutex::new(Vec::new()));
 
             mesh_query.par_for_each(&pool, 32, |(mesh_handle, transform, entity)| {
-                let _raycast_guard = raycast.enter();
                 if culled_list.contains(&entity) {
+                    let _raycast_guard = raycast.enter();
                     // Use the mesh handle to get a reference to a mesh asset
                     if let Some(mesh) = meshes.get(mesh_handle) {
                         if mesh.primitive_topology() != PrimitiveTopology::TriangleList {
