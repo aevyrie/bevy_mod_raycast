@@ -6,7 +6,6 @@ use bevy::prelude::*;
 #[allow(dead_code)]
 #[non_exhaustive]
 pub enum RaycastAlgorithm {
-    Geometric,
     MollerTrumbore(Backfaces),
 }
 
@@ -23,25 +22,44 @@ pub enum Backfaces {
 }
 
 /// Takes a ray and triangle and computes the intersection and normal
+#[inline(always)]
 pub fn ray_triangle_intersection(
     ray: &Ray3d,
     triangle: &Triangle,
     algorithm: RaycastAlgorithm,
-) -> Option<Ray3d> {
+) -> Option<RayHit> {
     match algorithm {
-        RaycastAlgorithm::Geometric => raycast_geometric(ray, triangle),
         RaycastAlgorithm::MollerTrumbore(backface_culling) => {
             raycast_moller_trumbore(ray, triangle, backface_culling)
         }
     }
 }
 
+#[derive(Default, Debug)]
+pub struct RayHit {
+    distance: f32,
+    uv_coords: (f32, f32),
+}
+
+impl RayHit {
+    /// Get a reference to the intersection's uv coords.
+    pub fn uv_coords(&self) -> &(f32, f32) {
+        &self.uv_coords
+    }
+
+    /// Get a reference to the intersection's distance.
+    pub fn distance(&self) -> &f32 {
+        &self.distance
+    }
+}
+
 /// Implementation of the Möller-Trumbore ray-triangle intersection test
+#[inline(always)]
 pub fn raycast_moller_trumbore(
     ray: &Ray3d,
     triangle: &Triangle,
     backface_culling: Backfaces,
-) -> Option<Ray3d> {
+) -> Option<RayHit> {
     // Source: https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/moller-trumbore-ray-triangle-intersection
     let vector_v0_to_v1: Vec3 = triangle.v1 - triangle.v0;
     let vector_v0_to_v2: Vec3 = triangle.v2 - triangle.v0;
@@ -82,70 +100,10 @@ pub fn raycast_moller_trumbore(
     // The distance between ray origin and intersection is t.
     let t: f32 = vector_v0_to_v2.dot(q_vec) * determinant_inverse;
 
-    // Move along the ray direction from the origin, to find the intersection
-    let point_intersection = ray.origin() + ray.direction() * t;
-    let triangle_normal = vector_v0_to_v1.cross(vector_v0_to_v2);
-
-    Some(Ray3d::new(point_intersection, triangle_normal))
-}
-
-/// Geometric method of computing a ray-triangle intersection
-pub fn raycast_geometric(ray: &Ray3d, triangle: &Triangle) -> Option<Ray3d> {
-    // Source: https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/ray-triangle-intersection-geometric-solution
-    // compute plane's normal
-    let vector_v0_to_v1: Vec3 = triangle.v1 - triangle.v0;
-    let vector_v0_to_v2: Vec3 = triangle.v2 - triangle.v0;
-    // no need to normalize
-    let triangle_normal = vector_v0_to_v1.cross(vector_v0_to_v2); // N
-
-    // Step 1: finding P
-
-    // check if ray and plane are parallel ?
-    let n_dot_ray_direction = triangle_normal.dot(ray.direction());
-    if n_dot_ray_direction.abs() < EPSILON {
-        return None;
-    }
-
-    // compute d parameter using equation 2
-    let d = triangle_normal.dot(triangle.v0);
-
-    // compute t (equation 3)
-    let t = (triangle_normal.dot(ray.origin()) + d) / n_dot_ray_direction;
-    // check if the triangle is in behind the ray
-    if t < 0.0 {
-        return None;
-    } // the triangle is behind
-
-    // compute the intersection point using equation 1
-    let point_intersection = ray.origin() + t * ray.direction();
-
-    // Step 2: inside-outside test
-
-    // edge 0
-    let edge0 = triangle.v1 - triangle.v0;
-    let vp0 = point_intersection - triangle.v0;
-    let cross = edge0.cross(vp0);
-    if triangle_normal.dot(cross) < 0.0 {
-        return None;
-    } // P is on the right side
-
-    // edge 1
-    let edge1 = triangle.v2 - triangle.v1;
-    let vp1 = point_intersection - triangle.v1;
-    let cross = edge1.cross(vp1);
-    if triangle_normal.dot(cross) < 0.0 {
-        return None;
-    } // P is on the right side
-
-    // edge 2
-    let edge2 = triangle.v0 - triangle.v2;
-    let vp2 = point_intersection - triangle.v2;
-    let cross = edge2.cross(vp2);
-    if triangle_normal.dot(cross) < 0.0 {
-        return None;
-    } // P is on the right side;
-
-    Some(Ray3d::new(point_intersection, triangle_normal))
+    Some(RayHit {
+        distance: t,
+        uv_coords: (u, v),
+    })
 }
 
 #[cfg(test)]
@@ -163,10 +121,7 @@ mod tests {
         let ray = Ray3d::new(Vec3::ZERO, Vec3::X);
         let algorithm = RaycastAlgorithm::MollerTrumbore(Backfaces::Include);
         let result = ray_triangle_intersection(&ray, &triangle, algorithm);
-        assert_eq!(
-            result,
-            Some(Ray3d::new([1.0, 0.0, 0.0].into(), [-1.0, 0.0, 0.0].into()))
-        );
+        assert_eq!(result.unwrap().distance, 1.0);
     }
 
     #[test]
@@ -175,18 +130,6 @@ mod tests {
         let ray = Ray3d::new(Vec3::ZERO, Vec3::X);
         let algorithm = RaycastAlgorithm::MollerTrumbore(Backfaces::Cull);
         let result = ray_triangle_intersection(&ray, &triangle, algorithm);
-        assert_eq!(result, None);
-    }
-
-    #[test]
-    fn raycast_triangle_geometric() {
-        let triangle = Triangle::from([V0.into(), V1.into(), V2.into()]);
-        let ray = Ray3d::new(Vec3::ZERO, Vec3::X);
-        let algorithm = RaycastAlgorithm::Geometric;
-        let result = ray_triangle_intersection(&ray, &triangle, algorithm);
-        assert_eq!(
-            result,
-            Some(Ray3d::new([1.0, 0.0, 0.0].into(), [-1.0, 0.0, 0.0].into()))
-        );
+        assert!(result.is_none());
     }
 }

@@ -1,11 +1,11 @@
 use bevy::prelude::*;
 
-#[cfg(feature = "debug")]
-use bevy_mod_raycast::Debug;
 use bevy_mod_raycast::{
     DefaultRaycastingPlugin, Enabled, PluginState, RayCastMesh, RayCastMethod, RayCastSource,
     RaycastSystem,
 };
+#[cfg(feature = "debug")]
+use bevy_mod_raycast::Debug;
 
 // This example will show you how to use your mouse cursor as a ray casting source, cast into the
 // scene, intersect a mesh, and mark the intersection with the built in debug cursor. If you are
@@ -24,7 +24,7 @@ fn main() {
         // order can result in multiple frames of latency. Ray casting should probably happen after
         // the positions of your meshes have been updated in the UPDATE stage.
         .add_system_to_stage(
-            CoreStage::PostUpdate,
+            CoreStage::PreUpdate,
             update_raycast_with_cursor
                 .system()
                 .before(RaycastSystem::BuildRays),
@@ -44,11 +44,13 @@ fn main() {
 // of the same group, or "RayCastSet". For more complex use cases, you might use this to associate
 // some meshes with one ray casting source, and other meshes with a different ray casting source."
 struct MyCursorRayCastSet;
+
 struct MyKeyboardRayCastSet;
 
 // Marker for our keyboard-controllable RayCastSource
 #[derive(Default)]
 struct MyKeyboardRayCastSource;
+
 #[derive(Default)]
 struct MyKeyboardRayCastTarget;
 
@@ -164,7 +166,7 @@ fn setup(
     commands
         .spawn_bundle(PerspectiveCameraBundle::default())
         .insert(RayCastSource::<MyCursorRayCastSet>::new()); // Designate the camera as our source
-                                                             // Create a new RayCastSource which rotates around the sphere
+    // Create a new RayCastSource which rotates around the sphere
     commands
         .spawn()
         .insert(Transform::from_translation(Vec3::new(0.0, 0.0, -5.0)))

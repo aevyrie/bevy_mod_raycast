@@ -1,4 +1,5 @@
 use std::marker::PhantomData;
+use std::sync::{Arc, Mutex};
 
 use bevy::{
     prelude::*,
@@ -7,9 +8,10 @@ use bevy::{
         mesh::{Indices, Mesh, VertexAttributeValues},
         pipeline::PrimitiveTopology,
     },
+    tasks::prelude::*,
 };
 
-pub use crate::bounding::{update_bound_sphere, BoundVol, BoundingSphere};
+pub use crate::bounding::{BoundingSphere, BoundVol, update_bound_sphere};
 #[cfg(feature = "debug")]
 pub use crate::debug::*;
 pub use crate::primitives::*;
@@ -27,11 +29,11 @@ impl<T: 'static + Send + Sync> Plugin for DefaultRaycastingPlugin<T> {
     fn build(&self, app: &mut AppBuilder) {
         app.init_resource::<PluginState<T>>()
             .add_system_to_stage(
-                CoreStage::PostUpdate,
+                CoreStage::PreUpdate,
                 build_rays::<T>.system().label(RaycastSystem::BuildRays),
             )
             .add_system_to_stage(
-                CoreStage::PostUpdate,
+                CoreStage::PreUpdate,
                 update_raycast::<T>
                     .system()
                     .label(RaycastSystem::UpdateRaycast)
@@ -39,38 +41,38 @@ impl<T: 'static + Send + Sync> Plugin for DefaultRaycastingPlugin<T> {
             );
 
         #[cfg(feature = "debug")]
-        {
-            app.init_resource::<DebugResource>()
-                .init_resource::<SourceToCursorMap<T>>()
-                .add_startup_system(startup_debug_global.system())
-                .add_system(
-                    add_debug_cursors_to_new_sources::<T>
-                        .system()
-                        .label(RaycastSystem::AddOrRemoveDebugCursors),
-                )
-                .add_system_to_stage(
-                    CoreStage::PostUpdate,
-                    remove_debug_cursors_of_removed_sources::<T>
-                        .system()
-                        .label(RaycastSystem::AddOrRemoveDebugCursors),
-                )
-                .add_system(
-                    change_cursors_by_changed_state::<T>
-                        .system()
-                        .label(RaycastSystem::EnableOrDisableDebugCursors)
-                        .after(RaycastSystem::AddOrRemoveDebugCursors),
-                )
-                .add_system_set_to_stage(
-                    CoreStage::PostUpdate,
-                    SystemSet::new()
-                        .with_run_criteria(run_if_debug_enabled::<T>.system())
-                        .with_system(
-                            update_debug_cursor_position::<T>
-                                .system()
-                                .after(RaycastSystem::UpdateRaycast),
-                        ),
-                );
-        }
+            {
+                app.init_resource::<DebugResource>()
+                    .init_resource::<SourceToCursorMap<T>>()
+                    .add_startup_system(startup_debug_global.system())
+                    .add_system(
+                        add_debug_cursors_to_new_sources::<T>
+                            .system()
+                            .label(RaycastSystem::AddOrRemoveDebugCursors),
+                    )
+                    .add_system_to_stage(
+                        CoreStage::PostUpdate,
+                        remove_debug_cursors_of_removed_sources::<T>
+                            .system()
+                            .label(RaycastSystem::AddOrRemoveDebugCursors),
+                    )
+                    .add_system(
+                        change_cursors_by_changed_state::<T>
+                            .system()
+                            .label(RaycastSystem::EnableOrDisableDebugCursors)
+                            .after(RaycastSystem::AddOrRemoveDebugCursors),
+                    )
+                    .add_system_set_to_stage(
+                        CoreStage::PostUpdate,
+                        SystemSet::new()
+                            .with_run_criteria(run_if_debug_enabled::<T>.system())
+                            .with_system(
+                                update_debug_cursor_position::<T>
+                                    .system()
+                                    .after(RaycastSystem::UpdateRaycast),
+                            ),
+                    );
+            }
     }
 }
 
@@ -280,7 +282,8 @@ impl<T> RayCastSource<T> {
                     let intersect_dist = plane_normal.dot(point_to_point) / denominator;
                     let intersect_position = ray.direction() * intersect_dist + ray.origin();
                     Some(Intersection::new(
-                        Ray3d::new(intersect_position, plane_normal),
+                        intersect_position,
+                        plane_normal,
                         intersect_dist,
                         None,
                     ))
@@ -290,10 +293,14 @@ impl<T> RayCastSource<T> {
             }
         }
     }
-
     /// Get a reference to the ray cast source's ray.
     pub fn ray(&self) -> Option<Ray3d> {
         self.ray
+    }
+
+    /// Get a mutable reference to the ray cast source's intersections.
+    pub fn intersections_mut(&mut self) -> &mut Vec<(Entity, Intersection)> {
+        &mut self.intersections
     }
 }
 
@@ -367,12 +374,13 @@ pub fn build_rays<T: 'static + Send + Sync>(
     }
 }
 
-/// Generate updated rays for each ray casting source, then iterate through all entities with the
-/// [RayCastMesh](RayCastMesh) component, checking for intersections. If these entities have
-/// bounding volumes, these will be checked first, greatly accelerating the process.
+/// Iterates through all entities with the [RayCastMesh] component, checking for
+/// intersections. If these entities have bounding volumes, these will be checked first, greatly
+/// accelerating the process.
 #[allow(clippy::type_complexity)]
 pub fn update_raycast<T: 'static + Send + Sync>(
     // Resources
+    pool: Res<ComputeTaskPool>,
     state: Res<PluginState<T>>,
     meshes: Res<Assets<Mesh>>,
     // Queries
@@ -411,7 +419,7 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                                 let det = (ray.direction().dot(ray.origin() - translated_origin))
                                     .powi(2)
                                     - (Vec3::length_squared(ray.origin() - translated_origin)
-                                        - scaled_radius.powi(2));
+                                    - scaled_radius.powi(2));
                                 det >= 0.0 // Ray intersects the bounding sphere if det>=0
                             } else {
                                 true // This bounding volume's sphere is not yet defined
@@ -429,10 +437,10 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                     .collect()
             };
 
-            let mut picks = mesh_query
-                .iter()
-                .filter(|(_mesh_handle, _transform, entity)| culled_list.contains(&entity))
-                .filter_map(|(mesh_handle, transform, entity)| {
+            let picks = Arc::new(Mutex::new(Vec::new()));
+
+            mesh_query.par_for_each(&pool, 32, |(mesh_handle, transform, entity)| {
+                if culled_list.contains(&entity) {
                     let _raycast_guard = raycast.enter();
                     // Use the mesh handle to get a reference to a mesh asset
                     if let Some(mesh) = meshes.get(mesh_handle) {
@@ -445,39 +453,56 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                                 None => panic!("Mesh does not contain vertex positions"),
                                 Some(vertex_values) => match &vertex_values {
                                     VertexAttributeValues::Float32x3(positions) => positions,
-                                    _ => panic!("Unexpected vertex types in ATTRIBUTE_POSITION"),
+                                    _ => panic!("Unexpected types in {}", Mesh::ATTRIBUTE_POSITION),
                                 },
                             };
+                        let vertex_normals: Option<&[[f32; 3]]> =
+                            if let Some(normal_values) = mesh.attribute(Mesh::ATTRIBUTE_NORMAL) {
+                                match &normal_values {
+                                    VertexAttributeValues::Float32x3(normals) => Some(normals),
+                                    _ => None,
+                                }
+                            } else {
+                                None
+                            };
+                        let mesh_to_world = transform.compute_matrix();
                         if let Some(indices) = &mesh.indices() {
                             // Iterate over the list of pick rays that belong to the same group as this mesh
-                            let mesh_to_world = transform.compute_matrix();
                             let new_intersection = match indices {
-                                Indices::U16(vector) => ray_mesh_intersection(
+                                Indices::U16(vertex_indices) => ray_mesh_intersection(
                                     &mesh_to_world,
                                     vertex_positions,
+                                    vertex_normals,
                                     &ray,
-                                    &vector.iter().map(|x| *x as u32).collect(),
+                                    Some(&vertex_indices.iter().map(|x| *x as u32).collect()),
                                 ),
-                                Indices::U32(vector) => ray_mesh_intersection(
+                                Indices::U32(vertex_indices) => ray_mesh_intersection(
                                     &mesh_to_world,
                                     vertex_positions,
+                                    vertex_normals,
                                     &ray,
-                                    vector,
+                                    Some(vertex_indices),
                                 ),
                             };
-                            new_intersection.map(|new_intersection| (entity, new_intersection))
+                            if let Some(intersection) = new_intersection {
+                                picks.clone().lock().unwrap().push((entity, intersection))
+                            }
                         } else {
-                            // If we get here the mesh doesn't have an index list!
-                            panic!(
-                                "No index matrix found in mesh {:?}\n{:?}",
-                                mesh_handle, mesh
+                            let new_intersection = ray_mesh_intersection(
+                                &mesh_to_world,
+                                vertex_positions,
+                                vertex_normals,
+                                &ray,
+                                None,
                             );
+                            if let Some(intersection) = new_intersection {
+                                picks.clone().lock().unwrap().push((entity, intersection))
+                            }
                         }
-                    } else {
-                        None
                     }
-                })
-                .collect::<Vec<(Entity, Intersection)>>();
+                }
+            });
+            let mut picks = Arc::try_unwrap(picks).unwrap().into_inner().unwrap();
             picks.sort_by(|a, b| {
                 a.1.distance()
                     .partial_cmp(&b.1.distance())
@@ -490,58 +515,151 @@ pub fn update_raycast<T: 'static + Send + Sync>(
 }
 
 /// Checks if a ray intersects a mesh, and returns the nearest intersection if one exists.
-#[allow(clippy::ptr_arg)]
 fn ray_mesh_intersection(
     mesh_to_world: &Mat4,
     vertex_positions: &[[f32; 3]],
+    vertex_normals: Option<&[[f32; 3]]>,
     pick_ray: &Ray3d,
-    indices: &Vec<u32>,
+    indices: Option<&Vec<u32>>,
 ) -> Option<Intersection> {
     // The ray cast can hit the same mesh many times, so we need to track which hit is
     // closest to the camera, and record that.
-    let mut min_pick_distance_squared = f32::MAX;
+    let mut min_pick_distance = f32::MAX;
     let mut pick_intersection = None;
 
-    // Make sure this chunk has 3 vertices to avoid a panic.
-    if indices.len() % 3 == 0 {
+    let world_to_mesh = mesh_to_world.inverse();
+
+    let mesh_space_ray = Ray3d::new(
+        world_to_mesh.transform_point3(pick_ray.origin()),
+        world_to_mesh.transform_vector3(pick_ray.direction()),
+    );
+
+    if let Some(indices) = indices {
+        // Make sure this chunk has 3 vertices to avoid a panic.
+        if indices.len() % 3 != 0 {
+            warn!("Index list not a multiple of 3");
+            return None;
+        }
         // Now that we're in the vector of vertex indices, we want to look at the vertex
         // positions for each triangle, so we'll take indices in chunks of three, where each
         // chunk of three indices are references to the three vertices of a triangle.
         for index in indices.chunks(3) {
-            // Construct a triangle in world space using the mesh data
-            let mut world_vertices: [Vec3; 3] = [Vec3::ZERO, Vec3::ZERO, Vec3::ZERO];
-            for i in 0..3 {
-                let vertex_index = index[i] as usize;
-                world_vertices[i] =
-                    mesh_to_world.project_point3(Vec3::from(vertex_positions[vertex_index]));
+            let tri_vertex_positions = [
+                Vec3::from(vertex_positions[index[0] as usize]),
+                Vec3::from(vertex_positions[index[1] as usize]),
+                Vec3::from(vertex_positions[index[2] as usize]),
+            ];
+            let tri_normals = if let Some(normals) = vertex_normals {
+                Some([
+                    Vec3::from(normals[index[0] as usize]),
+                    Vec3::from(normals[index[1] as usize]),
+                    Vec3::from(normals[index[2] as usize]),
+                ])
+            } else {
+                None
+            };
+            let intersection = triangle_intersection(
+                tri_vertex_positions,
+                tri_normals,
+                min_pick_distance,
+                mesh_space_ray,
+            );
+            if let Some(i) = intersection {
+                pick_intersection = Some(Intersection::new(
+                    mesh_to_world.transform_point3(i.position()),
+                    mesh_to_world.transform_vector3(i.normal()),
+                    mesh_to_world
+                        .transform_vector3(mesh_space_ray.direction() * i.distance())
+                        .length(),
+                    i.world_triangle().map(|tri| {
+                        Triangle::from([
+                            mesh_to_world.transform_point3(tri.v0),
+                            mesh_to_world.transform_point3(tri.v1),
+                            mesh_to_world.transform_point3(tri.v2),
+                        ])
+                    }),
+                ));
+                min_pick_distance = i.distance();
             }
-            // If all vertices in the triangle are further away than the nearest hit, skip
-            if world_vertices
-                .iter()
-                .map(|vert| (*vert - pick_ray.origin()).length_squared().abs())
-                .fold(f32::INFINITY, |a, b| a.min(b))
-                > min_pick_distance_squared
-            {
-                continue;
-            }
-            let world_triangle = Triangle::from(world_vertices);
-            // Run the raycast on the ray and triangle
-            if let Some(intersection) =
-                ray_triangle_intersection(pick_ray, &world_triangle, RaycastAlgorithm::default())
-            {
-                let distance: f32 = (intersection.origin() - pick_ray.origin())
-                    .length_squared()
-                    .abs();
-                if distance < min_pick_distance_squared {
-                    min_pick_distance_squared = distance;
-                    pick_intersection = Some(Intersection::new(
-                        intersection,
-                        distance,
-                        Some(world_triangle),
-                    ));
-                }
+        }
+    } else {
+        for vertex in vertex_positions.chunks(3) {
+            let tri_vertex_positions = [
+                Vec3::from(vertex[0]),
+                Vec3::from(vertex[1]),
+                Vec3::from(vertex[2]),
+            ];
+            let tri_normals = if let Some(normals) = vertex_normals {
+                Some([
+                    Vec3::from(normals[0]),
+                    Vec3::from(normals[1]),
+                    Vec3::from(normals[2]),
+                ])
+            } else {
+                None
+            };
+            let intersection = triangle_intersection(
+                tri_vertex_positions,
+                tri_normals,
+                min_pick_distance,
+                mesh_space_ray,
+            );
+            if let Some(i) = intersection {
+                pick_intersection = Some(Intersection::new(
+                    mesh_to_world.transform_point3(i.position()),
+                    mesh_to_world.transform_vector3(i.normal()),
+                    mesh_to_world
+                        .transform_vector3(mesh_space_ray.direction() * i.distance())
+                        .length(),
+                    i.world_triangle().map(|tri| {
+                        Triangle::from([
+                            mesh_to_world.transform_point3(tri.v0),
+                            mesh_to_world.transform_point3(tri.v1),
+                            mesh_to_world.transform_point3(tri.v2),
+                        ])
+                    }),
+                ));
+                min_pick_distance = i.distance();
             }
         }
     }
     pick_intersection
+}
+
+fn triangle_intersection(
+    tri_vertices: [Vec3; 3],
+    tri_normals: Option<[Vec3; 3]>,
+    max_distance: f32,
+    ray: Ray3d,
+) -> Option<Intersection> {
+    if tri_vertices
+        .iter()
+        .filter(|&&vertex| (vertex - ray.origin()).length_squared() < max_distance.powi(2))
+        .count()
+        != 0
+    {
+        let triangle = Triangle::from(tri_vertices);
+        // Run the raycast on the ray and triangle
+        if let Some(ray_hit) =
+        ray_triangle_intersection(&ray, &triangle, RaycastAlgorithm::default())
+        {
+            let distance = *ray_hit.distance();
+            if distance > 0.0 && distance < max_distance {
+                let position = ray.position(distance);
+                let normal = if let Some(normals) = tri_normals {
+                    let u = ray_hit.uv_coords().0;
+                    let v = ray_hit.uv_coords().1;
+                    let w = 1.0 - u - v;
+                    normals[1] * u + normals[2] * v + normals[0] * w
+                } else {
+                    (triangle.v1 - triangle.v0)
+                        .cross(triangle.v2 - triangle.v0)
+                        .normalize()
+                };
+                let intersection = Intersection::new(position, normal, distance, Some(triangle));
+                return Some(intersection);
+            }
+        }
+    }
+    None
 }
