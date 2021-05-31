@@ -38,7 +38,7 @@ pub fn update_bound_sphere<T: 'static + Send + Sync>(
         //Or<(Added<BoundVol>, Changed<Handle<Mesh>>)>, Broken in bevy due to unsoundness, see #9
     >,
 ) {
-    if state.enabled == crate::Enabled::Disabled {
+    if state.enabled == crate::ActiveState::Disabled {
         return;
     }
 

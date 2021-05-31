@@ -93,7 +93,7 @@ pub enum RaycastSystem {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum Enabled {
+pub enum ActiveState {
     /// Ray casting enabled
     Enabled,
     /// Ray casting disabled
@@ -101,7 +101,7 @@ pub enum Enabled {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum Debug {
+pub enum DebugState {
     /// No debugging visuals
     None,
     /// Cursor pointing at the intersected mesh
@@ -110,15 +110,15 @@ pub enum Debug {
 
 /// Global plugin state used to enable or disable all ray casting for a given type T.
 pub struct PluginState<T> {
-    pub enabled: Enabled,
+    pub enabled: ActiveState,
     #[cfg(feature = "debug")]
-    pub debug: Debug,
+    pub debug: DebugState,
     _marker: PhantomData<T>,
 }
 
 impl<T> PluginState<T> {
     #[cfg(feature = "debug")]
-    pub fn new(enabled: Enabled, debug: Debug) -> Self {
+    pub fn new(enabled: ActiveState, debug: DebugState) -> Self {
         Self {
             enabled,
             debug,
@@ -127,7 +127,7 @@ impl<T> PluginState<T> {
     }
 
     #[cfg(not(feature = "debug"))]
-    pub fn new(enabled: Enabled) -> Self {
+    pub fn new(enabled: ActiveState) -> Self {
         Self {
             enabled,
             _marker: Default::default(),
@@ -138,9 +138,9 @@ impl<T> PluginState<T> {
 impl<T> Default for PluginState<T> {
     fn default() -> Self {
         PluginState {
-            enabled: Enabled::Enabled,
+            enabled: ActiveState::Enabled,
             #[cfg(feature = "debug")]
-            debug: Debug::Cursor,
+            debug: DebugState::Cursor,
             _marker: PhantomData::<T>::default(),
         }
     }
@@ -391,7 +391,7 @@ pub fn update_raycast<T: 'static + Send + Sync>(
     >,
     mesh_query: Query<(&Handle<Mesh>, &GlobalTransform, Entity), With<RayCastMesh<T>>>,
 ) {
-    if state.enabled == Enabled::Disabled {
+    if state.enabled == ActiveState::Disabled {
         return;
     }
 

@@ -6,7 +6,7 @@ use bevy::ecs::schedule::ShouldRun;
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 
-use crate::{Debug, Enabled, PluginState, RayCastSource};
+use crate::{ActiveState, DebugState, PluginState, RayCastSource};
 
 pub struct DebugResource {
     pub cube_size: f32,
@@ -184,7 +184,7 @@ pub(crate) fn change_cursors_by_changed_state<T: 'static + Send + Sync>(
         return;
     }
 
-    if state.enabled == Enabled::Enabled && state.debug == Debug::Cursor {
+    if state.enabled == ActiveState::Enabled && state.debug == DebugState::Cursor {
         sources.for_each_mut(|(source_entity, mut source)| {
             add_debug_cursor::<T>(
                 &mut commands,
@@ -204,7 +204,7 @@ pub(crate) fn change_cursors_by_changed_state<T: 'static + Send + Sync>(
 pub(crate) fn run_if_debug_enabled<T: 'static + Send + Sync>(
     state: Res<PluginState<T>>,
 ) -> ShouldRun {
-    if state.enabled == Enabled::Enabled && state.debug == Debug::Cursor {
+    if state.enabled == ActiveState::Enabled && state.debug == DebugState::Cursor {
         ShouldRun::Yes
     } else {
         ShouldRun::No
