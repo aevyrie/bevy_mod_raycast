@@ -8,7 +8,7 @@
 
 A [Bevy](https://github.com/bevyengine/bevy) plugin for 3D ray casting against meshes. Used to build [`bevy_mod_picking`](https://github.com/aevyrie/bevy_mod_picking). Contributions welcome!
 
-<img src="https://user-images.githubusercontent.com/2632925/113971363-7de2f000-97ed-11eb-8d82-58e2146caea8.gif" width="50%"><img src="https://user-images.githubusercontent.com/2632925/113972803-1b3f2380-97f0-11eb-8443-9c7db4fa8943.gif" width="50%">
+![ezgif-2-69b8dc941be6](https://user-images.githubusercontent.com/2632925/121757699-420d2500-cad3-11eb-8d1d-ac697fc1ed21.gif)
 
 ## Uses
 
