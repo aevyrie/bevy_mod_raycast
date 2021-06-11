@@ -306,7 +306,15 @@ pub fn update_raycast<T: 'static + Send + Sync>(
         (&Visible, Option<&BoundVol>, &GlobalTransform, Entity),
         With<RayCastMesh<T>>,
     >,
-    mesh_query: Query<(&Handle<Mesh>, &GlobalTransform, Entity), With<RayCastMesh<T>>>,
+    mesh_query: Query<
+        (
+            &Handle<Mesh>,
+            Option<&SimplifiedMesh>,
+            &GlobalTransform,
+            Entity,
+        ),
+        With<RayCastMesh<T>>,
+    >,
 ) {
     if !state.enabled {
         return;
@@ -355,25 +363,32 @@ pub fn update_raycast<T: 'static + Send + Sync>(
 
             let picks = Arc::new(Mutex::new(Vec::new()));
 
-            mesh_query.par_for_each(&pool, 32, |(mesh_handle, transform, entity)| {
-                if culled_list.contains(&entity) {
-                    let _raycast_guard = raycast.enter();
-                    // Use the mesh handle to get a reference to a mesh asset
-                    if let Some(mesh) = meshes.get(mesh_handle) {
-                        if mesh.primitive_topology() != PrimitiveTopology::TriangleList {
-                            error!("bevy_mod_picking only supports TriangleList mesh topology");
-                        }
-                        // Get the vertex positions from the mesh reference resolved from the mesh handle
-                        let vertex_positions: &Vec<[f32; 3]> =
-                            match mesh.attribute(Mesh::ATTRIBUTE_POSITION) {
+            mesh_query.par_for_each(
+                &pool,
+                32,
+                |(mesh_handle, simplified_mesh, transform, entity)| {
+                    if culled_list.contains(&entity) {
+                        let _raycast_guard = raycast.enter();
+                        // Use the mesh handle to get a reference to a mesh asset
+                        if let Some(mesh) =
+                            meshes.get(simplified_mesh.map(|bm| &bm.mesh).unwrap_or(mesh_handle))
+                        {
+                            if mesh.primitive_topology() != PrimitiveTopology::TriangleList {
+                                error!("bevy_mod_picking only supports TriangleList mesh topology");
+                            }
+                            // Get the vertex positions from the mesh reference resolved from the mesh handle
+                            let vertex_positions: &Vec<[f32; 3]> = match mesh
+                                .attribute(Mesh::ATTRIBUTE_POSITION)
+                            {
                                 None => panic!("Mesh does not contain vertex positions"),
                                 Some(vertex_values) => match &vertex_values {
                                     VertexAttributeValues::Float32x3(positions) => positions,
                                     _ => panic!("Unexpected types in {}", Mesh::ATTRIBUTE_POSITION),
                                 },
                             };
-                        let vertex_normals: Option<&[[f32; 3]]> =
-                            if let Some(normal_values) = mesh.attribute(Mesh::ATTRIBUTE_NORMAL) {
+                            let vertex_normals: Option<&[[f32; 3]]> = if let Some(normal_values) =
+                                mesh.attribute(Mesh::ATTRIBUTE_NORMAL)
+                            {
                                 match &normal_values {
                                     VertexAttributeValues::Float32x3(normals) => Some(normals),
                                     _ => None,
@@ -381,43 +396,44 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                             } else {
                                 None
                             };
-                        let mesh_to_world = transform.compute_matrix();
-                        if let Some(indices) = &mesh.indices() {
-                            // Iterate over the list of pick rays that belong to the same group as this mesh
-                            let new_intersection = match indices {
-                                Indices::U16(vertex_indices) => ray_mesh_intersection(
+                            let mesh_to_world = transform.compute_matrix();
+                            if let Some(indices) = &mesh.indices() {
+                                // Iterate over the list of pick rays that belong to the same group as this mesh
+                                let new_intersection = match indices {
+                                    Indices::U16(vertex_indices) => ray_mesh_intersection(
+                                        &mesh_to_world,
+                                        vertex_positions,
+                                        vertex_normals,
+                                        &ray,
+                                        Some(&vertex_indices.iter().map(|x| *x as u32).collect()),
+                                    ),
+                                    Indices::U32(vertex_indices) => ray_mesh_intersection(
+                                        &mesh_to_world,
+                                        vertex_positions,
+                                        vertex_normals,
+                                        &ray,
+                                        Some(vertex_indices),
+                                    ),
+                                };
+                                if let Some(intersection) = new_intersection {
+                                    picks.clone().lock().unwrap().push((entity, intersection))
+                                }
+                            } else {
+                                let new_intersection = ray_mesh_intersection(
                                     &mesh_to_world,
                                     vertex_positions,
                                     vertex_normals,
                                     &ray,
-                                    Some(&vertex_indices.iter().map(|x| *x as u32).collect()),
-                                ),
-                                Indices::U32(vertex_indices) => ray_mesh_intersection(
-                                    &mesh_to_world,
-                                    vertex_positions,
-                                    vertex_normals,
-                                    &ray,
-                                    Some(vertex_indices),
-                                ),
-                            };
-                            if let Some(intersection) = new_intersection {
-                                picks.clone().lock().unwrap().push((entity, intersection))
-                            }
-                        } else {
-                            let new_intersection = ray_mesh_intersection(
-                                &mesh_to_world,
-                                vertex_positions,
-                                vertex_normals,
-                                &ray,
-                                None,
-                            );
-                            if let Some(intersection) = new_intersection {
-                                picks.clone().lock().unwrap().push((entity, intersection))
+                                    None,
+                                );
+                                if let Some(intersection) = new_intersection {
+                                    picks.clone().lock().unwrap().push((entity, intersection))
+                                }
                             }
                         }
                     }
-                }
-            });
+                },
+            );
             let mut picks = Arc::try_unwrap(picks).unwrap().into_inner().unwrap();
             picks.sort_by(|a, b| {
                 a.1.distance()
@@ -578,4 +594,8 @@ fn triangle_intersection(
         }
     }
     None
+}
+
+pub struct SimplifiedMesh {
+    pub mesh: Handle<Mesh>,
 }
