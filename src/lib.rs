@@ -481,15 +481,13 @@ fn ray_mesh_intersection(
                 Vec3::from(vertex_positions[index[1] as usize]),
                 Vec3::from(vertex_positions[index[2] as usize]),
             ];
-            let tri_normals = if let Some(normals) = vertex_normals {
-                Some([
+            let tri_normals = vertex_normals.map(|normals| {
+                [
                     Vec3::from(normals[index[0] as usize]),
                     Vec3::from(normals[index[1] as usize]),
                     Vec3::from(normals[index[2] as usize]),
-                ])
-            } else {
-                None
-            };
+                ]
+            });
             let intersection = triangle_intersection(
                 tri_vertex_positions,
                 tri_normals,
@@ -521,15 +519,13 @@ fn ray_mesh_intersection(
                 Vec3::from(vertex[1]),
                 Vec3::from(vertex[2]),
             ];
-            let tri_normals = if let Some(normals) = vertex_normals {
-                Some([
+            let tri_normals = vertex_normals.map(|normals| {
+                [
                     Vec3::from(normals[0]),
                     Vec3::from(normals[1]),
                     Vec3::from(normals[2]),
-                ])
-            } else {
-                None
-            };
+                ]
+            });
             let intersection = triangle_intersection(
                 tri_vertex_positions,
                 tri_normals,
