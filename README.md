@@ -41,3 +41,15 @@ Ray casting from a camera using ray casts from the camera entity's GlobalTransfo
 ```shell
 cargo run --example minimal
 ```
+
+*Optimization* Mouse picking over many meshes using bounding volumes:
+
+```shell
+cargo run --example bounding_volume
+```
+
+*Optimization* Mouse picking over complicated mesh using simplified mesh:
+
+```shell
+cargo run --example simplified_mesh
+```
