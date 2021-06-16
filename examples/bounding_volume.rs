@@ -3,13 +3,13 @@ use bevy::{
     prelude::*,
 };
 use bevy_mod_raycast::{
-    DefaultRaycastingPlugin, RayCastMesh, RayCastMethod, RayCastSource, RaycastSystem,
-    SimplifiedMesh,
+    update_bound_sphere, BoundVol, DefaultRaycastingPlugin, RayCastMesh, RayCastMethod,
+    RayCastSource, RaycastSystem,
 };
 
-// This example will show you how to setup simplified mesh to optimise when raycasting over a
-// scene with a complicated mesh. The simplified mesh will be used to check faster for intersection
-// with the mesh.
+// This example will show you how to setup bounding volume to optimise when raycasting over a
+// scene with many meshes. The bounding volume will be used to check faster for which mesh
+// to actually raycast on.
 
 fn main() {
     App::build()
@@ -32,7 +32,10 @@ fn main() {
         .add_startup_system(setup_scene.system())
         .add_startup_system(setup_ui.system())
         .add_system(update_fps.system())
-        .add_system(manage_simplified_mesh.system())
+        .add_system(manage_boundvol.system())
+        // The update_bound_sphere system is responsible of computing the bounding sphere of system
+        // with the `BoundVol` component.
+        .add_system(update_bound_sphere::<MyRaycastSet>.system())
         .run();
 }
 
@@ -57,32 +60,36 @@ fn update_raycast_with_cursor(
 // Set up a simple 3D scene
 fn setup_scene(
     mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    asset_server: Res<AssetServer>,
 ) {
-    commands
-        .spawn_bundle(PerspectiveCameraBundle::default())
-        .insert(RayCastSource::<MyRaycastSet>::new()); // Designate the camera as our source
-    commands
-        .spawn_bundle(PbrBundle {
-            // This is a very complex mesh that will be hard to raycast on
-            mesh: meshes.add(Mesh::from(shape::UVSphere {
-                radius: 1.0,
-                sectors: 1000,
-                stacks: 1000,
-            })),
-            material: materials.add(Color::rgb(1.0, 1.0, 1.0).into()),
-            transform: Transform::from_translation(Vec3::new(0.0, 0.0, -5.0)),
-            ..Default::default()
-        })
-        .insert(RayCastMesh::<MyRaycastSet>::default()); // Make this mesh ray cast-able
     commands.spawn_bundle(PointLightBundle {
         transform: Transform::from_translation(Vec3::new(4.0, 8.0, 4.0)),
         ..Default::default()
     });
+
+    commands
+        .spawn_bundle(PerspectiveCameraBundle::default())
+        .insert(RayCastSource::<MyRaycastSet>::new()); // Designate the camera as our source
+
+    let mesh = asset_server.load("models/monkey/Monkey.gltf#Mesh0/Primitive0");
+    // Spawn multiple mesh to raycast on
+    let n = 10;
+    for i in -n..=n {
+        for j in -n..=n {
+            commands
+                .spawn_bundle(PbrBundle {
+                    mesh: mesh.clone(),
+                    material: materials.add(Color::rgb(1.0, 1.0, 1.0).into()),
+                    transform: Transform::from_translation(Vec3::new(i as f32, j as f32, -5.0)),
+                    ..Default::default()
+                })
+                .insert(RayCastMesh::<MyRaycastSet>::default()); // Make this mesh ray cast-able
+        }
+    }
 }
 
-// Set up UI to show status of simplified mesh
+// Set up UI to show status of bounding volume
 fn setup_ui(
     mut commands: Commands,
     mut materials: ResMut<Assets<ColorMaterial>>,
@@ -130,7 +137,7 @@ fn setup_ui(
                 text: Text {
                     sections: vec![
                         TextSection {
-                            value: "Simplified Mesh: ".to_string(),
+                            value: "Bounding Volume: ".to_string(),
                             style: TextStyle {
                                 font: font.clone(),
                                 font_size: 30.0,
@@ -150,33 +157,30 @@ fn setup_ui(
                 },
                 ..Default::default()
             })
-            .insert(SimplifiedStatus);
+            .insert(BoundVolStatus);
         });
 }
 
-struct SimplifiedStatus;
-
+struct BoundVolStatus;
 struct FpsText;
 
-// Insert or remove SimplifiedMesh component from the mesh being raycasted on.
-fn manage_simplified_mesh(
+// Insert or remove BoundVol components from the meshes being raycasted on.
+fn manage_boundvol(
     mut commands: Commands,
-    query: Query<(Entity, Option<&SimplifiedMesh>), With<RayCastMesh<MyRaycastSet>>>,
-    mut status_query: Query<&mut Text, With<SimplifiedStatus>>,
+    query: Query<(Entity, Option<&BoundVol>), With<RayCastMesh<MyRaycastSet>>>,
+    mut status_query: Query<&mut Text, With<BoundVolStatus>>,
     keyboard: Res<Input<KeyCode>>,
-    mut meshes: ResMut<Assets<Mesh>>,
 ) {
     if keyboard.just_pressed(KeyCode::Space) {
-        if let Ok((entity, ray)) = query.single() {
-            if let Ok(mut text) = status_query.single_mut() {
+        if let Ok(mut text) = status_query.single_mut() {
+            for (entity, ray) in query.iter() {
                 if ray.is_none() {
-                    commands.entity(entity).insert(SimplifiedMesh {
-                        mesh: meshes.add(Mesh::from(shape::UVSphere::default())),
-                    });
+                    // Insert the component, the bounding volume will be automatically computed
+                    commands.entity(entity).insert(BoundVol::default());
                     text.sections[1].value = "ON".to_string();
                     text.sections[1].style.color = Color::GREEN;
                 } else {
-                    commands.entity(entity).remove::<SimplifiedMesh>();
+                    commands.entity(entity).remove::<BoundVol>();
                     text.sections[1].value = "OFF".to_string();
                     text.sections[1].style.color = Color::RED;
                 }
