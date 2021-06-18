@@ -20,3 +20,8 @@ bevy = { git = "https://github.com/bevyengine/bevy", branch = "main", version = 
     "bevy_gltf",
     "x11",
 ] }
+criterion = "0.3"
+
+[[bench]]
+name = "ray_mesh_intersection"
+harness = false
