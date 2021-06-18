@@ -564,10 +564,9 @@ fn triangle_intersection(
         .iter()
         .any(|&vertex| (vertex - ray.origin()).length_squared() < max_distance.powi(2))
     {
-        let triangle = Triangle::from(tri_vertices);
         // Run the raycast on the ray and triangle
         if let Some(ray_hit) =
-            ray_triangle_intersection(&ray, &triangle, RaycastAlgorithm::default())
+            ray_triangle_intersection(&ray, &tri_vertices, RaycastAlgorithm::default())
         {
             let distance = *ray_hit.distance();
             if distance > 0.0 && distance < max_distance {
@@ -578,16 +577,56 @@ fn triangle_intersection(
                     let w = 1.0 - u - v;
                     normals[1] * u + normals[2] * v + normals[0] * w
                 } else {
-                    (triangle.v1 - triangle.v0)
-                        .cross(triangle.v2 - triangle.v0)
+                    (tri_vertices.v1() - tri_vertices.v0())
+                        .cross(tri_vertices.v2() - tri_vertices.v0())
                         .normalize()
                 };
-                let intersection = Intersection::new(position, normal, distance, Some(triangle));
+                let intersection =
+                    Intersection::new(position, normal, distance, Some(tri_vertices.to_triangle()));
                 return Some(intersection);
             }
         }
     }
     None
+}
+
+pub trait TriangleTrait {
+    fn v0(&self) -> Vec3;
+    fn v1(&self) -> Vec3;
+    fn v2(&self) -> Vec3;
+    fn to_triangle(self) -> Triangle;
+}
+impl TriangleTrait for [Vec3; 3] {
+    fn v0(&self) -> Vec3 {
+        self[0]
+    }
+    fn v1(&self) -> Vec3 {
+        self[1]
+    }
+    fn v2(&self) -> Vec3 {
+        self[2]
+    }
+
+    fn to_triangle(self) -> Triangle {
+        Triangle::from(self)
+    }
+}
+impl TriangleTrait for Triangle {
+    fn v0(&self) -> Vec3 {
+        self.v0
+    }
+
+    fn v1(&self) -> Vec3 {
+        self.v1
+    }
+
+    fn v2(&self) -> Vec3 {
+        self.v2
+    }
+
+    fn to_triangle(self) -> Triangle {
+        self
+    }
 }
 
 pub struct SimplifiedMesh {
