@@ -562,9 +562,7 @@ fn triangle_intersection(
 ) -> Option<Intersection> {
     if tri_vertices
         .iter()
-        .filter(|&&vertex| (vertex - ray.origin()).length_squared() < max_distance.powi(2))
-        .count()
-        != 0
+        .any(|&vertex| (vertex - ray.origin()).length_squared() < max_distance.powi(2))
     {
         let triangle = Triangle::from(tri_vertices);
         // Run the raycast on the ray and triangle
