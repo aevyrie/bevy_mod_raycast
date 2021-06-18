@@ -447,7 +447,7 @@ pub fn update_raycast<T: 'static + Send + Sync>(
 }
 
 /// Checks if a ray intersects a mesh, and returns the nearest intersection if one exists.
-fn ray_mesh_intersection(
+pub fn ray_mesh_intersection(
     mesh_to_world: &Mat4,
     vertex_positions: &[[f32; 3]],
     vertex_normals: Option<&[[f32; 3]]>,
