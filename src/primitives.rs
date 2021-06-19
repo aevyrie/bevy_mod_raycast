@@ -81,7 +81,7 @@ pub mod rays {
         pub fn position(&self, distance: f32) -> Vec3 {
             self.origin + self.direction * distance
         }
-        pub fn to_transform(&self) -> Mat4 {
+        pub fn to_transform(self) -> Mat4 {
             let position = self.origin;
             let normal = self.direction;
             let up = Vec3::from([0.0, 1.0, 0.0]);
