@@ -1,6 +1,6 @@
 use std::f32::EPSILON;
 
-use crate::primitives::*;
+use crate::{primitives::*, TriangleTrait};
 use bevy::prelude::*;
 
 #[allow(dead_code)]
@@ -25,7 +25,7 @@ pub enum Backfaces {
 #[inline(always)]
 pub fn ray_triangle_intersection(
     ray: &Ray3d,
-    triangle: &Triangle,
+    triangle: &impl TriangleTrait,
     algorithm: RaycastAlgorithm,
 ) -> Option<RayHit> {
     match algorithm {
@@ -57,12 +57,12 @@ impl RayHit {
 #[inline(always)]
 pub fn raycast_moller_trumbore(
     ray: &Ray3d,
-    triangle: &Triangle,
+    triangle: &impl TriangleTrait,
     backface_culling: Backfaces,
 ) -> Option<RayHit> {
     // Source: https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/moller-trumbore-ray-triangle-intersection
-    let vector_v0_to_v1: Vec3 = triangle.v1 - triangle.v0;
-    let vector_v0_to_v2: Vec3 = triangle.v2 - triangle.v0;
+    let vector_v0_to_v1: Vec3 = triangle.v1() - triangle.v0();
+    let vector_v0_to_v2: Vec3 = triangle.v2() - triangle.v0();
     let p_vec: Vec3 = ray.direction().cross(vector_v0_to_v2);
     let determinant: f32 = vector_v0_to_v1.dot(p_vec);
 
@@ -85,7 +85,7 @@ pub fn raycast_moller_trumbore(
 
     let determinant_inverse = 1.0 / determinant;
 
-    let t_vec: Vec3 = ray.origin() - triangle.v0;
+    let t_vec: Vec3 = ray.origin() - triangle.v0();
     let u = t_vec.dot(p_vec) * determinant_inverse;
     if !(0.0..=1.0).contains(&u) {
         return None;
