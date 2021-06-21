@@ -78,9 +78,9 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
 
 // Marker struct for the text
 struct PathStatus;
-// Marker struct for the ground, used to et cursor position
+// Marker struct for the ground, used to get cursor position
 struct Ground;
-// Marker struct for the path origin, showed by a yellow sphere
+// Marker struct for the path origin, shown by a yellow sphere
 struct PathOrigin;
 // Marker struct for obstacles
 struct PathObstacle;
