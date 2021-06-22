@@ -373,62 +373,10 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                         if let Some(mesh) =
                             meshes.get(simplified_mesh.map(|bm| &bm.mesh).unwrap_or(mesh_handle))
                         {
-                            if mesh.primitive_topology() != PrimitiveTopology::TriangleList {
-                                error!("bevy_mod_picking only supports TriangleList mesh topology");
-                            }
-                            // Get the vertex positions from the mesh reference resolved from the mesh handle
-                            let vertex_positions: &Vec<[f32; 3]> = match mesh
-                                .attribute(Mesh::ATTRIBUTE_POSITION)
+                            if let Some(intersection) =
+                                ray_intersection_over_mesh(mesh, &transform.compute_matrix(), &ray)
                             {
-                                None => panic!("Mesh does not contain vertex positions"),
-                                Some(vertex_values) => match &vertex_values {
-                                    VertexAttributeValues::Float32x3(positions) => positions,
-                                    _ => panic!("Unexpected types in {}", Mesh::ATTRIBUTE_POSITION),
-                                },
-                            };
-                            let vertex_normals: Option<&[[f32; 3]]> = if let Some(normal_values) =
-                                mesh.attribute(Mesh::ATTRIBUTE_NORMAL)
-                            {
-                                match &normal_values {
-                                    VertexAttributeValues::Float32x3(normals) => Some(normals),
-                                    _ => None,
-                                }
-                            } else {
-                                None
-                            };
-                            let mesh_to_world = transform.compute_matrix();
-                            if let Some(indices) = &mesh.indices() {
-                                // Iterate over the list of pick rays that belong to the same group as this mesh
-                                let new_intersection = match indices {
-                                    Indices::U16(vertex_indices) => ray_mesh_intersection(
-                                        &mesh_to_world,
-                                        vertex_positions,
-                                        vertex_normals,
-                                        &ray,
-                                        Some(&vertex_indices.iter().map(|x| *x as u32).collect()),
-                                    ),
-                                    Indices::U32(vertex_indices) => ray_mesh_intersection(
-                                        &mesh_to_world,
-                                        vertex_positions,
-                                        vertex_normals,
-                                        &ray,
-                                        Some(vertex_indices),
-                                    ),
-                                };
-                                if let Some(intersection) = new_intersection {
-                                    picks.clone().lock().unwrap().push((entity, intersection))
-                                }
-                            } else {
-                                let new_intersection = ray_mesh_intersection(
-                                    &mesh_to_world,
-                                    vertex_positions,
-                                    vertex_normals,
-                                    &ray,
-                                    None,
-                                );
-                                if let Some(intersection) = new_intersection {
-                                    picks.clone().lock().unwrap().push((entity, intersection))
-                                }
+                                picks.clone().lock().unwrap().push((entity, intersection));
                             }
                         }
                     }
@@ -443,6 +391,57 @@ pub fn update_raycast<T: 'static + Send + Sync>(
 
             pick_source.intersections = picks;
         }
+    }
+}
+
+/// Cast a ray on a mesh, and returns the intersection
+pub fn ray_intersection_over_mesh(
+    mesh: &Mesh,
+    mesh_to_world: &Mat4,
+    ray: &Ray3d,
+) -> Option<Intersection> {
+    if mesh.primitive_topology() != PrimitiveTopology::TriangleList {
+        error!("bevy_mod_picking only supports TriangleList mesh topology");
+        return None;
+    }
+    // Get the vertex positions from the mesh reference resolved from the mesh handle
+    let vertex_positions: &Vec<[f32; 3]> = match mesh.attribute(Mesh::ATTRIBUTE_POSITION) {
+        None => panic!("Mesh does not contain vertex positions"),
+        Some(vertex_values) => match &vertex_values {
+            VertexAttributeValues::Float32x3(positions) => positions,
+            _ => panic!("Unexpected types in {}", Mesh::ATTRIBUTE_POSITION),
+        },
+    };
+    let vertex_normals: Option<&[[f32; 3]]> =
+        if let Some(normal_values) = mesh.attribute(Mesh::ATTRIBUTE_NORMAL) {
+            match &normal_values {
+                VertexAttributeValues::Float32x3(normals) => Some(normals),
+                _ => None,
+            }
+        } else {
+            None
+        };
+
+    if let Some(indices) = &mesh.indices() {
+        // Iterate over the list of pick rays that belong to the same group as this mesh
+        match indices {
+            Indices::U16(vertex_indices) => ray_mesh_intersection(
+                &mesh_to_world,
+                vertex_positions,
+                vertex_normals,
+                &ray,
+                Some(&vertex_indices.iter().map(|x| *x as u32).collect()),
+            ),
+            Indices::U32(vertex_indices) => ray_mesh_intersection(
+                &mesh_to_world,
+                vertex_positions,
+                vertex_normals,
+                &ray,
+                Some(vertex_indices),
+            ),
+        }
+    } else {
+        ray_mesh_intersection(&mesh_to_world, vertex_positions, vertex_normals, &ray, None)
     }
 }
 
