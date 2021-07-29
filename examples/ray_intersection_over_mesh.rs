@@ -20,8 +20,7 @@ fn main() {
         .add_startup_system(setup_ui)
         .add_system_to_stage(
             CoreStage::PreUpdate,
-            update_raycast_with_cursor
-                .before(RaycastSystem::BuildRays),
+            update_raycast_with_cursor.before(RaycastSystem::BuildRays),
         )
         .add_system(check_path)
         .add_system(move_origin)

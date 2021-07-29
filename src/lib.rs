@@ -424,22 +424,22 @@ pub fn ray_intersection_over_mesh(
         // Iterate over the list of pick rays that belong to the same group as this mesh
         match indices {
             Indices::U16(vertex_indices) => ray_mesh_intersection(
-                &mesh_to_world,
+                mesh_to_world,
                 vertex_positions,
                 vertex_normals,
-                &ray,
+                ray,
                 Some(&vertex_indices.iter().map(|x| *x as u32).collect()),
             ),
             Indices::U32(vertex_indices) => ray_mesh_intersection(
-                &mesh_to_world,
+                mesh_to_world,
                 vertex_positions,
                 vertex_normals,
-                &ray,
+                ray,
                 Some(vertex_indices),
             ),
         }
     } else {
-        ray_mesh_intersection(&mesh_to_world, vertex_positions, vertex_normals, &ray, None)
+        ray_mesh_intersection(mesh_to_world, vertex_positions, vertex_normals, ray, None)
     }
 }
 
