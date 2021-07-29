@@ -26,19 +26,17 @@ impl<T: 'static + Send + Sync> Plugin for DefaultRaycastingPlugin<T> {
         app.init_resource::<PluginState<T>>()
             .add_system_to_stage(
                 CoreStage::PreUpdate,
-                build_rays::<T>.system().label(RaycastSystem::BuildRays),
+                build_rays::<T>.label(RaycastSystem::BuildRays),
             )
             .add_system_to_stage(
                 CoreStage::PreUpdate,
                 update_raycast::<T>
-                    .system()
                     .label(RaycastSystem::UpdateRaycast)
                     .after(RaycastSystem::BuildRays),
             )
             .add_system_to_stage(
                 CoreStage::PreUpdate,
                 update_debug_cursor::<T>
-                    .system()
                     .label(RaycastSystem::UpdateDebugCursor)
                     .after(RaycastSystem::UpdateRaycast),
             );

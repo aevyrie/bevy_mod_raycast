@@ -26,16 +26,15 @@ fn main() {
         .add_system_to_stage(
             CoreStage::PreUpdate,
             update_raycast_with_cursor
-                .system()
                 .before(RaycastSystem::BuildRays),
         )
-        .add_startup_system(setup_scene.system())
-        .add_startup_system(setup_ui.system())
-        .add_system(update_fps.system())
-        .add_system(manage_boundvol.system())
+        .add_startup_system(setup_scene)
+        .add_startup_system(setup_ui)
+        .add_system(update_fps)
+        .add_system(manage_boundvol)
         // The update_bound_sphere system is responsible of computing the bounding sphere of system
         // with the `BoundVol` component.
-        .add_system(update_bound_sphere::<MyRaycastSet>.system())
+        .add_system(update_bound_sphere::<MyRaycastSet>)
         .run();
 }
 

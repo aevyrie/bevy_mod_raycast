@@ -21,10 +21,9 @@ fn main() {
         .add_system_to_stage(
             CoreStage::PreUpdate,
             update_raycast_with_cursor
-                .system()
                 .before(RaycastSystem::BuildRays),
         )
-        .add_startup_system(setup.system())
+        .add_startup_system(setup)
         .run();
 }
 
