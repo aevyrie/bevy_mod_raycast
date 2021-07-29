@@ -12,7 +12,7 @@ use bevy_mod_raycast::{
 // to actually raycast on.
 
 fn main() {
-    App::build()
+    App::new()
         .insert_resource(WindowDescriptor {
             vsync: false, // We'll turn off vsync for this example, as it's a source of input lag.
             ..Default::default()

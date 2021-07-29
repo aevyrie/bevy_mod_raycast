@@ -22,7 +22,7 @@ use std::sync::{Arc, Mutex};
 
 pub struct DefaultRaycastingPlugin<T: 'static + Send + Sync>(pub PhantomData<T>);
 impl<T: 'static + Send + Sync> Plugin for DefaultRaycastingPlugin<T> {
-    fn build(&self, app: &mut AppBuilder) {
+    fn build(&self, app: &mut App) {
         app.init_resource::<PluginState<T>>()
             .add_system_to_stage(
                 CoreStage::PreUpdate,
