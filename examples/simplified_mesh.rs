@@ -12,7 +12,7 @@ use bevy_mod_raycast::{
 // with the mesh.
 
 fn main() {
-    App::build()
+    App::new()
         .insert_resource(WindowDescriptor {
             vsync: false, // We'll turn off vsync for this example, as it's a source of input lag.
             ..Default::default()
@@ -26,13 +26,12 @@ fn main() {
         .add_system_to_stage(
             CoreStage::PreUpdate,
             update_raycast_with_cursor
-                .system()
                 .before(RaycastSystem::BuildRays),
         )
-        .add_startup_system(setup_scene.system())
-        .add_startup_system(setup_ui.system())
-        .add_system(update_fps.system())
-        .add_system(manage_simplified_mesh.system())
+        .add_startup_system(setup_scene)
+        .add_startup_system(setup_ui)
+        .add_system(update_fps)
+        .add_system(manage_simplified_mesh)
         .run();
 }
 

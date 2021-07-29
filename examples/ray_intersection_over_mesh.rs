@@ -13,19 +13,18 @@ use bevy_mod_raycast::{
 // you would need to rotate the ray and recast it until it doesn't intersect with the obstacle.
 
 fn main() {
-    App::build()
+    App::new()
         .add_plugins(DefaultPlugins)
         .add_plugin(DefaultRaycastingPlugin::<Ground>::default())
-        .add_startup_system(setup.system())
-        .add_startup_system(setup_ui.system())
+        .add_startup_system(setup)
+        .add_startup_system(setup_ui)
         .add_system_to_stage(
             CoreStage::PreUpdate,
             update_raycast_with_cursor
-                .system()
                 .before(RaycastSystem::BuildRays),
         )
-        .add_system(check_path.system())
-        .add_system(move_origin.system())
+        .add_system(check_path)
+        .add_system(move_origin)
         .run();
 }
 

@@ -8,7 +8,7 @@ use bevy_mod_raycast::{
 // looking for a more fully-featured mouse picking plugin, try out bevy_mod_picking.
 
 fn main() {
-    App::build()
+    App::new()
         .insert_resource(WindowDescriptor {
             vsync: false, // We'll turn off vsync for this example, as it's a source of input lag.
             ..Default::default()
@@ -21,10 +21,9 @@ fn main() {
         .add_system_to_stage(
             CoreStage::PreUpdate,
             update_raycast_with_cursor
-                .system()
                 .before(RaycastSystem::BuildRays),
         )
-        .add_startup_system(setup.system())
+        .add_startup_system(setup)
         .run();
 }
 
