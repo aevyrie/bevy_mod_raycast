@@ -14,6 +14,10 @@ use bevy_mod_raycast::{
 
 fn main() {
     App::new()
+        .insert_resource(WindowDescriptor {
+            vsync: false, // Disabled for this demo to remove vsync as a source of input latency
+            ..Default::default()
+        })
         .add_plugins(DefaultPlugins)
         .add_plugin(DefaultRaycastingPlugin::<Ground>::default())
         .add_startup_system(setup)
