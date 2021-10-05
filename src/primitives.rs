@@ -8,7 +8,7 @@ pub enum Primitive3d {
 }
 
 /// Holds computed intersection information
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Copy, Clone, Component)]
 pub struct Intersection {
     position: Vec3,
     normal: Vec3,

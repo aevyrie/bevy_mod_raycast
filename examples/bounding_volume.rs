@@ -159,7 +159,9 @@ fn setup_ui(
         });
 }
 
+#[derive(Component)]
 struct BoundVolStatus;
+#[derive(Component)]
 struct FpsText;
 
 // Insert or remove BoundVol components from the meshes being raycasted on.
@@ -170,7 +172,7 @@ fn manage_boundvol(
     keyboard: Res<Input<KeyCode>>,
 ) {
     if keyboard.just_pressed(KeyCode::Space) {
-        if let Ok(mut text) = status_query.single_mut() {
+        if let Ok(mut text) = status_query.get_single_mut() {
             for (entity, ray) in query.iter() {
                 if ray.is_none() {
                     // Insert the component, the bounding volume will be automatically computed

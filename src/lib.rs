@@ -56,6 +56,7 @@ pub enum RaycastSystem {
 }
 
 /// Global plugin state used to enable or disable all ray casting for a given type T.
+#[derive(Component)]
 pub struct PluginState<T> {
     pub enabled: bool,
     _marker: PhantomData<T>,
@@ -74,7 +75,7 @@ impl<T> Default for PluginState<T> {
 /// # Requirements
 ///
 /// The marked entity must also have a [Mesh] component.
-#[derive(Debug)]
+#[derive(Component, Debug)]
 pub struct RayCastMesh<T> {
     _marker: PhantomData<T>,
 }
@@ -90,6 +91,7 @@ impl<T> Default for RayCastMesh<T> {
 /// The `RayCastSource` component is used to generate rays with the specified `cast_method`. A `ray`
 /// is generated when the RayCastSource is initialized, either by waiting for update_raycast system
 /// to process the ray, or by using a `with_ray` function.
+#[derive(Component)]
 pub struct RayCastSource<T> {
     pub cast_method: RayCastMethod,
     ray: Option<Ray3d>,
@@ -626,6 +628,7 @@ impl TriangleTrait for Triangle {
     }
 }
 
+#[derive(Component)]
 pub struct SimplifiedMesh {
     pub mesh: Handle<Mesh>,
 }

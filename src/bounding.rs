@@ -6,7 +6,7 @@ use core::panic;
 
 use crate::PluginState;
 
-#[derive(Debug, Clone, Default)]
+#[derive(Component, Debug, Clone, Default)]
 pub struct BoundVol {
     pub sphere: Option<BoundingSphere>,
 }

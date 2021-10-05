@@ -79,14 +79,19 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
 }
 
 // Marker struct for the text
+#[derive(Component)]
 struct PathStatus;
 // Marker struct for the ground, used to get cursor position
+#[derive(Component)]
 struct Ground;
 // Marker struct for the path origin, shown by a yellow sphere
+#[derive(Component)]
 struct PathOrigin;
 // Marker struct for obstacles
+#[derive(Component)]
 struct PathObstacle;
 // Marker struct for the intersection point
+#[derive(Component)]
 struct PathObstaclePoint;
 
 fn setup(
@@ -169,13 +174,13 @@ fn move_origin(
     to: Query<&RayCastSource<Ground>>,
     mouse_event: Res<Input<MouseButton>>,
 ) {
-    if let Ok(raycast_source) = to.single() {
+    if let Ok(raycast_source) = to.get_single() {
         if let Some(top_intersection) = raycast_source.intersect_top() {
             let mut new_position = top_intersection.1.position();
             new_position.y = 0.0;
 
             if mouse_event.just_pressed(MouseButton::Left) {
-                if let Ok(mut transform) = from.single_mut() {
+                if let Ok(mut transform) = from.get_single_mut() {
                     transform.translation = new_position;
                 }
             }
@@ -206,8 +211,8 @@ fn check_path(
         ),
     >,
 ) {
-    if let Ok(mut origin_transform) = from.single_mut() {
-        if let Ok(raycast_source) = to.single() {
+    if let Ok(mut origin_transform) = from.get_single_mut() {
+        if let Ok(raycast_source) = to.get_single() {
             if let Some(top_intersection) = raycast_source.intersect_top() {
                 let from = origin_transform.translation;
                 let to = top_intersection.1.position();
@@ -223,9 +228,9 @@ fn check_path(
                 }
 
                 let ray = Ray3d::new(from, ray_direction);
-                if let Ok(mut text) = status_query.single_mut() {
+                if let Ok(mut text) = status_query.get_single_mut() {
                     if let Ok((mut intersection_transform, mut visible)) =
-                        intersection_point.single_mut()
+                        intersection_point.get_single_mut()
                     {
                         // Set everything as OK in case there are no obstacle in path
                         text.sections[1].value = "Direct!".to_string();

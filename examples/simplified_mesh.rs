@@ -152,8 +152,10 @@ fn setup_ui(
         });
 }
 
+#[derive(Component)]
 struct SimplifiedStatus;
 
+#[derive(Component)]
 struct FpsText;
 
 // Insert or remove SimplifiedMesh component from the mesh being raycasted on.
@@ -165,8 +167,8 @@ fn manage_simplified_mesh(
     mut meshes: ResMut<Assets<Mesh>>,
 ) {
     if keyboard.just_pressed(KeyCode::Space) {
-        if let Ok((entity, ray)) = query.single() {
-            if let Ok(mut text) = status_query.single_mut() {
+        if let Ok((entity, ray)) = query.get_single() {
+            if let Ok(mut text) = status_query.get_single_mut() {
                 if ray.is_none() {
                     commands.entity(entity).insert(SimplifiedMesh {
                         mesh: meshes.add(Mesh::from(shape::UVSphere::default())),

@@ -2,6 +2,7 @@ use crate::{PluginState, RayCastSource};
 use bevy::prelude::*;
 use std::marker::PhantomData;
 
+#[derive(Component)]
 pub struct DebugCursor<T> {
     _phantom: PhantomData<T>,
 }
@@ -13,6 +14,7 @@ impl<T> Default for DebugCursor<T> {
     }
 }
 
+#[derive(Component)]
 pub struct DebugCursorTail<T> {
     _phantom: PhantomData<T>,
 }
@@ -24,6 +26,7 @@ impl<T> Default for DebugCursorTail<T> {
     }
 }
 
+#[derive(Component)]
 pub struct DebugCursorMesh<T> {
     _phantom: PhantomData<T>,
 }
