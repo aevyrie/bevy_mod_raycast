@@ -1,4 +1,4 @@
-use crate::{PluginState, RayCastSource};
+use crate::RayCastSource;
 use bevy::prelude::*;
 use std::marker::PhantomData;
 
@@ -43,7 +43,6 @@ impl<T> Default for DebugCursorMesh<T> {
 #[allow(clippy::too_many_arguments)]
 pub fn update_debug_cursor<T: 'static + Send + Sync>(
     mut commands: Commands,
-    state: Res<PluginState<T>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     added_sources_query: Query<&RayCastSource<T>, Added<RayCastSource<T>>>,
@@ -55,10 +54,6 @@ pub fn update_debug_cursor<T: 'static + Send + Sync>(
     mut visibility_query: Query<&mut Visible, With<DebugCursorMesh<T>>>,
     raycast_source_query: Query<&RayCastSource<T>>,
 ) {
-    if !state.enabled {
-        return;
-    }
-
     let cube_size = 0.04;
     let cube_tail_scale = 20.0;
     let ball_size = 0.08;

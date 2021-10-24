@@ -9,6 +9,7 @@ pub use crate::primitives::*;
 
 use crate::raycast::*;
 use bevy::{
+    ecs::schedule::ShouldRun,
     prelude::*,
     render::{
         camera::Camera,
@@ -23,28 +24,47 @@ use std::sync::{Arc, Mutex};
 pub struct DefaultRaycastingPlugin<T: 'static + Send + Sync>(pub PhantomData<T>);
 impl<T: 'static + Send + Sync> Plugin for DefaultRaycastingPlugin<T> {
     fn build(&self, app: &mut App) {
-        app.init_resource::<PluginState<T>>()
-            .add_system_to_stage(
+        app.init_resource::<DefaultPluginState<T>>()
+            .add_system_set_to_stage(
                 CoreStage::PreUpdate,
-                build_rays::<T>.label(RaycastSystem::BuildRays),
-            )
-            .add_system_to_stage(
-                CoreStage::PreUpdate,
-                update_raycast::<T>
-                    .label(RaycastSystem::UpdateRaycast)
-                    .after(RaycastSystem::BuildRays),
-            )
-            .add_system_to_stage(
-                CoreStage::PreUpdate,
-                update_debug_cursor::<T>
-                    .label(RaycastSystem::UpdateDebugCursor)
-                    .after(RaycastSystem::UpdateRaycast),
+                SystemSet::new()
+                    .with_system(
+                        build_rays::<T>
+                            .label(RaycastSystem::BuildRays)
+                            .with_run_criteria(|state: Res<DefaultPluginState<T>>| {
+                                bool_criteria(state.build_rays)
+                            }),
+                    )
+                    .with_system(
+                        update_raycast::<T>
+                            .label(RaycastSystem::UpdateRaycast)
+                            .with_run_criteria(|state: Res<DefaultPluginState<T>>| {
+                                bool_criteria(state.update_raycast)
+                            })
+                            .after(RaycastSystem::BuildRays),
+                    )
+                    .with_system(
+                        update_debug_cursor::<T>
+                            .label(RaycastSystem::UpdateDebugCursor)
+                            .with_run_criteria(|state: Res<DefaultPluginState<T>>| {
+                                bool_criteria(state.update_debug_cursor)
+                            })
+                            .after(RaycastSystem::UpdateRaycast),
+                    ),
             );
     }
 }
 impl<T: 'static + Send + Sync> Default for DefaultRaycastingPlugin<T> {
     fn default() -> Self {
         DefaultRaycastingPlugin(PhantomData::<T>)
+    }
+}
+
+fn bool_criteria(flag: bool) -> ShouldRun {
+    if flag {
+        ShouldRun::Yes
+    } else {
+        ShouldRun::No
     }
 }
 
@@ -57,15 +77,29 @@ pub enum RaycastSystem {
 
 /// Global plugin state used to enable or disable all ray casting for a given type T.
 #[derive(Component)]
-pub struct PluginState<T> {
-    pub enabled: bool,
+pub struct DefaultPluginState<T> {
+    pub build_rays: bool,
+    pub update_raycast: bool,
+    pub update_debug_cursor: bool,
     _marker: PhantomData<T>,
 }
-impl<T> Default for PluginState<T> {
+
+impl<T> Default for DefaultPluginState<T> {
     fn default() -> Self {
-        PluginState {
-            enabled: true,
+        DefaultPluginState {
+            build_rays: true,
+            update_raycast: true,
+            update_debug_cursor: false,
             _marker: PhantomData::<T>::default(),
+        }
+    }
+}
+
+impl<T> DefaultPluginState<T> {
+    pub fn with_debug_cursor(self) -> Self {
+        DefaultPluginState {
+            update_debug_cursor: true,
+            ..self
         }
     }
 }
@@ -298,7 +332,6 @@ pub fn build_rays<T: 'static + Send + Sync>(
 pub fn update_raycast<T: 'static + Send + Sync>(
     // Resources
     pool: Res<ComputeTaskPool>,
-    state: Res<PluginState<T>>,
     meshes: Res<Assets<Mesh>>,
     // Queries
     mut pick_source_query: Query<&mut RayCastSource<T>>,
@@ -316,9 +349,6 @@ pub fn update_raycast<T: 'static + Send + Sync>(
         With<RayCastMesh<T>>,
     >,
 ) {
-    if !state.enabled {
-        return;
-    }
     for mut pick_source in pick_source_query.iter_mut() {
         if let Some(ray) = pick_source.ray {
             pick_source.intersections.clear();
