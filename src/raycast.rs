@@ -121,7 +121,7 @@ mod tests {
         let ray = Ray3d::new(Vec3::ZERO, Vec3::X);
         let algorithm = RaycastAlgorithm::MollerTrumbore(Backfaces::Include);
         let result = ray_triangle_intersection(&ray, &triangle, algorithm);
-        assert_eq!(result.unwrap().distance, 1.0);
+        assert!(result.unwrap().distance - 1.0 <= f32::EPSILON);
     }
 
     #[test]
