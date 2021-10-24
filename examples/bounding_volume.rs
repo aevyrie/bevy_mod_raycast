@@ -3,8 +3,8 @@ use bevy::{
     prelude::*,
 };
 use bevy_mod_raycast::{
-    update_bound_sphere, BoundVol, DefaultRaycastingPlugin, RayCastMesh, RayCastMethod,
-    RayCastSource, RaycastSystem,
+    update_bound_sphere, BoundVol, DefaultPluginState, DefaultRaycastingPlugin, RayCastMesh,
+    RayCastMethod, RayCastSource, RaycastSystem,
 };
 
 // This example will show you how to setup bounding volume to optimise when raycasting over a
@@ -61,6 +61,7 @@ fn setup_scene(
     mut materials: ResMut<Assets<StandardMaterial>>,
     asset_server: Res<AssetServer>,
 ) {
+    commands.insert_resource(DefaultPluginState::<MyRaycastSet>::default().with_debug_cursor());
     commands.spawn_bundle(PointLightBundle {
         transform: Transform::from_translation(Vec3::new(4.0, 8.0, 4.0)),
         ..Default::default()

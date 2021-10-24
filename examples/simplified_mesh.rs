@@ -3,8 +3,8 @@ use bevy::{
     prelude::*,
 };
 use bevy_mod_raycast::{
-    DefaultRaycastingPlugin, RayCastMesh, RayCastMethod, RayCastSource, RaycastSystem,
-    SimplifiedMesh,
+    DefaultPluginState, DefaultRaycastingPlugin, RayCastMesh, RayCastMethod, RayCastSource,
+    RaycastSystem, SimplifiedMesh,
 };
 
 // This example will show you how to setup simplified mesh to optimise when raycasting over a
@@ -58,6 +58,7 @@ fn setup_scene(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
+    commands.insert_resource(DefaultPluginState::<MyRaycastSet>::default().with_debug_cursor());
     commands
         .spawn_bundle(PerspectiveCameraBundle::default())
         .insert(RayCastSource::<MyRaycastSet>::new()); // Designate the camera as our source

@@ -95,6 +95,15 @@ impl<T> Default for DefaultPluginState<T> {
     }
 }
 
+impl<T> DefaultPluginState<T> {
+    pub fn with_debug_cursor(self) -> Self {
+        DefaultPluginState {
+            update_debug_cursor: true,
+            ..self
+        }
+    }
+}
+
 /// Marks an entity as pickable, with type T.
 ///
 /// # Requirements

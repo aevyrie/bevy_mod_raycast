@@ -2,8 +2,8 @@ use std::f32::consts::FRAC_PI_2;
 
 use bevy::prelude::*;
 use bevy_mod_raycast::{
-    ray_intersection_over_mesh, DefaultRaycastingPlugin, Ray3d, RayCastMesh, RayCastMethod,
-    RayCastSource, RaycastSystem,
+    ray_intersection_over_mesh, DefaultPluginState, DefaultRaycastingPlugin, Ray3d, RayCastMesh,
+    RayCastMethod, RayCastSource, RaycastSystem,
 };
 
 // This example shows how to use `ray_intersection_over_mesh` to cast a ray over a mesh
@@ -65,7 +65,7 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                     TextSection {
                         value: "Direct!".to_string(),
                         style: TextStyle {
-                            font: font.clone(),
+                            font,
                             font_size: 30.0,
                             color: Color::WHITE,
                         },
@@ -99,6 +99,8 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
+    // Enable the debug cursor against the `Ground`
+    commands.insert_resource(DefaultPluginState::<Ground>::default().with_debug_cursor());
     // Spawn the camera
     commands
         .spawn_bundle(PerspectiveCameraBundle {
@@ -188,6 +190,7 @@ fn move_origin(
     }
 }
 
+#[allow(clippy::type_complexity)]
 // Check the path between origin and mouse cursor position
 fn check_path(
     mut from: Query<

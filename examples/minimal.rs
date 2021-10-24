@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bevy_mod_raycast::{DefaultRaycastingPlugin, RayCastMesh, RayCastSource};
+use bevy_mod_raycast::{DefaultPluginState, DefaultRaycastingPlugin, RayCastMesh, RayCastSource};
 
 // This example casts a ray from the camera using its transform, intersecting a mesh, and displays
 // the debug cursor at the intersection.
@@ -22,6 +22,10 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
+    // Overwrite the default plugin state with one that enables the debug cursor. This line can be
+    // removed if the debug cursor isn't needed as the state is set to default values when the
+    // default plugin is added.
+    commands.insert_resource(DefaultPluginState::<MyRaycastSet>::default().with_debug_cursor());
     commands
         .spawn_bundle(PerspectiveCameraBundle::default())
         // Designate the camera as our ray casting source. Using `new_transform_empty()` means that
