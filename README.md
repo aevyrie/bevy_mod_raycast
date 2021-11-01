@@ -28,6 +28,10 @@ I intend to track the `main` branch of Bevy. PRs supporting this are welcome!
 |0.5|0.2|
 |0.4|0.1|
 
+## Crate Features
+
+* `debug` enables a debugging cursor at runtime (enabled by default)
+
 ## Examples
 
 Mouse picking using a ray cast built using screen space coordinates:

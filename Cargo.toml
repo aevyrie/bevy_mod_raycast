@@ -9,6 +9,10 @@ repository = "https://github.com/aevyrie/bevy_mod_raycast/"
 keywords = ["gamedev", "graphics", "bevy", "3d", "raycast"]
 categories = ["game-engines", "rendering"]
 
+[features]
+default = ["debug"]
+debug = []
+
 [dependencies]
 bevy = { git = "https://github.com/bevyengine/bevy", branch = "main", version = "0.5", default-features = false, features = ["render"] }
 

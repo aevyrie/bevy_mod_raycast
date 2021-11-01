@@ -1,9 +1,11 @@
 mod bounding;
+#[cfg(feature = "debug")]
 mod debug;
 mod primitives;
 mod raycast;
 
 pub use crate::bounding::{update_bound_sphere, BoundVol, BoundingSphere};
+#[cfg(feature = "debug")]
 pub use crate::debug::*;
 pub use crate::primitives::*;
 
@@ -24,34 +26,35 @@ use std::sync::{Arc, Mutex};
 pub struct DefaultRaycastingPlugin<T: 'static + Send + Sync>(pub PhantomData<T>);
 impl<T: 'static + Send + Sync> Plugin for DefaultRaycastingPlugin<T> {
     fn build(&self, app: &mut App) {
-        app.init_resource::<DefaultPluginState<T>>()
-            .add_system_set_to_stage(
-                CoreStage::PreUpdate,
-                SystemSet::new()
-                    .with_system(
-                        build_rays::<T>
-                            .label(RaycastSystem::BuildRays)
-                            .with_run_criteria(|state: Res<DefaultPluginState<T>>| {
-                                bool_criteria(state.build_rays)
-                            }),
-                    )
-                    .with_system(
-                        update_raycast::<T>
-                            .label(RaycastSystem::UpdateRaycast)
-                            .with_run_criteria(|state: Res<DefaultPluginState<T>>| {
-                                bool_criteria(state.update_raycast)
-                            })
-                            .after(RaycastSystem::BuildRays),
-                    )
-                    .with_system(
-                        update_debug_cursor::<T>
-                            .label(RaycastSystem::UpdateDebugCursor)
-                            .with_run_criteria(|state: Res<DefaultPluginState<T>>| {
-                                bool_criteria(state.update_debug_cursor)
-                            })
-                            .after(RaycastSystem::UpdateRaycast),
-                    ),
+        let system_set = SystemSet::new()
+            .with_system(
+                build_rays::<T>
+                    .label(RaycastSystem::BuildRays)
+                    .with_run_criteria(|state: Res<DefaultPluginState<T>>| {
+                        bool_criteria(state.build_rays)
+                    }),
+            )
+            .with_system(
+                update_raycast::<T>
+                    .label(RaycastSystem::UpdateRaycast)
+                    .with_run_criteria(|state: Res<DefaultPluginState<T>>| {
+                        bool_criteria(state.update_raycast)
+                    })
+                    .after(RaycastSystem::BuildRays),
             );
+
+        #[cfg(feature = "debug")]
+        let system_set = system_set.with_system(
+            update_debug_cursor::<T>
+                .label(RaycastSystem::UpdateDebugCursor)
+                .with_run_criteria(|state: Res<DefaultPluginState<T>>| {
+                    bool_criteria(state.update_debug_cursor)
+                })
+                .after(RaycastSystem::UpdateRaycast),
+        );
+
+        app.init_resource::<DefaultPluginState<T>>()
+            .add_system_set_to_stage(CoreStage::PreUpdate, system_set);
     }
 }
 impl<T: 'static + Send + Sync> Default for DefaultRaycastingPlugin<T> {
@@ -98,6 +101,7 @@ impl<T> Default for DefaultPluginState<T> {
 impl<T> DefaultPluginState<T> {
     pub fn with_debug_cursor(self) -> Self {
         DefaultPluginState {
+            #[cfg(feature = "debug")]
             update_debug_cursor: true,
             ..self
         }
