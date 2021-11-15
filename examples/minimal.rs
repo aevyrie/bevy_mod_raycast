@@ -5,11 +5,11 @@ use bevy_mod_raycast::{DefaultPluginState, DefaultRaycastingPlugin, RayCastMesh,
 // the debug cursor at the intersection.
 
 fn main() {
-    App::new()
+    App::build()
         .add_plugins(DefaultPlugins)
         .add_plugin(DefaultRaycastingPlugin::<MyRaycastSet>::default())
-        .add_startup_system(setup)
-        .add_system(rotator)
+        .add_startup_system(setup.system())
+        .add_system(rotator.system())
         .run();
 }
 
@@ -44,7 +44,7 @@ fn setup(
             ..Default::default()
         })
         .insert(RayCastMesh::<MyRaycastSet>::default()); // Make this mesh ray cast-able
-    commands.spawn_bundle(PointLightBundle {
+    commands.spawn_bundle(LightBundle {
         transform: Transform::from_translation(Vec3::new(4.0, 8.0, 4.0)),
         ..Default::default()
     });

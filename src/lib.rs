@@ -9,7 +9,7 @@ pub use crate::primitives::*;
 
 use crate::raycast::*;
 use bevy::{
-    ecs::schedule::ShouldRun,
+    ecs::{component::Component, schedule::ShouldRun},
     prelude::*,
     render::{
         camera::Camera,
@@ -20,37 +20,44 @@ use bevy::{
 };
 use std::marker::PhantomData;
 use std::sync::{Arc, Mutex};
-
+fn check_build_rays<T: Component>(state: Res<DefaultPluginState<T>>) -> ShouldRun {
+    bool_criteria((&state).build_rays)
+}
+fn check_update_raycast<T: Component>(state: Res<DefaultPluginState<T>>) -> ShouldRun {
+    bool_criteria((&state).update_raycast)
+}
+fn check_update_debug_cursor<T: Component>(state: Res<DefaultPluginState<T>>) -> ShouldRun {
+    bool_criteria((&state).update_debug_cursor)
+}
 pub struct DefaultRaycastingPlugin<T: 'static + Send + Sync>(pub PhantomData<T>);
-impl<T: 'static + Send + Sync> Plugin for DefaultRaycastingPlugin<T> {
-    fn build(&self, app: &mut App) {
+impl<T: 'static + Send + Sync + Component> Plugin for DefaultRaycastingPlugin<T> {
+    fn build(&self, app: &mut AppBuilder) {
         app.init_resource::<DefaultPluginState<T>>()
             .add_system_set_to_stage(
                 CoreStage::PreUpdate,
                 SystemSet::new()
-                    .with_system(
-                        build_rays::<T>
-                            .label(RaycastSystem::BuildRays)
-                            .with_run_criteria(|state: Res<DefaultPluginState<T>>| {
-                                bool_criteria(state.build_rays)
-                            }),
-                    )
-                    .with_system(
-                        update_raycast::<T>
-                            .label(RaycastSystem::UpdateRaycast)
-                            .with_run_criteria(|state: Res<DefaultPluginState<T>>| {
-                                bool_criteria(state.update_raycast)
-                            })
-                            .after(RaycastSystem::BuildRays),
-                    )
-                    .with_system(
-                        update_debug_cursor::<T>
-                            .label(RaycastSystem::UpdateDebugCursor)
-                            .with_run_criteria(|state: Res<DefaultPluginState<T>>| {
-                                bool_criteria(state.update_debug_cursor)
-                            })
-                            .after(RaycastSystem::UpdateRaycast),
-                    ),
+                    .with_system(build_rays::<T>.system())
+                    .label(RaycastSystem::BuildRays)
+                    .with_run_criteria(check_build_rays::<T>.system()),
+            );
+
+        app.init_resource::<DefaultPluginState<T>>()
+            .add_system_set_to_stage(
+                CoreStage::PreUpdate,
+                SystemSet::new()
+                    .with_system(update_raycast::<T>.system())
+                    .label(RaycastSystem::UpdateRaycast)
+                    .with_run_criteria(check_update_raycast::<T>.system())
+                    .after(RaycastSystem::BuildRays),
+            );
+        app.init_resource::<DefaultPluginState<T>>()
+            .add_system_set_to_stage(
+                CoreStage::PreUpdate,
+                SystemSet::new()
+                    .with_system(update_debug_cursor::<T>.system())
+                    .label(RaycastSystem::UpdateDebugCursor)
+                    .with_run_criteria(check_update_debug_cursor::<T>.system())
+                    .after(RaycastSystem::UpdateRaycast),
             );
     }
 }
@@ -76,7 +83,6 @@ pub enum RaycastSystem {
 }
 
 /// Global plugin state used to enable or disable all ray casting for a given type T.
-#[derive(Component)]
 pub struct DefaultPluginState<T> {
     pub build_rays: bool,
     pub update_raycast: bool,
@@ -109,7 +115,7 @@ impl<T> DefaultPluginState<T> {
 /// # Requirements
 ///
 /// The marked entity must also have a [Mesh] component.
-#[derive(Component, Debug)]
+#[derive(Debug)]
 pub struct RayCastMesh<T> {
     _marker: PhantomData<T>,
 }
@@ -125,7 +131,7 @@ impl<T> Default for RayCastMesh<T> {
 /// The `RayCastSource` component is used to generate rays with the specified `cast_method`. A `ray`
 /// is generated when the RayCastSource is initialized, either by waiting for update_raycast system
 /// to process the ray, or by using a `with_ray` function.
-#[derive(Component)]
+
 pub struct RayCastSource<T> {
     pub cast_method: RayCastMethod,
     ray: Option<Ray3d>,
@@ -438,14 +444,14 @@ pub fn ray_intersection_over_mesh(
     let vertex_positions: &Vec<[f32; 3]> = match mesh.attribute(Mesh::ATTRIBUTE_POSITION) {
         None => panic!("Mesh does not contain vertex positions"),
         Some(vertex_values) => match &vertex_values {
-            VertexAttributeValues::Float32x3(positions) => positions,
+            VertexAttributeValues::Float3(positions) => positions,
             _ => panic!("Unexpected types in {}", Mesh::ATTRIBUTE_POSITION),
         },
     };
     let vertex_normals: Option<&[[f32; 3]]> =
         if let Some(normal_values) = mesh.attribute(Mesh::ATTRIBUTE_NORMAL) {
             match &normal_values {
-                VertexAttributeValues::Float32x3(normals) => Some(normals),
+                VertexAttributeValues::Float3(normals) => Some(normals),
                 _ => None,
             }
         } else {
@@ -658,7 +664,6 @@ impl TriangleTrait for Triangle {
     }
 }
 
-#[derive(Component)]
 pub struct SimplifiedMesh {
     pub mesh: Handle<Mesh>,
 }
