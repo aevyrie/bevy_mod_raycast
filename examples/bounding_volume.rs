@@ -12,7 +12,7 @@ use bevy_mod_raycast::{
 // to actually raycast on.
 
 fn main() {
-    App::new()
+    App::build()
         .insert_resource(WindowDescriptor {
             vsync: false, // We'll turn off vsync for this example, as it's a source of input lag.
             ..Default::default()
@@ -23,17 +23,19 @@ fn main() {
         // You will need to pay attention to what order you add systems! Putting them in the wrong
         // order can result in multiple frames of latency. Ray casting should probably happen after
         // the positions of your meshes have been updated in the UPDATE stage.
-        .add_system_to_stage(
+        .add_system_set_to_stage(
             CoreStage::PreUpdate,
-            update_raycast_with_cursor.before(RaycastSystem::BuildRays),
+            SystemSet::new()
+                .with_system(update_raycast_with_cursor.system())
+                .before(RaycastSystem::BuildRays),
         )
-        .add_startup_system(setup_scene)
-        .add_startup_system(setup_ui)
-        .add_system(update_fps)
-        .add_system(manage_boundvol)
+        .add_startup_system(setup_scene.system())
+        .add_startup_system(setup_ui.system())
+        .add_system(update_fps.system())
+        .add_system(manage_boundvol.system())
         // The update_bound_sphere system is responsible of computing the bounding sphere of system
         // with the `BoundVol` component.
-        .add_system(update_bound_sphere::<MyRaycastSet>)
+        .add_system(update_bound_sphere::<MyRaycastSet>.system())
         .run();
 }
 
@@ -62,7 +64,7 @@ fn setup_scene(
     asset_server: Res<AssetServer>,
 ) {
     commands.insert_resource(DefaultPluginState::<MyRaycastSet>::default().with_debug_cursor());
-    commands.spawn_bundle(PointLightBundle {
+    commands.spawn_bundle(LightBundle {
         transform: Transform::from_translation(Vec3::new(4.0, 8.0, 4.0)),
         ..Default::default()
     });
@@ -160,9 +162,7 @@ fn setup_ui(
         });
 }
 
-#[derive(Component)]
 struct BoundVolStatus;
-#[derive(Component)]
 struct FpsText;
 
 // Insert or remove BoundVol components from the meshes being raycasted on.
@@ -173,7 +173,7 @@ fn manage_boundvol(
     keyboard: Res<Input<KeyCode>>,
 ) {
     if keyboard.just_pressed(KeyCode::Space) {
-        if let Ok(mut text) = status_query.get_single_mut() {
+        if let Some(mut text) = status_query.iter_mut().next() {
             for (entity, ray) in query.iter() {
                 if ray.is_none() {
                     // Insert the component, the bounding volume will be automatically computed
