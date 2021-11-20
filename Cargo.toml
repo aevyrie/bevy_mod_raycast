@@ -15,13 +15,4 @@ bevy = {  version = "0.5", default-features = false, features = ["render"] }
 [dev-dependencies]
 bevy = { version = "0.5", default-features = false, features = [
     "render",
-    "bevy_wgpu",
-    "bevy_winit",
-    "bevy_gltf",
-    "x11",
 ] }
-criterion = "0.3"
-
-[[bench]]
-name = "ray_mesh_intersection"
-harness = false
