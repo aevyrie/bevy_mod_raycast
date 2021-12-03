@@ -63,38 +63,40 @@ pub fn update_debug_cursor<T: 'static + Send + Sync>(
         ..Default::default()
     });
 
-    for _source in added_sources_query.iter() {
-        commands
-            // cursor
-            .spawn_bundle(PbrBundle {
-                mesh: meshes.add(Mesh::from(shape::Icosphere {
-                    subdivisions: 4,
-                    radius: ball_size,
-                })),
-                material: debug_material.clone(),
-                ..Default::default()
-            })
-            .with_children(|parent| {
-                let mut transform = Transform::from_translation(Vec3::new(
-                    0.0,
-                    (cube_size * cube_tail_scale) / 2.0,
-                    0.0,
-                ));
-                transform.apply_non_uniform_scale(Vec3::from([1.0, cube_tail_scale, 1.0]));
+    if cursor_query.is_empty(){
+        for _source in added_sources_query.iter() {
+            commands
+                // cursor
+                .spawn_bundle(PbrBundle {
+                    mesh: meshes.add(Mesh::from(shape::Icosphere {
+                        subdivisions: 4,
+                        radius: ball_size,
+                    })),
+                    material: debug_material.clone(),
+                    ..Default::default()
+                })
+                .with_children(|parent| {
+                    let mut transform = Transform::from_translation(Vec3::new(
+                        0.0,
+                        (cube_size * cube_tail_scale) / 2.0,
+                        0.0,
+                    ));
+                    transform.apply_non_uniform_scale(Vec3::from([1.0, cube_tail_scale, 1.0]));
 
-                // child cube
-                parent
-                    .spawn_bundle(PbrBundle {
-                        mesh: meshes.add(Mesh::from(shape::Cube { size: cube_size })),
-                        material: debug_material.clone(),
-                        transform,
-                        ..Default::default()
-                    })
-                    .insert(DebugCursorTail::<T>::default())
-                    .insert(DebugCursorMesh::<T>::default());
-            })
-            .insert(DebugCursor::<T>::default())
-            .insert(DebugCursorMesh::<T>::default());
+                    // child cube
+                    parent
+                        .spawn_bundle(PbrBundle {
+                            mesh: meshes.add(Mesh::from(shape::Cube { size: cube_size })),
+                            material: debug_material.clone(),
+                            transform,
+                            ..Default::default()
+                        })
+                        .insert(DebugCursorTail::<T>::default())
+                        .insert(DebugCursorMesh::<T>::default());
+                })
+                .insert(DebugCursor::<T>::default())
+                .insert(DebugCursorMesh::<T>::default());
+        }
     }
 
     // Set the cursor translation to the top pick's world coordinates
