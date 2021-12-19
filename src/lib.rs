@@ -21,13 +21,13 @@ use bevy::{
 use std::marker::PhantomData;
 use std::sync::{Arc, Mutex};
 fn check_build_rays<T: Component>(state: Res<DefaultPluginState<T>>) -> ShouldRun {
-    bool_criteria((&state).build_rays)
+    bool_criteria(state.build_rays)
 }
 fn check_update_raycast<T: Component>(state: Res<DefaultPluginState<T>>) -> ShouldRun {
-    bool_criteria((&state).update_raycast)
+    bool_criteria(state.update_raycast)
 }
 fn check_update_debug_cursor<T: Component>(state: Res<DefaultPluginState<T>>) -> ShouldRun {
-    bool_criteria((&state).update_debug_cursor)
+    bool_criteria(state.update_debug_cursor)
 }
 pub struct DefaultRaycastingPlugin<T: 'static + Send + Sync>(pub PhantomData<T>);
 impl<T: 'static + Send + Sync + Component> Plugin for DefaultRaycastingPlugin<T> {

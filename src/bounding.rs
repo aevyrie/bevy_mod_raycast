@@ -14,7 +14,6 @@ pub struct BoundVol {
 pub struct BoundingSphere {
     origin: Vec3,
     radius: f32,
-    scaled_radius: Option<f32>,
 }
 
 impl BoundingSphere {
@@ -82,7 +81,6 @@ impl From<&Mesh> for BoundingSphere {
         let mut sphere = BoundingSphere {
             origin: point_y.lerp(point_z, 0.5),
             radius: point_y.distance(point_z) / 2.0,
-            scaled_radius: None,
         };
         // Iteratively adjust sphere until it encloses all points
         loop {
@@ -102,7 +100,6 @@ impl From<&Mesh> for BoundingSphere {
                 sphere = BoundingSphere {
                     origin: sphere.origin.lerp(point_n, lerp_ratio),
                     radius: radius_new,
-                    scaled_radius: None,
                 };
             } else {
                 return sphere;
