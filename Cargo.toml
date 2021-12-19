@@ -16,3 +16,6 @@ bevy = {  version = "0.5", default-features = false, features = ["render"] }
 bevy = { version = "0.5", default-features = false, features = [
     "render",
 ] }
+[[bench]]
+name = "ray_mesh_intersection"
+harness = false

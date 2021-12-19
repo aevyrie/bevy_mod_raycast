@@ -1,8 +1,6 @@
-use bevy::{
-    prelude::*,
-    render::{mesh::VertexAttributeValues, pipeline::PrimitiveTopology},
-};
+use bevy::{prelude::*, render::mesh::VertexAttributeValues};
 use core::panic;
+use wgpu::PrimitiveTopology;
 
 #[derive(Debug, Clone, Default)]
 pub struct BoundVol {
