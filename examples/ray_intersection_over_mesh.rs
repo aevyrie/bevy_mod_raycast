@@ -156,7 +156,7 @@ fn setup(
             mesh: meshes.add(Mesh::from(shape::Icosphere::default())),
             material: materials.add(Color::rgb(1.0, 0.0, 0.0).into()),
             transform: Transform::from_scale(Vec3::splat(0.1)),
-            visible: Visible {
+            visibility: Visibility {
                 is_visible: false,
                 ..Default::default()
             },
@@ -206,7 +206,7 @@ fn check_path(
     meshes: Res<Assets<Mesh>>,
     mut status_query: Query<&mut Text, With<PathStatus>>,
     mut intersection_point: Query<
-        (&mut Transform, &mut Visible),
+        (&mut Transform, &mut Visibility),
         (
             With<PathObstaclePoint>,
             Without<PathObstacle>,

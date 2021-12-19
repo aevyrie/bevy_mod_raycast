@@ -89,11 +89,7 @@ fn setup_scene(
 }
 
 // Set up UI to show status of bounding volume
-fn setup_ui(
-    mut commands: Commands,
-    mut materials: ResMut<Assets<ColorMaterial>>,
-    asset_server: Res<AssetServer>,
-) {
+fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn_bundle(UiCameraBundle::default());
     let font = asset_server.load("fonts/FiraMono-Medium.ttf");
     commands
@@ -103,7 +99,7 @@ fn setup_ui(
                 flex_direction: FlexDirection::Column,
                 ..Default::default()
             },
-            material: materials.add(Color::NONE.into()),
+            color: Color::NONE.into(),
             ..Default::default()
         })
         .with_children(|ui| {

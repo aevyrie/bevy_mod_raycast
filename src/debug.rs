@@ -51,7 +51,7 @@ pub fn update_debug_cursor<T: 'static + Send + Sync>(
         &mut GlobalTransform,
         (With<DebugCursorTail<T>>, Without<DebugCursor<T>>),
     >,
-    mut visibility_query: Query<&mut Visible, With<DebugCursorMesh<T>>>,
+    mut visibility_query: Query<&mut Visibility, With<DebugCursorMesh<T>>>,
     raycast_source_query: Query<&RayCastSource<T>>,
 ) {
     let cube_size = 0.04;

@@ -14,12 +14,12 @@ use bevy::{
     render::{
         camera::Camera,
         mesh::{Indices, Mesh, VertexAttributeValues},
-        pipeline::PrimitiveTopology,
     },
     tasks::prelude::*,
 };
 use std::marker::PhantomData;
 use std::sync::{Arc, Mutex};
+use wgpu::PrimitiveTopology;
 
 pub struct DefaultRaycastingPlugin<T: 'static + Send + Sync>(pub PhantomData<T>);
 impl<T: 'static + Send + Sync> Plugin for DefaultRaycastingPlugin<T> {
@@ -336,7 +336,7 @@ pub fn update_raycast<T: 'static + Send + Sync>(
     // Queries
     mut pick_source_query: Query<&mut RayCastSource<T>>,
     culling_query: Query<
-        (&Visible, Option<&BoundVol>, &GlobalTransform, Entity),
+        (&Visibility, Option<&BoundVol>, &GlobalTransform, Entity),
         With<RayCastMesh<T>>,
     >,
     mesh_query: Query<
