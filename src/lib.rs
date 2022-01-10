@@ -386,6 +386,8 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                                     culled_list.clone().lock().unwrap().push(entity);
                                 }
                             }
+                        } else {
+                            culled_list.clone().lock().unwrap().push(entity);
                         }
                     }
                 },
