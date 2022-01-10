@@ -363,15 +363,21 @@ pub fn update_raycast<T: 'static + Send + Sync>(
             let ray_cull = info_span!("ray culling");
             let raycast = info_span!("raycast");
 
-            // Check all entities to see if the source ray intersects the bounding sphere, use this
+            // Check all entities to see if the source ray intersects the AABB, use this
             // to build a short list of entities that are in the path of the ray.
             let ray_cull_guard = ray_cull.enter();
             let culled_list: Vec<Entity> = culling_query
                 .iter()
                 .filter_map(
                     |(visibility, comp_visibility, bound_vol, transform, entity)| {
-                        if !visibility.is_visible || !comp_visibility.is_visible {
-                            None
+                        let should_raycast =
+                            if let RayCastMethod::Screenspace(_) = pick_source.cast_method {
+                                visibility.is_visible && comp_visibility.is_visible
+                            } else {
+                                visibility.is_visible
+                            };
+                        if !should_raycast {
+                            None // Exit early for entities that we can skip
                         } else {
                             if let Some(aabb) = bound_vol {
                                 if let Some([_, far]) =
