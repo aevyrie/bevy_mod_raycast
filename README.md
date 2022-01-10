@@ -23,8 +23,9 @@ This plugin makes it simple to create ray casting sources, such as a transform (
 
 I intend to track the `main` branch of Bevy. PRs supporting this are welcome! 
 
-|bevy|bevy_mod_raycst|
+|bevy|bevy_mod_raycast|
 |---|---|
+|0.6|0.3|
 |0.5|0.2|
 |0.4|0.1|
 
@@ -42,13 +43,13 @@ Ray casting from a camera using ray casts from the camera entity's GlobalTransfo
 cargo run --example minimal
 ```
 
-*Optimization* Mouse picking over many meshes using bounding volumes:
+*Optimization* Mouse picking over many meshes using AABBs:
 
 ```shell
 cargo run --example bounding_volume
 ```
 
-*Optimization* Mouse picking over complicated mesh using simplified mesh:
+*Optimization* Mouse picking over complicated mesh using simplified mesh for the raycasting:
 
 ```shell
 cargo run --example simplified_mesh
