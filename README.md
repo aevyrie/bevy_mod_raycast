@@ -17,7 +17,7 @@ This plugin makes it simple to create ray casting sources, such as a transform (
 - Only meshes that you mark with a component will be checked for intersections. 
 - You can define which ray casting source(s) should interact with which mesh(es) by marking grouped sources and targets with the same type. 
 - This plugin also provides some functionality to compute the intersection of rays with primitive shapes.
-- Rudimentary acceleration is provided with opt-in bounding spheres.
+- Acceleration is provided using Bevy's AABBs and visibility culling.
 
 ## Bevy Version Support
 
