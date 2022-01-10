@@ -366,37 +366,33 @@ pub fn update_raycast<T: 'static + Send + Sync>(
             // Check all entities to see if the source ray intersects the AABB, use this
             // to build a short list of entities that are in the path of the ray.
             let ray_cull_guard = ray_cull.enter();
-            let culled_list: Vec<Entity> = culling_query
-                .iter()
-                .filter_map(
-                    |(visibility, comp_visibility, bound_vol, transform, entity)| {
-                        let should_raycast =
-                            if let RayCastMethod::Screenspace(_) = pick_source.cast_method {
-                                visibility.is_visible && comp_visibility.is_visible
-                            } else {
-                                visibility.is_visible
-                            };
-                        if !should_raycast {
-                            None // Exit early for entities that we can skip
-                        } else if let Some(aabb) = bound_vol {
+            let culled_list = Arc::new(Mutex::new(Vec::new()));
+            culling_query.par_for_each(
+                &pool,
+                32,
+                |(visibility, comp_visibility, bound_vol, transform, entity)| {
+                    let should_raycast =
+                        if let RayCastMethod::Screenspace(_) = pick_source.cast_method {
+                            visibility.is_visible && comp_visibility.is_visible
+                        } else {
+                            visibility.is_visible
+                        };
+                    if should_raycast {
+                        if let Some(aabb) = bound_vol {
                             if let Some([_, far]) =
                                 ray.intersects_aabb(aabb, &transform.compute_matrix())
                             {
-                                if far < 0.0 {
-                                    None // AABB is behind the ray
-                                } else {
-                                    Some(entity)
+                                if far >= 0.0 {
+                                    culled_list.clone().lock().unwrap().push(entity);
                                 }
-                            } else {
-                                None // Ray does not intersect the AABB
                             }
-                        } else {
-                            Some(entity) // Has no AABB
                         }
-                    },
-                )
-                .collect();
+                    }
+                },
+            );
+            let culled_list = Arc::try_unwrap(culled_list).unwrap().into_inner().unwrap();
             drop(ray_cull_guard);
+
             let picks = Arc::new(Mutex::new(Vec::new()));
 
             mesh_query.par_for_each(
