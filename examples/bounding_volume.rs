@@ -1,10 +1,11 @@
 use bevy::{
     diagnostic::{Diagnostics, FrameTimeDiagnosticsPlugin},
     prelude::*,
+    render::primitives::Aabb,
 };
 use bevy_mod_raycast::{
-    update_bound_sphere, BoundVol, DefaultPluginState, DefaultRaycastingPlugin, RayCastMesh,
-    RayCastMethod, RayCastSource, RaycastSystem,
+    DefaultPluginState, DefaultRaycastingPlugin, RayCastMesh, RayCastMethod, RayCastSource,
+    RaycastSystem,
 };
 
 // This example will show you how to setup bounding volume to optimise when raycasting over a
@@ -30,10 +31,7 @@ fn main() {
         .add_startup_system(setup_scene)
         .add_startup_system(setup_ui)
         .add_system(update_fps)
-        .add_system(manage_boundvol)
-        // The update_bound_sphere system is responsible of computing the bounding sphere of system
-        // with the `BoundVol` component.
-        .add_system(update_bound_sphere::<MyRaycastSet>)
+        .add_system_to_stage(CoreStage::First, manage_aabb)
         .run();
 }
 
@@ -62,8 +60,8 @@ fn setup_scene(
     asset_server: Res<AssetServer>,
 ) {
     commands.insert_resource(DefaultPluginState::<MyRaycastSet>::default().with_debug_cursor());
-    commands.spawn_bundle(PointLightBundle {
-        transform: Transform::from_translation(Vec3::new(4.0, 8.0, 4.0)),
+    commands.spawn_bundle(DirectionalLightBundle {
+        transform: Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, 20.0, 20.0, 0.0)),
         ..Default::default()
     });
 
@@ -73,14 +71,18 @@ fn setup_scene(
 
     let mesh = asset_server.load("models/monkey/Monkey.gltf#Mesh0/Primitive0");
     // Spawn multiple mesh to raycast on
-    let n = 10;
+    let n = 20;
     for i in -n..=n {
         for j in -n..=n {
             commands
                 .spawn_bundle(PbrBundle {
                     mesh: mesh.clone(),
                     material: materials.add(Color::rgb(1.0, 1.0, 1.0).into()),
-                    transform: Transform::from_translation(Vec3::new(i as f32, j as f32, -5.0)),
+                    transform: Transform::from_translation(Vec3::new(
+                        i as f32 * 3.0,
+                        j as f32 * 3.0,
+                        -25.0,
+                    )),
                     ..Default::default()
                 })
                 .insert(RayCastMesh::<MyRaycastSet>::default()); // Make this mesh ray cast-able
@@ -110,7 +112,7 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                             value: "Press spacebar to toggle - FPS: ".to_string(),
                             style: TextStyle {
                                 font: font.clone(),
-                                font_size: 30.0,
+                                font_size: 40.0,
                                 color: Color::WHITE,
                             },
                         },
@@ -118,7 +120,7 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                             value: "".to_string(),
                             style: TextStyle {
                                 font: font.clone(),
-                                font_size: 30.0,
+                                font_size: 40.0,
                                 color: Color::WHITE,
                             },
                         },
@@ -132,10 +134,10 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                 text: Text {
                     sections: vec![
                         TextSection {
-                            value: "Bounding Volume: ".to_string(),
+                            value: "AABB Culling: ".to_string(),
                             style: TextStyle {
                                 font: font.clone(),
-                                font_size: 30.0,
+                                font_size: 40.0,
                                 color: Color::WHITE,
                             },
                         },
@@ -143,7 +145,7 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                             value: "OFF".to_string(),
                             style: TextStyle {
                                 font: font.clone(),
-                                font_size: 30.0,
+                                font_size: 40.0,
                                 color: Color::RED,
                             },
                         },
@@ -161,27 +163,35 @@ struct BoundVolStatus;
 #[derive(Component)]
 struct FpsText;
 
-// Insert or remove BoundVol components from the meshes being raycasted on.
-fn manage_boundvol(
+#[derive(Default)]
+struct Enabled(bool);
+
+// Insert or remove aabb components from the meshes being raycasted on.
+fn manage_aabb(
     mut commands: Commands,
-    query: Query<(Entity, Option<&BoundVol>), With<RayCastMesh<MyRaycastSet>>>,
+    mut enabled: Local<Enabled>,
+    query: Query<(Entity, Option<&Aabb>), With<RayCastMesh<MyRaycastSet>>>,
     mut status_query: Query<&mut Text, With<BoundVolStatus>>,
     keyboard: Res<Input<KeyCode>>,
 ) {
     if keyboard.just_pressed(KeyCode::Space) {
+        enabled.0 = !enabled.0;
         if let Ok(mut text) = status_query.get_single_mut() {
-            for (entity, ray) in query.iter() {
-                if ray.is_none() {
-                    // Insert the component, the bounding volume will be automatically computed
-                    commands.entity(entity).insert(BoundVol::default());
-                    text.sections[1].value = "ON".to_string();
-                    text.sections[1].style.color = Color::GREEN;
-                } else {
-                    commands.entity(entity).remove::<BoundVol>();
-                    text.sections[1].value = "OFF".to_string();
-                    text.sections[1].style.color = Color::RED;
-                }
+            if enabled.0 {
+                text.sections[1].value = "ON".to_string();
+                text.sections[1].style.color = Color::GREEN;
+            } else {
+                text.sections[1].value = "OFF".to_string();
+                text.sections[1].style.color = Color::RED;
             }
+        }
+    }
+    for (entity, aabb) in query.iter() {
+        if aabb.is_none() && enabled.0 {
+            // Insert the component, the bounding volume will be automatically computed
+            commands.entity(entity).insert(Aabb::default());
+        } else if aabb.is_some() && !enabled.0 {
+            commands.entity(entity).remove::<Aabb>();
         }
     }
 }

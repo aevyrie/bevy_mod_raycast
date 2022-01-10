@@ -2,7 +2,7 @@
 name = "bevy_mod_raycast"
 version = "0.2.2"
 authors = ["Aevyrie <aevyrie@gmail.com>"]
-edition = "2018"
+edition = "2021"
 license = "MIT"
 description = "Ray Casting for the Bevy Engine."
 repository = "https://github.com/aevyrie/bevy_mod_raycast/"
@@ -11,14 +11,13 @@ categories = ["game-engines", "rendering"]
 resolver = "2"
 
 [dependencies]
-bevy = { git = "https://github.com/bevyengine/bevy", branch = "main", version = "0.5", default-features = false, features = [
-    "render",
-] }
-wgpu = "*"
+#bevy = { git = "https://github.com/bevyengine/bevy", branch = "main", version = "0.6", default-features = false, features = [
+bevy = { version = "0.6", default-features = false, features = ["render"] }
+#wgpu = "*"
 
 [dev-dependencies]
-bevy = { git = "https://github.com/bevyengine/bevy", branch = "main", version = "0.5", default-features = false, features = [
-    "render",
+#bevy = { git = "https://github.com/bevyengine/bevy", branch = "main", version = "0.6", default-features = false, features = [
+bevy = { version = "0.6", default-features = false, features = [
     "bevy_winit",
     "bevy_gltf",
     "x11",

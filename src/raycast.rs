@@ -1,19 +1,7 @@
 use std::f32::EPSILON;
 
 use crate::{primitives::*, TriangleTrait};
-use bevy::prelude::*;
-
-#[allow(dead_code)]
-#[non_exhaustive]
-pub enum RaycastAlgorithm {
-    MollerTrumbore(Backfaces),
-}
-
-impl Default for RaycastAlgorithm {
-    fn default() -> Self {
-        RaycastAlgorithm::MollerTrumbore(Backfaces::Cull)
-    }
-}
+use bevy::math::Vec3A;
 
 #[allow(dead_code)]
 pub enum Backfaces {
@@ -21,18 +9,20 @@ pub enum Backfaces {
     Include,
 }
 
+impl Default for Backfaces {
+    fn default() -> Self {
+        Backfaces::Cull
+    }
+}
+
 /// Takes a ray and triangle and computes the intersection and normal
 #[inline(always)]
 pub fn ray_triangle_intersection(
     ray: &Ray3d,
     triangle: &impl TriangleTrait,
-    algorithm: RaycastAlgorithm,
+    backface_culling: Backfaces,
 ) -> Option<RayHit> {
-    match algorithm {
-        RaycastAlgorithm::MollerTrumbore(backface_culling) => {
-            raycast_moller_trumbore(ray, triangle, backface_culling)
-        }
-    }
+    raycast_moller_trumbore(ray, triangle, backface_culling)
 }
 
 #[derive(Default, Debug)]
@@ -61,9 +51,9 @@ pub fn raycast_moller_trumbore(
     backface_culling: Backfaces,
 ) -> Option<RayHit> {
     // Source: https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/moller-trumbore-ray-triangle-intersection
-    let vector_v0_to_v1: Vec3 = triangle.v1() - triangle.v0();
-    let vector_v0_to_v2: Vec3 = triangle.v2() - triangle.v0();
-    let p_vec: Vec3 = ray.direction().cross(vector_v0_to_v2);
+    let vector_v0_to_v1: Vec3A = triangle.v1() - triangle.v0();
+    let vector_v0_to_v2: Vec3A = triangle.v2() - triangle.v0();
+    let p_vec: Vec3A = ray.direction.cross(vector_v0_to_v2);
     let determinant: f32 = vector_v0_to_v1.dot(p_vec);
 
     match backface_culling {
@@ -85,14 +75,14 @@ pub fn raycast_moller_trumbore(
 
     let determinant_inverse = 1.0 / determinant;
 
-    let t_vec: Vec3 = ray.origin() - triangle.v0();
+    let t_vec = ray.origin - triangle.v0();
     let u = t_vec.dot(p_vec) * determinant_inverse;
     if !(0.0..=1.0).contains(&u) {
         return None;
     }
 
     let q_vec = t_vec.cross(vector_v0_to_v1);
-    let v = ray.direction().dot(q_vec) * determinant_inverse;
+    let v = ray.direction.dot(q_vec) * determinant_inverse;
     if v < 0.0 || u + v > 1.0 {
         return None;
     }
@@ -108,6 +98,8 @@ pub fn raycast_moller_trumbore(
 
 #[cfg(test)]
 mod tests {
+    use bevy::math::Vec3;
+
     use super::*;
 
     // Triangle vertices to be used in a left-hand coordinate system
@@ -119,8 +111,7 @@ mod tests {
     fn raycast_triangle_mt() {
         let triangle = Triangle::from([V0.into(), V1.into(), V2.into()]);
         let ray = Ray3d::new(Vec3::ZERO, Vec3::X);
-        let algorithm = RaycastAlgorithm::MollerTrumbore(Backfaces::Include);
-        let result = ray_triangle_intersection(&ray, &triangle, algorithm);
+        let result = ray_triangle_intersection(&ray, &triangle, Backfaces::Include);
         assert!(result.unwrap().distance - 1.0 <= f32::EPSILON);
     }
 
@@ -128,8 +119,7 @@ mod tests {
     fn raycast_triangle_mt_culling() {
         let triangle = Triangle::from([V2.into(), V1.into(), V0.into()]);
         let ray = Ray3d::new(Vec3::ZERO, Vec3::X);
-        let algorithm = RaycastAlgorithm::MollerTrumbore(Backfaces::Cull);
-        let result = ray_triangle_intersection(&ray, &triangle, algorithm);
+        let result = ray_triangle_intersection(&ray, &triangle, Backfaces::Cull);
         assert!(result.is_none());
     }
 }

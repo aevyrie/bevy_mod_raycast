@@ -53,8 +53,9 @@ fn setup(
 // Rotate the camera up and down to show that the raycast intersection is updated every frame.
 fn rotator(time: Res<Time>, mut query: Query<&mut Transform, With<RayCastSource<MyRaycastSet>>>) {
     for mut transform in query.iter_mut() {
-        *transform = Transform::from_rotation(Quat::from_rotation_x(
-            time.seconds_since_startup().sin() as f32 * 0.2,
-        ));
+        *transform = Transform::from_rotation(
+            Quat::from_rotation_x(time.seconds_since_startup().sin() as f32 * 0.15)
+                * Quat::from_rotation_y((time.seconds_since_startup() * 1.5).sin() as f32 * 0.1),
+        );
     }
 }

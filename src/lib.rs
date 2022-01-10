@@ -1,13 +1,13 @@
-mod bounding;
 mod debug;
 mod primitives;
 mod raycast;
 
-pub use crate::bounding::{update_bound_sphere, BoundVol, BoundingSphere};
 pub use crate::debug::*;
 pub use crate::primitives::*;
 
 use crate::raycast::*;
+use bevy::math::Vec3A;
+use bevy::render::render_resource::PrimitiveTopology;
 use bevy::{
     ecs::schedule::ShouldRun,
     prelude::*,
@@ -17,9 +17,10 @@ use bevy::{
     },
     tasks::prelude::*,
 };
-use std::marker::PhantomData;
-use std::sync::{Arc, Mutex};
-use wgpu::PrimitiveTopology;
+use std::{
+    marker::PhantomData,
+    sync::{Arc, Mutex},
+};
 
 pub struct DefaultRaycastingPlugin<T: 'static + Send + Sync>(pub PhantomData<T>);
 impl<T: 'static + Send + Sync> Plugin for DefaultRaycastingPlugin<T> {
@@ -336,7 +337,13 @@ pub fn update_raycast<T: 'static + Send + Sync>(
     // Queries
     mut pick_source_query: Query<&mut RayCastSource<T>>,
     culling_query: Query<
-        (&Visibility, Option<&BoundVol>, &GlobalTransform, Entity),
+        (
+            &Visibility,
+            &ComputedVisibility,
+            Option<&bevy::render::primitives::Aabb>,
+            &GlobalTransform,
+            Entity,
+        ),
         With<RayCastMesh<T>>,
     >,
     mesh_query: Query<
@@ -358,39 +365,34 @@ pub fn update_raycast<T: 'static + Send + Sync>(
 
             // Check all entities to see if the source ray intersects the bounding sphere, use this
             // to build a short list of entities that are in the path of the ray.
-            let culled_list: Vec<Entity> = {
-                let _ray_cull_guard = ray_cull.enter();
-                culling_query
-                    .iter()
-                    .map(|(visibility, bound_vol, transform, entity)| {
-                        let visible = visibility.is_visible;
-                        let bound_hit = if let Some(bound_vol) = bound_vol {
-                            if let Some(sphere) = &bound_vol.sphere {
-                                let scaled_radius: f32 =
-                                    1.01 * sphere.radius() * transform.scale.max_element();
-                                let translated_origin =
-                                    sphere.origin() * transform.scale + transform.translation;
-                                let det = (ray.direction().dot(ray.origin() - translated_origin))
-                                    .powi(2)
-                                    - (Vec3::length_squared(ray.origin() - translated_origin)
-                                        - scaled_radius.powi(2));
-                                det >= 0.0 // Ray intersects the bounding sphere if det>=0
-                            } else {
-                                true // This bounding volume's sphere is not yet defined
-                            }
-                        } else {
-                            true // This entity has no bounding volume
-                        };
-                        if visible && bound_hit {
-                            Some(entity)
-                        } else {
+            let ray_cull_guard = ray_cull.enter();
+            let culled_list: Vec<Entity> = culling_query
+                .iter()
+                .filter_map(
+                    |(visibility, comp_visibility, bound_vol, transform, entity)| {
+                        if !visibility.is_visible || !comp_visibility.is_visible {
                             None
+                        } else {
+                            if let Some(aabb) = bound_vol {
+                                if let Some([_, far]) =
+                                    ray.intersects_aabb(aabb, &transform.compute_matrix())
+                                {
+                                    if far < 0.0 {
+                                        None // AABB is behind the ray
+                                    } else {
+                                        Some(entity)
+                                    }
+                                } else {
+                                    None // Ray does not intersect the AABB
+                                }
+                            } else {
+                                Some(entity) // Has no AABB
+                            }
                         }
-                    })
-                    .flatten()
-                    .collect()
-            };
-
+                    },
+                )
+                .collect();
+            drop(ray_cull_guard);
             let picks = Arc::new(Mutex::new(Vec::new()));
 
             mesh_query.par_for_each(
@@ -506,15 +508,15 @@ pub fn ray_mesh_intersection(
         // chunk of three indices are references to the three vertices of a triangle.
         for index in indices.chunks(3) {
             let tri_vertex_positions = [
-                Vec3::from(vertex_positions[index[0] as usize]),
-                Vec3::from(vertex_positions[index[1] as usize]),
-                Vec3::from(vertex_positions[index[2] as usize]),
+                Vec3A::from(vertex_positions[index[0] as usize]),
+                Vec3A::from(vertex_positions[index[1] as usize]),
+                Vec3A::from(vertex_positions[index[2] as usize]),
             ];
             let tri_normals = vertex_normals.map(|normals| {
                 [
-                    Vec3::from(normals[index[0] as usize]),
-                    Vec3::from(normals[index[1] as usize]),
-                    Vec3::from(normals[index[2] as usize]),
+                    Vec3A::from(normals[index[0] as usize]),
+                    Vec3A::from(normals[index[1] as usize]),
+                    Vec3A::from(normals[index[2] as usize]),
                 ]
             });
             let intersection = triangle_intersection(
@@ -532,9 +534,9 @@ pub fn ray_mesh_intersection(
                         .length(),
                     i.world_triangle().map(|tri| {
                         Triangle::from([
-                            mesh_to_world.transform_point3(tri.v0),
-                            mesh_to_world.transform_point3(tri.v1),
-                            mesh_to_world.transform_point3(tri.v2),
+                            mesh_to_world.transform_point3a(tri.v0),
+                            mesh_to_world.transform_point3a(tri.v1),
+                            mesh_to_world.transform_point3a(tri.v2),
                         ])
                     }),
                 ));
@@ -544,15 +546,15 @@ pub fn ray_mesh_intersection(
     } else {
         for vertex in vertex_positions.chunks(3) {
             let tri_vertex_positions = [
-                Vec3::from(vertex[0]),
-                Vec3::from(vertex[1]),
-                Vec3::from(vertex[2]),
+                Vec3A::from(vertex[0]),
+                Vec3A::from(vertex[1]),
+                Vec3A::from(vertex[2]),
             ];
             let tri_normals = vertex_normals.map(|normals| {
                 [
-                    Vec3::from(normals[0]),
-                    Vec3::from(normals[1]),
-                    Vec3::from(normals[2]),
+                    Vec3A::from(normals[0]),
+                    Vec3A::from(normals[1]),
+                    Vec3A::from(normals[2]),
                 ]
             });
             let intersection = triangle_intersection(
@@ -570,9 +572,9 @@ pub fn ray_mesh_intersection(
                         .length(),
                     i.world_triangle().map(|tri| {
                         Triangle::from([
-                            mesh_to_world.transform_point3(tri.v0),
-                            mesh_to_world.transform_point3(tri.v1),
-                            mesh_to_world.transform_point3(tri.v2),
+                            mesh_to_world.transform_point3a(tri.v0),
+                            mesh_to_world.transform_point3a(tri.v1),
+                            mesh_to_world.transform_point3a(tri.v2),
                         ])
                     }),
                 ));
@@ -584,18 +586,17 @@ pub fn ray_mesh_intersection(
 }
 
 fn triangle_intersection(
-    tri_vertices: [Vec3; 3],
-    tri_normals: Option<[Vec3; 3]>,
+    tri_vertices: [Vec3A; 3],
+    tri_normals: Option<[Vec3A; 3]>,
     max_distance: f32,
     ray: Ray3d,
 ) -> Option<Intersection> {
     if tri_vertices
         .iter()
-        .any(|&vertex| (vertex - ray.origin()).length_squared() < max_distance.powi(2))
+        .any(|&vertex| (vertex - ray.origin).length_squared() < max_distance.powi(2))
     {
         // Run the raycast on the ray and triangle
-        if let Some(ray_hit) =
-            ray_triangle_intersection(&ray, &tri_vertices, RaycastAlgorithm::default())
+        if let Some(ray_hit) = ray_triangle_intersection(&ray, &tri_vertices, Backfaces::default())
         {
             let distance = *ray_hit.distance();
             if distance > 0.0 && distance < max_distance {
@@ -610,8 +611,12 @@ fn triangle_intersection(
                         .cross(tri_vertices.v2() - tri_vertices.v0())
                         .normalize()
                 };
-                let intersection =
-                    Intersection::new(position, normal, distance, Some(tri_vertices.to_triangle()));
+                let intersection = Intersection::new(
+                    position,
+                    normal.into(),
+                    distance,
+                    Some(tri_vertices.to_triangle()),
+                );
                 return Some(intersection);
             }
         }
@@ -620,19 +625,19 @@ fn triangle_intersection(
 }
 
 pub trait TriangleTrait {
-    fn v0(&self) -> Vec3;
-    fn v1(&self) -> Vec3;
-    fn v2(&self) -> Vec3;
+    fn v0(&self) -> Vec3A;
+    fn v1(&self) -> Vec3A;
+    fn v2(&self) -> Vec3A;
     fn to_triangle(self) -> Triangle;
 }
-impl TriangleTrait for [Vec3; 3] {
-    fn v0(&self) -> Vec3 {
+impl TriangleTrait for [Vec3A; 3] {
+    fn v0(&self) -> Vec3A {
         self[0]
     }
-    fn v1(&self) -> Vec3 {
+    fn v1(&self) -> Vec3A {
         self[1]
     }
-    fn v2(&self) -> Vec3 {
+    fn v2(&self) -> Vec3A {
         self[2]
     }
 
@@ -641,15 +646,15 @@ impl TriangleTrait for [Vec3; 3] {
     }
 }
 impl TriangleTrait for Triangle {
-    fn v0(&self) -> Vec3 {
+    fn v0(&self) -> Vec3A {
         self.v0
     }
 
-    fn v1(&self) -> Vec3 {
+    fn v1(&self) -> Vec3A {
         self.v1
     }
 
-    fn v2(&self) -> Vec3 {
+    fn v2(&self) -> Vec3A {
         self.v2
     }
 

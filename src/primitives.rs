@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{math::Vec3A, prelude::*};
 pub use rays::*;
 
 #[non_exhaustive]
@@ -53,41 +53,45 @@ impl Intersection {
 /// Encapsulates Ray3D, preventing use of struct literal syntax. This allows us to guarantee that
 /// the `Ray3d` direction is normalized, because it can only be instantiated with the constructor.
 pub mod rays {
-    use bevy::{prelude::*, render::camera::Camera};
+    use bevy::{
+        math::Vec3A,
+        prelude::*,
+        render::{camera::Camera, primitives::Aabb},
+    };
 
     /// A 3D ray, with an origin and direction. The direction is guaranteed to be normalized.
     #[derive(Debug, PartialEq, Copy, Clone, Default)]
     pub struct Ray3d {
-        origin: Vec3,
-        direction: Vec3,
+        pub(crate) origin: Vec3A,
+        pub(crate) direction: Vec3A,
     }
 
     impl Ray3d {
         /// Constructs a `Ray3d`, normalizing the direction vector.
         pub fn new(origin: Vec3, direction: Vec3) -> Self {
             Ray3d {
-                origin,
-                direction: direction.normalize(),
+                origin: origin.into(),
+                direction: direction.normalize().into(),
             }
         }
         /// Position vector describing the ray origin
         pub fn origin(&self) -> Vec3 {
-            self.origin
+            self.origin.into()
         }
         /// Unit vector describing the ray direction
         pub fn direction(&self) -> Vec3 {
-            self.direction
+            self.direction.into()
         }
         pub fn position(&self, distance: f32) -> Vec3 {
-            self.origin + self.direction * distance
+            (self.origin + self.direction * distance).into()
         }
         pub fn to_transform(self) -> Mat4 {
-            let position = self.origin;
-            let normal = self.direction;
+            let position = self.origin();
+            let normal = self.direction();
             let up = Vec3::from([0.0, 1.0, 0.0]);
             let axis = up.cross(normal).normalize();
             let angle = up.dot(normal).acos();
-            let epsilon = 0.0001;
+            let epsilon = f32::EPSILON;
             let new_rotation = if angle.abs() > epsilon {
                 Quat::from_axis_angle(axis, angle)
             } else {
@@ -124,26 +128,66 @@ pub mod rays {
             let cursor_pos_ndc_near: Vec3 = cursor_ndc.extend(-1.0);
             let cursor_pos_ndc_far: Vec3 = cursor_ndc.extend(1.0);
 
-            // Use near and far ndc points to generate a ray in world space
-            // This method is more robust than using the location of the camera as the start of
-            // the ray, because ortho cameras have a focal point at infinity!
+            // Use near and far ndc points to generate a ray in world space This method is more
+            // robust than using the location of the camera as the start of the ray, because ortho
+            // cameras have a focal point at infinity!
             let ndc_to_world: Mat4 = camera_position * projection_matrix.inverse();
             let cursor_pos_near: Vec3 = ndc_to_world.project_point3(cursor_pos_ndc_near);
             let cursor_pos_far: Vec3 = ndc_to_world.project_point3(cursor_pos_ndc_far);
             let ray_direction = cursor_pos_far - cursor_pos_near;
             Some(Ray3d::new(cursor_pos_near, ray_direction))
         }
+        /// Checks if the ray intersects with an AABB of a mesh.
+        pub fn intersects_aabb(&self, aabb: &Aabb, model_to_world: &Mat4) -> Option<[f32; 2]> {
+            // Transform the ray to model space
+            let world_to_model = model_to_world.inverse();
+            let ray_dir: Vec3A = world_to_model.transform_vector3(self.direction()).into();
+            let ray_origin: Vec3A = world_to_model.transform_point3(self.origin()).into();
+            // Check if the ray intersects the mesh's AABB. It's useful to work in model space because
+            // we can do an AABB intersection test, instead of an OBB intersection test.
+
+            let t_0: Vec3A = (Vec3A::from(aabb.min()) - ray_origin) / ray_dir;
+            let t_1: Vec3A = (Vec3A::from(aabb.max()) - ray_origin) / ray_dir;
+            let t_min: Vec3A = t_0.min(t_1);
+            let t_max: Vec3A = t_0.max(t_1);
+
+            let mut hit_near = t_min.x;
+            let mut hit_far = t_max.x;
+
+            if hit_near > t_max.y || t_min.y > hit_far {
+                return None;
+            }
+
+            if t_min.y > hit_near {
+                hit_near = t_min.y;
+            }
+            if t_max.y < hit_far {
+                hit_far = t_max.y;
+            }
+
+            if (hit_near > t_max.z) || (t_min.z > hit_far) {
+                return None;
+            }
+
+            if t_min.z > hit_near {
+                hit_near = t_min.z;
+            }
+            if t_max.z < hit_far {
+                hit_far = t_max.z;
+            }
+            return Some([hit_near, hit_far]);
+        }
     }
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub struct Triangle {
-    pub v0: Vec3,
-    pub v1: Vec3,
-    pub v2: Vec3,
+    pub v0: Vec3A,
+    pub v1: Vec3A,
+    pub v2: Vec3A,
 }
-impl From<(Vec3, Vec3, Vec3)> for Triangle {
-    fn from(vertices: (Vec3, Vec3, Vec3)) -> Self {
+impl From<(Vec3A, Vec3A, Vec3A)> for Triangle {
+    fn from(vertices: (Vec3A, Vec3A, Vec3A)) -> Self {
         Triangle {
             v0: vertices.0,
             v1: vertices.1,
@@ -151,8 +195,8 @@ impl From<(Vec3, Vec3, Vec3)> for Triangle {
         }
     }
 }
-impl From<Vec<Vec3>> for Triangle {
-    fn from(vertices: Vec<Vec3>) -> Self {
+impl From<Vec<Vec3A>> for Triangle {
+    fn from(vertices: Vec<Vec3A>) -> Self {
         Triangle {
             v0: *vertices.get(0).unwrap(),
             v1: *vertices.get(1).unwrap(),
@@ -160,8 +204,8 @@ impl From<Vec<Vec3>> for Triangle {
         }
     }
 }
-impl From<[Vec3; 3]> for Triangle {
-    fn from(vertices: [Vec3; 3]) -> Self {
+impl From<[Vec3A; 3]> for Triangle {
+    fn from(vertices: [Vec3A; 3]) -> Self {
         Triangle {
             v0: vertices[0],
             v1: vertices[1],
