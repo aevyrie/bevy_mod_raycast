@@ -365,12 +365,12 @@ pub fn update_raycast<T: 'static + Send + Sync>(
 
             // Check all entities to see if the source ray intersects the AABB, use this
             // to build a short list of entities that are in the path of the ray.
-            let ray_cull_guard = ray_cull.enter();
             let culled_list = Arc::new(Mutex::new(Vec::new()));
             culling_query.par_for_each(
                 &pool,
                 32,
                 |(visibility, comp_visibility, bound_vol, transform, entity)| {
+                    let _ray_cull_guard = ray_cull.enter();
                     let should_raycast =
                         if let RayCastMethod::Screenspace(_) = pick_source.cast_method {
                             visibility.is_visible && comp_visibility.is_visible
@@ -393,16 +393,14 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                 },
             );
             let culled_list = Arc::try_unwrap(culled_list).unwrap().into_inner().unwrap();
-            drop(ray_cull_guard);
 
             let picks = Arc::new(Mutex::new(Vec::new()));
-
             mesh_query.par_for_each(
                 &pool,
                 32,
                 |(mesh_handle, simplified_mesh, transform, entity)| {
+                    let _raycast_guard = raycast.enter();
                     if culled_list.contains(&entity) {
-                        let _raycast_guard = raycast.enter();
                         // Use the mesh handle to get a reference to a mesh asset
                         if let Some(mesh) =
                             meshes.get(simplified_mesh.map(|bm| &bm.mesh).unwrap_or(mesh_handle))
@@ -464,7 +462,7 @@ pub fn ray_intersection_over_mesh(
                 vertex_positions,
                 vertex_normals,
                 ray,
-                Some(&vertex_indices.iter().map(|x| *x as u32).collect()),
+                Some(vertex_indices),
             ),
             Indices::U32(vertex_indices) => ray_mesh_intersection(
                 mesh_to_world,
@@ -475,7 +473,27 @@ pub fn ray_intersection_over_mesh(
             ),
         }
     } else {
-        ray_mesh_intersection(mesh_to_world, vertex_positions, vertex_normals, ray, None)
+        ray_mesh_intersection(
+            mesh_to_world,
+            vertex_positions,
+            vertex_normals,
+            ray,
+            None::<&Vec<u32>>,
+        )
+    }
+}
+
+pub trait IntoUsize {
+    fn into_usize(&self) -> usize;
+}
+impl IntoUsize for u16 {
+    fn into_usize(&self) -> usize {
+        *self as usize
+    }
+}
+impl IntoUsize for u32 {
+    fn into_usize(&self) -> usize {
+        *self as usize
     }
 }
 
@@ -485,7 +503,7 @@ pub fn ray_mesh_intersection(
     vertex_positions: &[[f32; 3]],
     vertex_normals: Option<&[[f32; 3]]>,
     pick_ray: &Ray3d,
-    indices: Option<&Vec<u32>>,
+    indices: Option<&Vec<impl IntoUsize>>,
 ) -> Option<Intersection> {
     // The ray cast can hit the same mesh many times, so we need to track which hit is
     // closest to the camera, and record that.
@@ -510,15 +528,15 @@ pub fn ray_mesh_intersection(
         // chunk of three indices are references to the three vertices of a triangle.
         for index in indices.chunks(3) {
             let tri_vertex_positions = [
-                Vec3A::from(vertex_positions[index[0] as usize]),
-                Vec3A::from(vertex_positions[index[1] as usize]),
-                Vec3A::from(vertex_positions[index[2] as usize]),
+                Vec3A::from(vertex_positions[index[0].into_usize()]),
+                Vec3A::from(vertex_positions[index[1].into_usize()]),
+                Vec3A::from(vertex_positions[index[2].into_usize()]),
             ];
             let tri_normals = vertex_normals.map(|normals| {
                 [
-                    Vec3A::from(normals[index[0] as usize]),
-                    Vec3A::from(normals[index[1] as usize]),
-                    Vec3A::from(normals[index[2] as usize]),
+                    Vec3A::from(normals[index[0].into_usize()]),
+                    Vec3A::from(normals[index[1].into_usize()]),
+                    Vec3A::from(normals[index[2].into_usize()]),
                 ]
             });
             let intersection = triangle_intersection(

@@ -67,7 +67,7 @@ fn ray_mesh_intersection_no_intersection(c: &mut Criterion) {
     group.warm_up_time(std::time::Duration::from_millis(500));
 
     for vertices_per_side in [10_u32, 100, 1000] {
-        group.bench_function(format!("{}_vertices", vertices_per_side.pow(2)), |b| {
+        group.bench_function(format!("{}_vertices", (vertices_per_side).pow(2)), |b| {
             let ray = Ray3d::new(Vec3::new(0.0, 1.0, 0.0), Vec3::new(1.0, 0.0, 0.0));
             let mesh_to_world = Mat4::IDENTITY;
             let mesh = mesh_creation(vertices_per_side);
