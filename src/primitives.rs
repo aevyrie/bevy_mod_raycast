@@ -175,7 +175,7 @@ pub mod rays {
             if t_max.z < hit_far {
                 hit_far = t_max.z;
             }
-            return Some([hit_near, hit_far]);
+            Some([hit_near, hit_far])
         }
     }
 }
