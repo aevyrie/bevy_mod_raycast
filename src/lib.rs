@@ -2,22 +2,23 @@ mod debug;
 mod primitives;
 mod raycast;
 
-pub use crate::debug::*;
-pub use crate::primitives::*;
+pub use crate::{debug::*, primitives::*};
 
 use crate::raycast::*;
-use bevy::math::Vec3A;
-use bevy::render::render_resource::PrimitiveTopology;
 use bevy::{
+    core::FloatOrd,
     ecs::schedule::ShouldRun,
+    math::Vec3A,
     prelude::*,
     render::{
         camera::Camera,
         mesh::{Indices, Mesh, VertexAttributeValues},
+        render_resource::PrimitiveTopology,
     },
-    tasks::prelude::*,
 };
+use rayon::prelude::*;
 use std::{
+    collections::BTreeMap,
     marker::PhantomData,
     sync::{Arc, Mutex},
 };
@@ -332,7 +333,6 @@ pub fn build_rays<T: 'static + Send + Sync>(
 #[allow(clippy::type_complexity)]
 pub fn update_raycast<T: 'static + Send + Sync>(
     // Resources
-    pool: Res<ComputeTaskPool>,
     meshes: Res<Assets<Mesh>>,
     // Queries
     mut pick_source_query: Query<&mut RayCastSource<T>>,
@@ -363,65 +363,66 @@ pub fn update_raycast<T: 'static + Send + Sync>(
             let ray_cull = info_span!("ray culling");
             let raycast = info_span!("raycast");
 
+            let ray_cull_guard = ray_cull.enter();
             // Check all entities to see if the source ray intersects the AABB, use this
             // to build a short list of entities that are in the path of the ray.
-            let culled_list = Arc::new(Mutex::new(Vec::new()));
-            culling_query.par_for_each(
-                &pool,
-                32,
-                |(visibility, comp_visibility, bound_vol, transform, entity)| {
-                    let _ray_cull_guard = ray_cull.enter();
-                    let should_raycast =
-                        if let RayCastMethod::Screenspace(_) = pick_source.cast_method {
-                            visibility.is_visible && comp_visibility.is_visible
-                        } else {
-                            visibility.is_visible
-                        };
-                    if should_raycast {
-                        if let Some(aabb) = bound_vol {
-                            if let Some([_, far]) =
-                                ray.intersects_aabb(aabb, &transform.compute_matrix())
-                            {
-                                if far >= 0.0 {
-                                    culled_list.clone().lock().unwrap().push(entity);
+            let culled_list: Vec<Entity> = culling_query
+                .iter()
+                .filter_map(
+                    |(visibility, comp_visibility, bound_vol, transform, entity)| {
+                        let should_raycast =
+                            if let RayCastMethod::Screenspace(_) = pick_source.cast_method {
+                                visibility.is_visible && comp_visibility.is_visible
+                            } else {
+                                visibility.is_visible
+                            };
+                        if should_raycast {
+                            if let Some(aabb) = bound_vol {
+                                if let Some([_, far]) =
+                                    ray.intersects_aabb(aabb, &transform.compute_matrix())
+                                {
+                                    if far >= 0.0 {
+                                        Some(entity)
+                                    } else {
+                                        None
+                                    }
+                                } else {
+                                    None
                                 }
+                            } else {
+                                Some(entity)
                             }
                         } else {
-                            culled_list.clone().lock().unwrap().push(entity);
+                            None
                         }
-                    }
-                },
-            );
-            let culled_list = Arc::try_unwrap(culled_list).unwrap().into_inner().unwrap();
+                    },
+                )
+                .collect();
+            drop(ray_cull_guard);
 
-            let picks = Arc::new(Mutex::new(Vec::new()));
-            mesh_query.par_for_each(
-                &pool,
-                32,
-                |(mesh_handle, simplified_mesh, transform, entity)| {
-                    let _raycast_guard = raycast.enter();
-                    if culled_list.contains(&entity) {
-                        // Use the mesh handle to get a reference to a mesh asset
-                        if let Some(mesh) =
-                            meshes.get(simplified_mesh.map(|bm| &bm.mesh).unwrap_or(mesh_handle))
+            let picks = Arc::new(Mutex::new(BTreeMap::new()));
+            culled_list.par_iter().for_each(|entity| {
+                let _raycast_guard = raycast.enter();
+                if let Ok((mesh_handle, simplified_mesh, transform, entity)) =
+                    mesh_query.get(*entity)
+                {
+                    // Use the mesh handle to get a reference to a mesh asset
+                    if let Some(mesh) =
+                        meshes.get(simplified_mesh.map(|bm| &bm.mesh).unwrap_or(mesh_handle))
+                    {
+                        if let Some(intersection) =
+                            ray_intersection_over_mesh(mesh, &transform.compute_matrix(), &ray)
                         {
-                            if let Some(intersection) =
-                                ray_intersection_over_mesh(mesh, &transform.compute_matrix(), &ray)
-                            {
-                                picks.clone().lock().unwrap().push((entity, intersection));
-                            }
+                            picks
+                                .lock()
+                                .unwrap()
+                                .insert(FloatOrd(intersection.distance()), (entity, intersection));
                         }
                     }
-                },
-            );
-            let mut picks = Arc::try_unwrap(picks).unwrap().into_inner().unwrap();
-            picks.sort_by(|a, b| {
-                a.1.distance()
-                    .partial_cmp(&b.1.distance())
-                    .unwrap_or(std::cmp::Ordering::Equal)
+                }
             });
-
-            pick_source.intersections = picks;
+            let picks = Arc::try_unwrap(picks).unwrap().into_inner().unwrap();
+            pick_source.intersections = picks.into_values().collect();
         }
     }
 }
@@ -483,17 +484,17 @@ pub fn ray_intersection_over_mesh(
     }
 }
 
-pub trait IntoUsize {
-    fn into_usize(&self) -> usize;
+pub trait IntoUsize: Copy {
+    fn into_usize(self) -> usize;
 }
 impl IntoUsize for u16 {
-    fn into_usize(&self) -> usize {
-        *self as usize
+    fn into_usize(self) -> usize {
+        self as usize
     }
 }
 impl IntoUsize for u32 {
-    fn into_usize(&self) -> usize {
-        *self as usize
+    fn into_usize(self) -> usize {
+        self as usize
     }
 }
 

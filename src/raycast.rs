@@ -44,7 +44,6 @@ impl RayHit {
 }
 
 /// Implementation of the Möller-Trumbore ray-triangle intersection test
-#[inline(always)]
 pub fn raycast_moller_trumbore(
     ray: &Ray3d,
     triangle: &impl TriangleTrait,
