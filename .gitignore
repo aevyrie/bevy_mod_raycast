@@ -6,3 +6,4 @@ Cargo.lock
 .cargo/config_fast_compile
 *.iml
 .idea/
+trace*.json
