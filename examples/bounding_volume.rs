@@ -62,6 +62,10 @@ fn setup_scene(
     commands.insert_resource(DefaultPluginState::<MyRaycastSet>::default().with_debug_cursor());
     commands.spawn_bundle(DirectionalLightBundle {
         transform: Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, 20.0, 20.0, 0.0)),
+        directional_light: DirectionalLight {
+            illuminance: 5000.0,
+            ..Default::default()
+        },
         ..Default::default()
     });
 
@@ -70,22 +74,25 @@ fn setup_scene(
         .insert(RayCastSource::<MyRaycastSet>::new()); // Designate the camera as our source
 
     let mesh = asset_server.load("models/monkey/Monkey.gltf#Mesh0/Primitive0");
+    let material = materials.add(Color::rgb(1.0, 1.0, 1.0).into());
     // Spawn multiple mesh to raycast on
-    let n = 20;
+    let n = 10;
     for i in -n..=n {
         for j in -n..=n {
-            commands
-                .spawn_bundle(PbrBundle {
-                    mesh: mesh.clone(),
-                    material: materials.add(Color::rgb(1.0, 1.0, 1.0).into()),
-                    transform: Transform::from_translation(Vec3::new(
-                        i as f32 * 3.0,
-                        j as f32 * 3.0,
-                        -25.0,
-                    )),
-                    ..Default::default()
-                })
-                .insert(RayCastMesh::<MyRaycastSet>::default()); // Make this mesh ray cast-able
+            for k in -n..=n {
+                commands
+                    .spawn_bundle(PbrBundle {
+                        mesh: mesh.clone(),
+                        material: material.clone(),
+                        transform: Transform::from_translation(Vec3::new(
+                            i as f32 * 3.0,
+                            j as f32 * 3.0,
+                            k as f32 * 3.0 - n as f32 * 4.0,
+                        )),
+                        ..Default::default()
+                    })
+                    .insert(RayCastMesh::<MyRaycastSet>::default()); // Make this mesh ray cast-able
+            }
         }
     }
 }
@@ -142,11 +149,11 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                             },
                         },
                         TextSection {
-                            value: "OFF".to_string(),
+                            value: "ON".to_string(),
                             style: TextStyle {
                                 font: font.clone(),
                                 font_size: 40.0,
-                                color: Color::RED,
+                                color: Color::GREEN,
                             },
                         },
                     ],
@@ -163,14 +170,18 @@ struct BoundVolStatus;
 #[derive(Component)]
 struct FpsText;
 
-#[derive(Default)]
 struct Enabled(bool);
+impl Default for Enabled {
+    fn default() -> Self {
+        Enabled(true)
+    }
+}
 
 // Insert or remove aabb components from the meshes being raycasted on.
 fn manage_aabb(
     mut commands: Commands,
     mut enabled: Local<Enabled>,
-    query: Query<(Entity, Option<&Aabb>), With<RayCastMesh<MyRaycastSet>>>,
+    mut query: Query<(Entity, &mut Aabb), With<RayCastMesh<MyRaycastSet>>>,
     mut status_query: Query<&mut Text, With<BoundVolStatus>>,
     keyboard: Res<Input<KeyCode>>,
 ) {
@@ -185,13 +196,13 @@ fn manage_aabb(
                 text.sections[1].style.color = Color::RED;
             }
         }
-    }
-    for (entity, aabb) in query.iter() {
-        if aabb.is_none() && enabled.0 {
-            // Insert the component, the bounding volume will be automatically computed
-            commands.entity(entity).insert(Aabb::default());
-        } else if aabb.is_some() && !enabled.0 {
-            commands.entity(entity).remove::<Aabb>();
+
+        for (entity, mut aabb) in query.iter_mut() {
+            if enabled.0 {
+                commands.entity(entity).remove::<Aabb>();
+            } else {
+                aabb.half_extents = Vec3::ONE * f32::MAX;
+            }
         }
     }
 }
