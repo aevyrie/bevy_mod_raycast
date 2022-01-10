@@ -378,22 +378,20 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                             };
                         if !should_raycast {
                             None // Exit early for entities that we can skip
-                        } else {
-                            if let Some(aabb) = bound_vol {
-                                if let Some([_, far]) =
-                                    ray.intersects_aabb(aabb, &transform.compute_matrix())
-                                {
-                                    if far < 0.0 {
-                                        None // AABB is behind the ray
-                                    } else {
-                                        Some(entity)
-                                    }
+                        } else if let Some(aabb) = bound_vol {
+                            if let Some([_, far]) =
+                                ray.intersects_aabb(aabb, &transform.compute_matrix())
+                            {
+                                if far < 0.0 {
+                                    None // AABB is behind the ray
                                 } else {
-                                    None // Ray does not intersect the AABB
+                                    Some(entity)
                                 }
                             } else {
-                                Some(entity) // Has no AABB
+                                None // Ray does not intersect the AABB
                             }
+                        } else {
+                            Some(entity) // Has no AABB
                         }
                     },
                 )
