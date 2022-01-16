@@ -15,10 +15,16 @@ fn main() {
             ..Default::default()
         })
         .add_plugins(DefaultPlugins)
+        // The DefaultRaycastingPlugin bundles all the functionality you might need into a single
+        // plugin. This includes building rays, casting them, and placing a debug cursor at the
+        // intersection. For more advanced uses, you can compose the systems in this plugin however
+        // you need. For example, you might exclude the debug cursor system.
         .add_plugin(DefaultRaycastingPlugin::<MyRaycastSet>::default())
         // You will need to pay attention to what order you add systems! Putting them in the wrong
-        // order can result in multiple frames of latency. Ray casting should probably happen after
-        // the positions of your meshes have been updated in the UPDATE stage.
+        // order can result in multiple frames of latency. Ray casting should probably happen near
+        // start of the frame. For example, we want to be sure this system runs before we construct
+        // any rays, hence the ".before(...)". You can use these provided RaycastSystem labels to
+        // order your systems with the ones provided by the raycasting plugin.
         .add_system_to_stage(
             CoreStage::PreUpdate,
             update_raycast_with_cursor.before(RaycastSystem::BuildRays),
@@ -27,9 +33,9 @@ fn main() {
         .run();
 }
 
-// This is a unit struct we will use to mark our generic `RayCastMesh`s and `RayCastSource` as part
-// of the same group, or "RayCastSet". For more complex use cases, you might use this to associate
-// some meshes with one ray casting source, and other meshes with a different ray casting source."
+/// This is a unit struct we will use to mark our generic `RayCastMesh`s and `RayCastSource` as part
+/// of the same group, or "RayCastSet". For more complex use cases, you might use this to associate
+/// some meshes with one ray casting source, and other meshes with a different ray casting source."
 struct MyRaycastSet;
 
 // Update our `RayCastSource` with the current cursor position every frame.
