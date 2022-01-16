@@ -43,11 +43,14 @@ fn update_raycast_with_cursor(
     mut cursor: EventReader<CursorMoved>,
     mut query: Query<&mut RayCastSource<MyRaycastSet>>,
 ) {
+    // Grab the most recent cursor event if it exists:
+    let cursor_position = match cursor.iter().last() {
+        Some(cursor_moved) => cursor_moved.position,
+        None => return,
+    };
+
     for mut pick_source in &mut query.iter_mut() {
-        // Grab the most recent cursor event if it exists:
-        if let Some(cursor_latest) = cursor.iter().last() {
-            pick_source.cast_method = RayCastMethod::Screenspace(cursor_latest.position);
-        }
+        pick_source.cast_method = RayCastMethod::Screenspace(cursor_position);
     }
 }
 
