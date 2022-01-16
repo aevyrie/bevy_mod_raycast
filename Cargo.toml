@@ -13,7 +13,6 @@ resolver = "2"
 [dependencies]
 #bevy = { git = "https://github.com/bevyengine/bevy", branch = "main", version = "0.6", default-features = false, features = [
 bevy = { version = "0.6", default-features = false, features = ["render"] }
-rayon = "1.5"
 
 [dev-dependencies]
 #bevy = { git = "https://github.com/bevyengine/bevy", branch = "main", version = "0.6", default-features = false, features = [

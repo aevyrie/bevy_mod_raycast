@@ -15,8 +15,8 @@ use bevy::{
         mesh::{Indices, Mesh, VertexAttributeValues},
         render_resource::PrimitiveTopology,
     },
+    tasks::ComputeTaskPool,
 };
-use rayon::prelude::*;
 use std::{
     collections::BTreeMap,
     marker::PhantomData,
@@ -334,6 +334,7 @@ pub fn build_rays<T: 'static + Send + Sync>(
 pub fn update_raycast<T: 'static + Send + Sync>(
     // Resources
     meshes: Res<Assets<Mesh>>,
+    task_pool: Res<ComputeTaskPool>,
     // Queries
     mut pick_source_query: Query<&mut RayCastSource<T>>,
     culling_query: Query<
@@ -401,28 +402,28 @@ pub fn update_raycast<T: 'static + Send + Sync>(
             drop(ray_cull_guard);
 
             let picks = Arc::new(Mutex::new(BTreeMap::new()));
-            culled_list.par_iter().for_each(|entity| {
-                let _raycast_guard = raycast.enter();
-                if let Ok((mesh_handle, simplified_mesh, transform, entity)) =
-                    mesh_query.get(*entity)
-                {
-                    // Use the mesh handle to get a reference to a mesh asset
-                    if let Some(mesh) =
-                        meshes.get(simplified_mesh.map(|bm| &bm.mesh).unwrap_or(mesh_handle))
-                    {
-                        if let Some(intersection) =
-                            ray_intersection_over_mesh(mesh, &transform.compute_matrix(), &ray)
+            mesh_query.par_for_each(
+                &task_pool,
+                32,
+                |(mesh_handle, simplified_mesh, transform, entity)| {
+                    if culled_list.contains(&entity) {
+                        let _raycast_guard = raycast.enter();
+                        // Use the mesh handle to get a reference to a mesh asset
+                        if let Some(mesh) =
+                            meshes.get(simplified_mesh.map(|bm| &bm.mesh).unwrap_or(mesh_handle))
                         {
-                            picks
-                                .lock()
-                                .unwrap()
-                                .insert(FloatOrd(intersection.distance()), (entity, intersection));
+                            if let Some(intersection) =
+                                ray_intersection_over_mesh(mesh, &transform.compute_matrix(), &ray)
+                            {
+                                picks.lock().unwrap().insert(
+                                    FloatOrd(intersection.distance()),
+                                    (entity, intersection),
+                                );
+                            }
                         }
                     }
-                }
-            });
-            let picks = Arc::try_unwrap(picks).unwrap().into_inner().unwrap();
-            pick_source.intersections = picks.into_values().collect();
+                },
+            );
         }
     }
 }
