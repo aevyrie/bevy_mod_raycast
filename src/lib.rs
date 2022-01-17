@@ -424,6 +424,8 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                     }
                 },
             );
+            let picks = Arc::try_unwrap(picks).unwrap().into_inner().unwrap();
+            pick_source.intersections = picks.into_values().collect();
         }
     }
 }
