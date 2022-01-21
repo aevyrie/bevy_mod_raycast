@@ -1,6 +1,6 @@
 [package]
 name = "bevy_mod_raycast"
-version = "0.3.4"
+version = "0.3.5"
 authors = ["Aevyrie <aevyrie@gmail.com>"]
 edition = "2021"
 license = "MIT"
