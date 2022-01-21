@@ -122,25 +122,23 @@ pub mod rays {
             };
             let screen_size = Vec2::from([window.width() as f32, window.height() as f32]);
             let projection = camera.projection_matrix;
-            let is_orthographic = projection.w_axis[3] == 1.0;
 
-            // Normalized device coordinate cursor position from (-1, -1, -1) to (1, 1, 1)
+            // 2D Normalized device coordinate cursor position from (-1, -1) to (1, 1)
             let cursor_ndc = (cursor_pos_screen / screen_size) * 2.0 - Vec2::from([1.0, 1.0]);
             let ndc_to_world: Mat4 = view * projection.inverse();
 
-            if is_orthographic {
-                let cursor_pos_ndc_near: Vec3 = cursor_ndc.extend(1.0);
-                let cursor_pos_ndc_far: Vec3 = cursor_ndc.extend(-1.0);
-                let cursor_pos_near: Vec3 = ndc_to_world.project_point3(cursor_pos_ndc_near);
-                let cursor_pos_far: Vec3 = ndc_to_world.project_point3(cursor_pos_ndc_far);
-                let ray_direction = (cursor_pos_far - cursor_pos_near).normalize();
-                Some(Ray3d::new(cursor_pos_near, ray_direction))
-            } else {
-                let cursor_pos_ndc_far: Vec3 = cursor_ndc.extend(1.0);
-                let cursor_pos_far: Vec3 = ndc_to_world.project_point3(cursor_pos_ndc_far);
-                let ray_direction = cursor_pos_far.normalize();
-                Some(Ray3d::new(camera_transform.translation, ray_direction))
-            }
+            // Compute the near and far extents in ndc space. The bevy camera looks at -Z
+            let cam_ray_near = view.transform_vector3(-Vec3::Z * camera.near);
+            let cam_ray_far = view.transform_vector3(-Vec3::Z * (camera.near + 1.0));
+            let near = projection.project_point3(cam_ray_near).z; // Converts to NDC
+            let far = projection.project_point3(cam_ray_far).z; // Converts to NDC
+
+            // Extend the cursor positions (2D) into 3D so we can get the cursor as a ray that
+            // extends from the near plane to the far plane.
+            let cursor_pos_near = ndc_to_world.project_point3(cursor_ndc.extend(near));
+            let cursor_pos_far = ndc_to_world.project_point3(cursor_ndc.extend(far));
+            let ray_direction = cursor_pos_far - cursor_pos_near;
+            Some(Ray3d::new(cursor_pos_near, ray_direction))
         }
         /// Checks if the ray intersects with an AABB of a mesh.
         pub fn intersects_aabb(&self, aabb: &Aabb, model_to_world: &Mat4) -> Option<[f32; 2]> {
