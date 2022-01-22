@@ -20,7 +20,6 @@ bevy = { git = "https://github.com/bevyengine/bevy", branch = "main", default-fe
 bevy = { git = "https://github.com/bevyengine/bevy", branch = "main", default-features = false, features = [
     #bevy = { version = "0.6", default-features = false, features = [
     "bevy_winit",
-    "bevy_gltf",
     "x11",
 ] }
 criterion = "0.3"
