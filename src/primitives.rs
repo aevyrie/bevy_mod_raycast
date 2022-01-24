@@ -128,15 +128,14 @@ pub mod rays {
             let ndc_to_world: Mat4 = view * projection.inverse();
 
             // Compute the near and far extents in ndc space. The bevy camera looks at -Z
-            let cam_ray_near = view.transform_vector3(-Vec3::Z * camera.near);
-            let cam_ray_far = view.transform_vector3(-Vec3::Z * (camera.near + 1.0));
-            let near = projection.project_point3(cam_ray_near).z; // Converts to NDC
-            let far = projection.project_point3(cam_ray_far).z; // Converts to NDC
+            let world_to_ndc = projection * view;
+            let ndc_near = world_to_ndc.project_point3(-Vec3::Z * camera.near).z;
+            let ndc_far = world_to_ndc.project_point3(-Vec3::Z * camera.far).z;
 
-            // Extend the cursor positions (2D) into 3D so we can get the cursor as a ray that
-            // extends from the near plane to the far plane.
-            let cursor_pos_near = ndc_to_world.project_point3(cursor_ndc.extend(near));
-            let cursor_pos_far = ndc_to_world.project_point3(cursor_ndc.extend(far));
+            // Extend the 2D cursor position into 3D by making a ray that extends from the near
+            // plane to the far plane.
+            let cursor_pos_near = ndc_to_world.project_point3(cursor_ndc.extend(ndc_near));
+            let cursor_pos_far = ndc_to_world.project_point3(cursor_ndc.extend(ndc_far));
             let ray_direction = cursor_pos_far - cursor_pos_near;
             Some(Ray3d::new(cursor_pos_near, ray_direction))
         }
