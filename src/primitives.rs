@@ -130,9 +130,7 @@ pub mod rays {
             // Compute the near and far extents in ndc space. The bevy camera looks at -Z
             let world_to_ndc = projection * view;
             let ndc_near = world_to_ndc.project_point3(-Vec3::Z * camera.near).z;
-            let ndc_far = world_to_ndc
-                .project_point3((-Vec3::Z - 1.0) * camera.near)
-                .z;
+            let ndc_far = world_to_ndc.project_point3(-Vec3::Z * camera.near - 1.0).z;
 
             // Extend the 2D cursor position into 3D by making a ray that extends from the near
             // plane to the far plane.
