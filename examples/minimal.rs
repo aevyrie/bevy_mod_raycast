@@ -27,7 +27,7 @@ fn setup(
     // default plugin is added.
     commands.insert_resource(DefaultPluginState::<MyRaycastSet>::default().with_debug_cursor());
     commands
-        .spawn_bundle(PerspectiveCameraBundle::default())
+        .spawn_bundle(OrthographicCameraBundle::new_3d())
         // Designate the camera as our ray casting source. Using `new_transform_empty()` means that
         // the ray casting source will not be initialized with a valid ray. Instead, a ray will be
         // calculated the first time the update_raycast system runs. Because we are setting this as
