@@ -134,8 +134,9 @@ pub mod rays {
 
             // Extend the 2D cursor position into 3D by making a ray that extends from the near
             // plane to the far plane.
+            let offset = ndc_near + (ndc_far - ndc_near) * 0.10;
             let cursor_pos_near = ndc_to_world.project_point3(cursor_ndc.extend(ndc_near));
-            let cursor_pos_far = ndc_to_world.project_point3(cursor_ndc.extend(ndc_far));
+            let cursor_pos_far = ndc_to_world.project_point3(cursor_ndc.extend(offset));
             let ray_direction = cursor_pos_far - cursor_pos_near;
             Some(Ray3d::new(cursor_pos_near, ray_direction))
         }
