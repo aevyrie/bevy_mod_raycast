@@ -126,17 +126,19 @@ pub mod rays {
             // 2D Normalized device coordinate cursor position from (-1, -1) to (1, 1)
             let cursor_ndc = (cursor_pos_screen / screen_size) * 2.0 - Vec2::from([1.0, 1.0]);
             let ndc_to_world: Mat4 = view * projection.inverse();
-
-            // Compute the near and far extents in ndc space. The bevy camera looks at -Z
             let world_to_ndc = projection * view;
-            let ndc_near = world_to_ndc.project_point3(-Vec3::Z * camera.near).z;
-            let ndc_far = world_to_ndc.project_point3(-Vec3::Z * (camera.near + 1.0)).z;
+            let is_orthographic = projection.w_axis[3] == 1.0;
 
-            // Extend the 2D cursor position into 3D by making a ray that extends from the near
-            // plane to the far plane.
-            let cursor_pos_near = ndc_to_world.project_point3(cursor_ndc.extend(ndc_near));
-            let cursor_pos_far = ndc_to_world.project_point3(cursor_ndc.extend(ndc_far));
-            let ray_direction = cursor_pos_far - cursor_pos_near;
+            // Compute the cursor position at the near plane. The bevy camera looks at -Z.
+            let ndc_near = world_to_ndc.transform_point3(-Vec3::Z * camera.near).z;
+            let cursor_pos_near = ndc_to_world.transform_point3(cursor_ndc.extend(ndc_near));
+
+            // Compute the ray's direction depending on the projection used.
+            let ray_direction = match is_orthographic {
+                true => view.transform_vector3(-Vec3::Z), // All screenspace rays are parallel in ortho
+                false => cursor_pos_near - camera_transform.translation, // Direction from camera to cursor
+            };
+
             Some(Ray3d::new(cursor_pos_near, ray_direction))
         }
         /// Checks if the ray intersects with an AABB of a mesh.
