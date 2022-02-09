@@ -1,6 +1,6 @@
 use std::f32::consts::FRAC_PI_2;
 
-use bevy::prelude::*;
+use bevy::{prelude::*, window::PresentMode};
 use bevy_mod_raycast::{
     ray_intersection_over_mesh, DefaultPluginState, DefaultRaycastingPlugin, Ray3d, RayCastMesh,
     RayCastMethod, RayCastSource, RaycastSystem,
