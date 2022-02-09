@@ -14,11 +14,9 @@ resolver = "2"
 bevy = { git = "https://github.com/bevyengine/bevy", branch = "main", default-features = false, features = [
     "render",
 ] }
-#bevy = { version = "0.6", default-features = false, features = ["render"] }
 
 [dev-dependencies]
 bevy = { git = "https://github.com/bevyengine/bevy", branch = "main", default-features = false, features = [
-    #bevy = { version = "0.6", default-features = false, features = [
     "bevy_winit",
     "x11",
 ] }
