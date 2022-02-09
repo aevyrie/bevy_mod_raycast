@@ -11,7 +11,7 @@ use bevy_mod_raycast::{
 fn main() {
     App::new()
         .insert_resource(WindowDescriptor {
-            vsync: false, // We'll turn off vsync for this example, as it's a source of input lag.
+            present_mode: PresentMode::Immediate, // We'll turn off vsync for this example, as it's a source of input lag.
             ..Default::default()
         })
         .add_plugins(DefaultPlugins)
