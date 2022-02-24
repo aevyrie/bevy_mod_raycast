@@ -445,7 +445,7 @@ pub fn ray_intersection_over_mesh(
         None => panic!("Mesh does not contain vertex positions"),
         Some(vertex_values) => match &vertex_values {
             VertexAttributeValues::Float32x3(positions) => positions,
-            _ => panic!("Unexpected types in {}", Mesh::ATTRIBUTE_POSITION),
+            _ => panic!("Unexpected types in {:?}", Mesh::ATTRIBUTE_POSITION),
         },
     };
     let vertex_normals: Option<&[[f32; 3]]> =
