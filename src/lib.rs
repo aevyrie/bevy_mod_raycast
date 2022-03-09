@@ -156,13 +156,20 @@ impl<T> RayCastSource<T> {
     pub fn with_ray_screenspace(
         &self,
         cursor_pos_screen: Vec2,
+        images: &Res<Assets<Image>>,
         windows: &Res<Windows>,
         camera: &Camera,
         camera_transform: &GlobalTransform,
     ) -> Self {
         RayCastSource {
             cast_method: RayCastMethod::Screenspace(cursor_pos_screen),
-            ray: Ray3d::from_screenspace(cursor_pos_screen, windows, camera, camera_transform),
+            ray: Ray3d::from_screenspace(
+                cursor_pos_screen,
+                images,
+                windows,
+                camera,
+                camera_transform,
+            ),
             intersections: self.intersections.clone(),
             _marker: self._marker,
         }
@@ -179,12 +186,14 @@ impl<T> RayCastSource<T> {
     /// Instantiates and initializes a [RayCastSource] with a valid screenspace ray.
     pub fn new_screenspace(
         cursor_pos_screen: Vec2,
+        images: &Res<Assets<Image>>,
         windows: &Res<Windows>,
         camera: &Camera,
         camera_transform: &GlobalTransform,
     ) -> Self {
         RayCastSource::new().with_ray_screenspace(
             cursor_pos_screen,
+            images,
             windows,
             camera,
             camera_transform,
@@ -278,6 +287,7 @@ pub enum RayCastMethod {
 
 #[allow(clippy::type_complexity)]
 pub fn build_rays<T: 'static + Send + Sync>(
+    images: Res<Assets<Image>>,
     windows: Res<Windows>,
     mut pick_source_query: Query<(
         &mut RayCastSource<T>,
@@ -307,7 +317,13 @@ pub fn build_rays<T: 'static + Send + Sync>(
                         return;
                     }
                 };
-                Ray3d::from_screenspace(*cursor_pos_screen, &windows, camera, camera_transform)
+                Ray3d::from_screenspace(
+                    *cursor_pos_screen,
+                    &images,
+                    &windows,
+                    camera,
+                    camera_transform,
+                )
             }
             // Use the specified transform as the origin and direction of the ray
             RayCastMethod::Transform => {

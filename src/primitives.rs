@@ -111,13 +111,13 @@ pub mod rays {
         }
         pub fn from_screenspace(
             cursor_pos_screen: Vec2,
+            images: &Res<Assets<Image>>,
             windows: &Res<Windows>,
             camera: &Camera,
             camera_transform: &GlobalTransform,
         ) -> Option<Self> {
             let view = camera_transform.compute_matrix();
-            let window = get_window_for_camera(windows, camera)?;
-            let screen_size = Vec2::from([window.width() as f32, window.height() as f32]);
+            let screen_size = get_camera_rendering_size(images, windows, camera)?;
             let projection = camera.projection_matrix;
 
             // 2D Normalized device coordinate cursor position from (-1, -1) to (1, 1)
@@ -180,22 +180,29 @@ pub mod rays {
         }
     }
 
-    fn get_window_for_camera<'a>(windows: &'a Windows, camera: &Camera) -> Option<&'a Window> {
-        match camera.target {
-            RenderTarget::Window(window_id) => match windows.get(window_id) {
+    fn get_camera_rendering_size<'a>(
+        images: &'a Assets<Image>,
+        windows: &'a Windows,
+        camera: &Camera,
+    ) -> Option<Vec2> {
+        match &camera.target {
+            RenderTarget::Window(window_id) => match windows.get(*window_id) {
                 None => {
                     error!("WindowId {} does not exist", window_id);
                     None
                 }
-                window => window,
+                Some(window) => Some(Vec2::from([window.width() as f32, window.height() as f32])),
             },
-            _ => {
-                error!(
-                    "Only window render targets are supported, got {:?}",
-                    camera.target
-                );
-                None
-            }
+            RenderTarget::Image(image_handle) => match images.get(image_handle) {
+                None => {
+                    error!("Image handle {:?} does not exist", image_handle.id);
+                    None
+                }
+                Some(image) => {
+                    let size = image.texture_descriptor.size;
+                    Some(Vec2::from([size.width as f32, size.height as f32]))
+                }
+            },
         }
     }
 }
