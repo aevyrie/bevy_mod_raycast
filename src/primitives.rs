@@ -109,18 +109,21 @@ pub mod rays {
         pub fn from_screenspace(
             cursor_pos_screen: Vec2,
             windows: &Res<Windows>,
+            images: &Res<Assets<Image>>,
             camera: &Camera,
             camera_transform: &GlobalTransform,
         ) -> Option<Self> {
             let view = camera_transform.compute_matrix();
-            let window = match windows.get(camera.window) {
-                Some(window) => window,
+            let screen_size = match camera.target.get_logical_size(windows, images) {
+                Some(s) => s,
                 None => {
-                    error!("WindowId {} does not exist", camera.window);
+                    error!(
+                        "Unable to get screen size for RenderTarget {:?}",
+                        camera.target
+                    );
                     return None;
                 }
             };
-            let screen_size = Vec2::from([window.width() as f32, window.height() as f32]);
             let projection = camera.projection_matrix;
 
             // 2D Normalized device coordinate cursor position from (-1, -1) to (1, 1)
