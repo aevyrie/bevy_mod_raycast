@@ -153,8 +153,8 @@ pub mod rays {
             // Check if the ray intersects the mesh's AABB. It's useful to work in model space because
             // we can do an AABB intersection test, instead of an OBB intersection test.
 
-            let t_0: Vec3A = (Vec3A::from(aabb.min()) - ray_origin) / ray_dir;
-            let t_1: Vec3A = (Vec3A::from(aabb.max()) - ray_origin) / ray_dir;
+            let t_0: Vec3A = (aabb.min() - ray_origin) / ray_dir;
+            let t_1: Vec3A = (aabb.max() - ray_origin) / ray_dir;
             let t_min: Vec3A = t_0.min(t_1);
             let t_max: Vec3A = t_0.max(t_1);
 
