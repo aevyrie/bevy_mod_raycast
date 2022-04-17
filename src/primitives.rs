@@ -56,10 +56,7 @@ pub mod rays {
     use bevy::{
         math::Vec3A,
         prelude::*,
-        render::{
-            camera::{Camera, RenderTarget},
-            primitives::Aabb,
-        },
+        render::{camera::Camera, primitives::Aabb},
     };
 
     /// A 3D ray, with an origin and direction. The direction is guaranteed to be normalized.
@@ -186,25 +183,6 @@ pub mod rays {
                 hit_far = t_max.z;
             }
             Some([hit_near, hit_far])
-        }
-    }
-
-    fn get_window_for_camera<'a>(windows: &'a Windows, camera: &Camera) -> Option<&'a Window> {
-        match camera.target {
-            RenderTarget::Window(window_id) => match windows.get(window_id) {
-                None => {
-                    error!("WindowId {} does not exist", window_id);
-                    None
-                }
-                window => window,
-            },
-            _ => {
-                error!(
-                    "Only window render targets are supported, got {:?}",
-                    camera.target
-                );
-                None
-            }
         }
     }
 }
