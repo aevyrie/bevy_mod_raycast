@@ -1,6 +1,6 @@
 [package]
 name = "bevy_mod_raycast"
-version = "0.3.9"
+version = "0.4.0"
 authors = ["Aevyrie <aevyrie@gmail.com>"]
 edition = "2021"
 license = "MIT"
@@ -14,11 +14,11 @@ resolver = "2"
 #bevy = { git = "https://github.com/bevyengine/bevy", branch = "main", default-features = false, features = [
 #    "render",
 #] }
-bevy = { version = "0.6", default-features = false, features = ["render"] }
+bevy = { version = "0.7", default-features = false, features = ["render"] }
 
 [dev-dependencies]
 #bevy = { git = "https://github.com/bevyengine/bevy", branch = "main", default-features = false, features = [
-bevy = { version = "0.6", default-features = false, features = [
+bevy = { version = "0.7", default-features = false, features = [
     "bevy_winit",
     "x11",
 ] }

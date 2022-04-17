@@ -157,12 +157,19 @@ impl<T> RayCastSource<T> {
         &self,
         cursor_pos_screen: Vec2,
         windows: &Res<Windows>,
+        images: &Res<Assets<Image>>,
         camera: &Camera,
         camera_transform: &GlobalTransform,
     ) -> Self {
         RayCastSource {
             cast_method: RayCastMethod::Screenspace(cursor_pos_screen),
-            ray: Ray3d::from_screenspace(cursor_pos_screen, windows, camera, camera_transform),
+            ray: Ray3d::from_screenspace(
+                cursor_pos_screen,
+                windows,
+                images,
+                camera,
+                camera_transform,
+            ),
             intersections: self.intersections.clone(),
             _marker: self._marker,
         }
@@ -180,12 +187,14 @@ impl<T> RayCastSource<T> {
     pub fn new_screenspace(
         cursor_pos_screen: Vec2,
         windows: &Res<Windows>,
+        images: &Res<Assets<Image>>,
         camera: &Camera,
         camera_transform: &GlobalTransform,
     ) -> Self {
         RayCastSource::new().with_ray_screenspace(
             cursor_pos_screen,
             windows,
+            images,
             camera,
             camera_transform,
         )
@@ -279,6 +288,7 @@ pub enum RayCastMethod {
 #[allow(clippy::type_complexity)]
 pub fn build_rays<T: 'static + Send + Sync>(
     windows: Res<Windows>,
+    images: Res<Assets<Image>>,
     mut pick_source_query: Query<(
         &mut RayCastSource<T>,
         Option<&GlobalTransform>,
@@ -307,7 +317,13 @@ pub fn build_rays<T: 'static + Send + Sync>(
                         return;
                     }
                 };
-                Ray3d::from_screenspace(*cursor_pos_screen, &windows, camera, camera_transform)
+                Ray3d::from_screenspace(
+                    *cursor_pos_screen,
+                    &windows,
+                    &images,
+                    camera,
+                    camera_transform,
+                )
             }
             // Use the specified transform as the origin and direction of the ray
             RayCastMethod::Transform => {
@@ -445,7 +461,7 @@ pub fn ray_intersection_over_mesh(
         None => panic!("Mesh does not contain vertex positions"),
         Some(vertex_values) => match &vertex_values {
             VertexAttributeValues::Float32x3(positions) => positions,
-            _ => panic!("Unexpected types in {}", Mesh::ATTRIBUTE_POSITION),
+            _ => panic!("Unexpected types in {:?}", Mesh::ATTRIBUTE_POSITION),
         },
     };
     let vertex_normals: Option<&[[f32; 3]]> =

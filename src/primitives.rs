@@ -109,18 +109,21 @@ pub mod rays {
         pub fn from_screenspace(
             cursor_pos_screen: Vec2,
             windows: &Res<Windows>,
+            images: &Res<Assets<Image>>,
             camera: &Camera,
             camera_transform: &GlobalTransform,
         ) -> Option<Self> {
             let view = camera_transform.compute_matrix();
-            let window = match windows.get(camera.window) {
-                Some(window) => window,
+            let screen_size = match camera.target.get_logical_size(windows, images) {
+                Some(s) => s,
                 None => {
-                    error!("WindowId {} does not exist", camera.window);
+                    error!(
+                        "Unable to get screen size for RenderTarget {:?}",
+                        camera.target
+                    );
                     return None;
                 }
             };
-            let screen_size = Vec2::from([window.width() as f32, window.height() as f32]);
             let projection = camera.projection_matrix;
 
             // 2D Normalized device coordinate cursor position from (-1, -1) to (1, 1)
@@ -150,8 +153,8 @@ pub mod rays {
             // Check if the ray intersects the mesh's AABB. It's useful to work in model space because
             // we can do an AABB intersection test, instead of an OBB intersection test.
 
-            let t_0: Vec3A = (Vec3A::from(aabb.min()) - ray_origin) / ray_dir;
-            let t_1: Vec3A = (Vec3A::from(aabb.max()) - ray_origin) / ray_dir;
+            let t_0: Vec3A = (aabb.min() - ray_origin) / ray_dir;
+            let t_1: Vec3A = (aabb.max() - ray_origin) / ray_dir;
             let t_min: Vec3A = t_0.min(t_1);
             let t_max: Vec3A = t_0.max(t_1);
 

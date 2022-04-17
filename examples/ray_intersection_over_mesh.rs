@@ -1,6 +1,6 @@
 use std::f32::consts::FRAC_PI_2;
 
-use bevy::prelude::*;
+use bevy::{prelude::*, window::PresentMode};
 use bevy_mod_raycast::{
     ray_intersection_over_mesh, DefaultPluginState, DefaultRaycastingPlugin, Ray3d, RayCastMesh,
     RayCastMethod, RayCastSource, RaycastSystem,
@@ -15,7 +15,7 @@ use bevy_mod_raycast::{
 fn main() {
     App::new()
         .insert_resource(WindowDescriptor {
-            vsync: false, // Disabled for this demo to remove vsync as a source of input latency
+            present_mode: PresentMode::Immediate, // Disabled for this demo to remove vsync as a source of input latency
             ..Default::default()
         })
         .add_plugins(DefaultPlugins)
