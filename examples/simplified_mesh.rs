@@ -8,7 +8,7 @@ use bevy_mod_raycast::{
     RaycastSystem, SimplifiedMesh,
 };
 
-// This example will show you how to setup simplified mesh to optimise when raycasting over a
+// This example will show you how to setup simplified mesh to optimize when raycasting over a
 // scene with a complicated mesh. The simplified mesh will be used to check faster for intersection
 // with the mesh.
 

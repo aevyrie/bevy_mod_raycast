@@ -10,7 +10,7 @@ use bevy_mod_raycast::{
     RaycastSystem,
 };
 
-// This example will show you how to setup bounding volume to optimise when raycasting over a
+// This example will show you how to setup bounding volume to optimize when raycasting over a
 // scene with many meshes. The bounding volume will be used to check faster for which mesh
 // to actually raycast on.
 
