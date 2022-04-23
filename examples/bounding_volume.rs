@@ -17,7 +17,7 @@ use bevy_mod_raycast::{
 fn main() {
     App::new()
         .insert_resource(WindowDescriptor {
-            present_mode: PresentMode::Immediate, // We'll turn off vsync for this example, as it's a source of input lag.
+            present_mode: PresentMode::Immediate, // Reduces input lag.
             ..Default::default()
         })
         .add_plugins(DefaultPlugins)
@@ -28,7 +28,7 @@ fn main() {
         // the positions of your meshes have been updated in the UPDATE stage.
         .add_system_to_stage(
             CoreStage::PreUpdate,
-            update_raycast_with_cursor.before(RaycastSystem::BuildRays),
+            update_raycast_with_cursor.before(RaycastSystem::BuildRays::<MyRaycastSet>),
         )
         .add_startup_system(setup_scene)
         .add_startup_system(setup_ui)
@@ -78,7 +78,7 @@ fn setup_scene(
     let mesh = asset_server.load("models/monkey/Monkey.gltf#Mesh0/Primitive0");
     let material = materials.add(Color::rgb(1.0, 1.0, 1.0).into());
     // Spawn multiple mesh to raycast on
-    let n = 10;
+    let n = 8;
     for i in -n..=n {
         for j in -n..=n {
             for k in -n..=n {

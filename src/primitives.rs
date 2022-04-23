@@ -1,5 +1,6 @@
 use bevy::{math::Vec3A, prelude::*};
 pub use rays::*;
+use std::marker::PhantomData;
 
 #[non_exhaustive]
 pub enum Primitive3d {
@@ -7,46 +8,104 @@ pub enum Primitive3d {
     Plane { point: Vec3, normal: Vec3 },
 }
 
-/// Holds computed intersection information
-#[derive(Debug, PartialEq, Copy, Clone, Component)]
-pub struct Intersection {
+#[derive(Debug, Clone)]
+pub struct IntersectionData {
     position: Vec3,
     normal: Vec3,
     distance: f32,
     triangle: Option<Triangle>,
 }
-impl Intersection {
-    pub fn new(
-        position: Vec3,
-        normal: Vec3,
-        pick_distance: f32,
-        triangle: Option<Triangle>,
-    ) -> Self {
-        Intersection {
+
+impl IntersectionData {
+    pub fn new(position: Vec3, normal: Vec3, distance: f32, triangle: Option<Triangle>) -> Self {
+        Self {
             position,
             normal,
-            distance: pick_distance,
+            distance,
             triangle,
+        }
+    }
+
+    /// Get the intersection data's position.
+    #[must_use]
+    pub fn position(&self) -> Vec3 {
+        self.position
+    }
+
+    /// Get the intersection data's normal.
+    #[must_use]
+    pub fn normal(&self) -> Vec3 {
+        self.normal
+    }
+
+    /// Get the intersection data's distance.
+    #[must_use]
+    pub fn distance(&self) -> f32 {
+        self.distance
+    }
+
+    /// Get the intersection data's triangle.
+    #[must_use]
+    pub fn triangle(&self) -> Option<Triangle> {
+        self.triangle
+    }
+}
+
+/// Holds the topmost intersection for the raycasting set `T`.
+///
+/// ### Example
+///
+/// Lets say you've created a raycasting set `T`. If you have a [`crate::RayCastSource<T>`], a
+/// [`crate::RayCastMesh<T>`], and an intersection occurs, the `RayCastMesh` will have an
+/// `Intersection` component added to it, with the intersection data.
+#[derive(Component)]
+pub struct Intersection<T> {
+    data: IntersectionData,
+    _phantom: PhantomData<fn(T) -> T>,
+}
+impl<T> std::fmt::Debug for Intersection<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Intersection")
+            .field("position", &self.data.position)
+            .field("normal", &self.data.normal)
+            .field("distance", &self.data.distance)
+            .field("triangle", &self.data.triangle)
+            .finish()
+    }
+}
+impl<T> Clone for Intersection<T> {
+    fn clone(&self) -> Self {
+        Self {
+            data: self.data.clone(),
+            _phantom: PhantomData,
+        }
+    }
+}
+impl<T> Intersection<T> {
+    pub fn new(data: IntersectionData) -> Self {
+        Intersection {
+            data,
+            _phantom: PhantomData,
         }
     }
     /// Position vector describing the intersection position.
     pub fn position(&self) -> Vec3 {
-        self.position
+        self.data.position
     }
     /// Unit vector describing the normal of the intersected triangle.
     pub fn normal(&self) -> Vec3 {
-        self.normal
+        self.data.normal
     }
     pub fn normal_ray(&self) -> Ray3d {
-        Ray3d::new(self.position, self.normal)
+        Ray3d::new(self.data.position, self.data.normal)
     }
     /// Distance from the picking source to the entity.
     pub fn distance(&self) -> f32 {
-        self.distance
+        self.data.distance
     }
     /// Triangle that was intersected with in World coordinates
     pub fn world_triangle(&self) -> Option<Triangle> {
-        self.triangle
+        self.data.triangle
     }
 }
 
