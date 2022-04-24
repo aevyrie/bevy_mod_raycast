@@ -7,7 +7,7 @@
 [![docs.rs](https://docs.rs/bevy_mod_raycast/badge.svg)](https://docs.rs/bevy_mod_raycast)
 [![Bevy tracking](https://img.shields.io/badge/Bevy%20tracking-main-lightblue)](https://github.com/bevyengine/bevy/blob/main/docs/plugins_guidelines.md#main-branch-tracking)
 
-<video src="https://user-images.githubusercontent.com/2632925/164992920-ca0c95f3-09fd-43af-aa0f-8350ceb01186.mp4"></video>
+![raycast_demo](https://user-images.githubusercontent.com/2632925/164993927-079d960e-210f-4722-80c2-91059c460efc.gif)
 
 </div>
   
