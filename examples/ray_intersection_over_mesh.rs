@@ -15,7 +15,7 @@ use bevy_mod_raycast::{
 fn main() {
     App::new()
         .insert_resource(WindowDescriptor {
-            present_mode: PresentMode::Immediate, // Reduces input latency
+            present_mode: PresentMode::Mailbox, // Reduces input latency
             ..Default::default()
         })
         .add_plugins(DefaultPlugins)
@@ -23,7 +23,7 @@ fn main() {
         .add_startup_system(setup)
         .add_startup_system(setup_ui)
         .add_system_to_stage(
-            CoreStage::PreUpdate,
+            CoreStage::First,
             update_raycast_with_cursor.before(RaycastSystem::BuildRays::<Ground>),
         )
         .add_system(check_path)

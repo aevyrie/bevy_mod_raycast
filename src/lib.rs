@@ -2,9 +2,8 @@ mod debug;
 mod primitives;
 mod raycast;
 
-pub use crate::{debug::*, primitives::*};
-
 use crate::raycast::*;
+pub use crate::{debug::*, primitives::*};
 use bevy::{
     core::FloatOrd,
     ecs::schedule::ShouldRun,
@@ -30,7 +29,7 @@ impl<T: 'static + Send + Sync> Plugin for DefaultRaycastingPlugin<T> {
     fn build(&self, app: &mut App) {
         app.init_resource::<DefaultPluginState<T>>()
             .add_system_set_to_stage(
-                CoreStage::PreUpdate,
+                CoreStage::First,
                 SystemSet::new()
                     .with_system(
                         build_rays::<T>
@@ -178,7 +177,7 @@ impl<T> Default for RayCastMesh<T> {
 pub struct RayCastSource<T> {
     pub cast_method: RayCastMethod,
     ray: Option<Ray3d>,
-    intersections: Vec<(Entity, Intersection<T>)>,
+    intersections: Vec<(Entity, IntersectionData)>,
     _marker: PhantomData<fn() -> T>,
 }
 
@@ -263,14 +262,14 @@ impl<T> RayCastSource<T> {
             ..Default::default()
         }
     }
-    pub fn intersect_list(&self) -> Option<&Vec<(Entity, Intersection<T>)>> {
+    pub fn intersect_list(&self) -> Option<&Vec<(Entity, IntersectionData)>> {
         if self.intersections.is_empty() {
             None
         } else {
             Some(&self.intersections)
         }
     }
-    pub fn intersect_top(&self) -> Option<(Entity, &Intersection<T>)> {
+    pub fn intersect_top(&self) -> Option<(Entity, &IntersectionData)> {
         if self.intersections.is_empty() {
             None
         } else {
@@ -308,7 +307,7 @@ impl<T> RayCastSource<T> {
     }
 
     /// Get a mutable reference to the ray cast source's intersections.
-    pub fn intersections_mut(&mut self) -> &mut Vec<(Entity, Intersection<T>)> {
+    pub fn intersections_mut(&mut self) -> &mut Vec<(Entity, IntersectionData)> {
         &mut self.intersections
     }
 }
@@ -426,7 +425,6 @@ pub fn update_raycast<T: 'static>(
             // Create spans for tracing
             let ray_cull = info_span!("ray culling");
             let raycast = info_span!("raycast");
-
             let ray_cull_guard = ray_cull.enter();
             // Check all entities to see if the source ray intersects the AABB, use this
             // to build a short list of entities that are in the path of the ray.
@@ -488,24 +486,34 @@ pub fn update_raycast<T: 'static>(
                 },
             );
             let picks = Arc::try_unwrap(picks).unwrap().into_inner().unwrap();
-            pick_source.intersections = picks
-                .into_values()
-                .map(|(e, i)| (e, Intersection::new(i)))
-                .collect();
+            pick_source.intersections = picks.into_values().map(|(e, i)| (e, i)).collect();
         }
     }
 }
-
 pub fn update_intersections<T: 'static>(
     mut commands: Commands,
-    intersections: Query<Entity, With<Intersection<T>>>,
+    mut intersections: Query<&mut Intersection<T>>,
     sources: Query<&RayCastSource<T>>,
 ) {
-    for entity in intersections.iter() {
-        commands.entity(entity).remove::<Intersection<T>>();
+    let mut intersect_iter = intersections.iter_mut();
+    for (_, new_intersection) in sources.iter().filter_map(|source| source.intersect_top()) {
+        match intersect_iter.next() {
+            Some(mut intersection) => {
+                // If there is an existing intersection, reuse it.
+                intersection.data = Some(new_intersection.to_owned());
+            }
+            None => {
+                // If there are no intersections left in the world, spawn one.
+                commands
+                    .spawn()
+                    .insert(Intersection::<T>::new(new_intersection.to_owned()));
+            }
+        }
     }
-    for (entity, intersection) in sources.iter().filter_map(|source| source.intersect_top()) {
-        commands.entity(entity).insert(intersection.to_owned());
+    // Reset and despawn any remaining intersection. We need to be able to reset, because commands
+    // take a full stage to update.
+    for mut unused_intersect in intersect_iter {
+        unused_intersect.data = None;
     }
 }
 

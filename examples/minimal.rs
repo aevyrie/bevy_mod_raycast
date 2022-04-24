@@ -65,7 +65,7 @@ fn intersection(query: Query<(&Intersection<MyRaycastSet>, &Handle<Mesh>)>) {
     for (intersection, mesh) in query.iter() {
         info!("{mesh:?}");
         info!(
-            "Distance {:.3}, Position {:?}",
+            "Distance {:?}, Position {:?}",
             intersection.distance(),
             intersection.position()
         );
