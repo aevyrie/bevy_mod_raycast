@@ -17,7 +17,7 @@ use bevy_mod_raycast::{
 fn main() {
     App::new()
         .insert_resource(WindowDescriptor {
-            present_mode: PresentMode::Immediate, // Reduces input lag.
+            present_mode: PresentMode::Mailbox, // Reduces input lag.
             ..Default::default()
         })
         .add_plugins(DefaultPlugins)
@@ -27,7 +27,7 @@ fn main() {
         // order can result in multiple frames of latency. Ray casting should probably happen after
         // the positions of your meshes have been updated in the UPDATE stage.
         .add_system_to_stage(
-            CoreStage::PreUpdate,
+            CoreStage::First,
             update_raycast_with_cursor.before(RaycastSystem::BuildRays::<MyRaycastSet>),
         )
         .add_startup_system(setup_scene)

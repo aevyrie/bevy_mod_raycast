@@ -45,26 +45,32 @@ pub fn update_debug_cursor<T: 'static>(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    cursors: Query<Entity, With<DebugCursor<T>>>,
-    intersections: Query<&Intersection<T>>,
+    mut cursors: Query<(&Intersection<T>, &mut Transform), With<DebugCursor<T>>>,
+    intersection_without_cursor: Query<(Entity, &Intersection<T>), Without<DebugCursor<T>>>,
 ) {
-    for entity in cursors.iter() {
-        commands.entity(entity).despawn_recursive();
-    }
     // Set the cursor translation to the top pick's world coordinates
-    for intersection in intersections.iter() {
-        let transform_new = intersection.normal_ray().to_transform();
-        spawn_cursor::<T>(
-            &mut commands,
-            Transform::from_matrix(transform_new),
-            &mut meshes,
-            &mut materials,
-        );
+    for (intersection, mut transform) in cursors.iter_mut() {
+        if let Some(new_matrix) = intersection.normal_ray() {
+            *transform = Transform::from_matrix(new_matrix.to_transform());
+        }
+    }
+    // Spawn a new debug cursor for intersections without one
+    for (entity, intersection) in intersection_without_cursor.iter() {
+        if let Some(new_matrix) = intersection.normal_ray() {
+            spawn_cursor::<T>(
+                &mut commands,
+                entity,
+                Transform::from_matrix(new_matrix.to_transform()),
+                &mut meshes,
+                &mut materials,
+            );
+        }
     }
 }
 
 fn spawn_cursor<T: 'static>(
     commands: &mut Commands,
+    entity: Entity,
     transform: Transform,
     meshes: &mut ResMut<Assets<Mesh>>,
     materials: &mut ResMut<Assets<StandardMaterial>>,
@@ -78,8 +84,9 @@ fn spawn_cursor<T: 'static>(
         ..Default::default()
     });
     commands
+        .entity(entity)
         // cursor
-        .spawn_bundle(PbrBundle {
+        .insert_bundle(PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Icosphere {
                 subdivisions: 4,
                 radius: ball_size,

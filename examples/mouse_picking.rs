@@ -11,7 +11,7 @@ use bevy_mod_raycast::{
 fn main() {
     App::new()
         .insert_resource(WindowDescriptor {
-            present_mode: PresentMode::Immediate, // Reduces input lag.
+            present_mode: PresentMode::Mailbox, // Reduces input lag.
             ..Default::default()
         })
         .add_plugins(DefaultPlugins)
@@ -26,7 +26,7 @@ fn main() {
         // any rays, hence the ".before(...)". You can use these provided RaycastSystem labels to
         // order your systems with the ones provided by the raycasting plugin.
         .add_system_to_stage(
-            CoreStage::PreUpdate,
+            CoreStage::First,
             update_raycast_with_cursor.before(RaycastSystem::BuildRays::<MyRaycastSet>),
         )
         .add_startup_system(setup)
