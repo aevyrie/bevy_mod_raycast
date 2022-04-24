@@ -8,14 +8,14 @@ use bevy_mod_raycast::{
     RaycastSystem, SimplifiedMesh,
 };
 
-// This example will show you how to setup simplified mesh to optimise when raycasting over a
+// This example will show you how to setup simplified mesh to optimize when raycasting over a
 // scene with a complicated mesh. The simplified mesh will be used to check faster for intersection
 // with the mesh.
 
 fn main() {
     App::new()
         .insert_resource(WindowDescriptor {
-            present_mode: PresentMode::Immediate, // We'll turn off vsync for this example, as it's a source of input lag.
+            present_mode: PresentMode::Immediate, // Reduces input lag.
             ..Default::default()
         })
         .add_plugins(DefaultPlugins)
@@ -26,7 +26,7 @@ fn main() {
         // the positions of your meshes have been updated in the UPDATE stage.
         .add_system_to_stage(
             CoreStage::PreUpdate,
-            update_raycast_with_cursor.before(RaycastSystem::BuildRays),
+            update_raycast_with_cursor.before(RaycastSystem::BuildRays::<MyRaycastSet>),
         )
         .add_startup_system(setup_scene)
         .add_startup_system(setup_ui)

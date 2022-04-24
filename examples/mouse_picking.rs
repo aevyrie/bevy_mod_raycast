@@ -11,7 +11,7 @@ use bevy_mod_raycast::{
 fn main() {
     App::new()
         .insert_resource(WindowDescriptor {
-            present_mode: PresentMode::Immediate, // We'll turn off vsync for this example, as it's a source of input lag.
+            present_mode: PresentMode::Immediate, // Reduces input lag.
             ..Default::default()
         })
         .add_plugins(DefaultPlugins)
@@ -27,7 +27,7 @@ fn main() {
         // order your systems with the ones provided by the raycasting plugin.
         .add_system_to_stage(
             CoreStage::PreUpdate,
-            update_raycast_with_cursor.before(RaycastSystem::BuildRays),
+            update_raycast_with_cursor.before(RaycastSystem::BuildRays::<MyRaycastSet>),
         )
         .add_startup_system(setup)
         .run();

@@ -1,8 +1,13 @@
 use bevy::prelude::*;
-use bevy_mod_raycast::{DefaultPluginState, DefaultRaycastingPlugin, RayCastMesh, RayCastSource};
+use bevy_mod_raycast::{
+    DefaultPluginState, DefaultRaycastingPlugin, Intersection, RayCastMesh, RayCastSource,
+};
 
-// This example casts a ray from the camera using its transform, intersecting a mesh, and displays
-// the debug cursor at the intersection.
+// This example casts a ray from the camera using its transform, intersects a mesh, displays
+// the debug cursor at the intersection, and reports the intersection.
+//
+// It also demonstrates how normals are interpolated. Notice the debug cursor doesn't snap to the
+// faces of the low-poly sphere's faces, but smoothly interpolates using the mesh's normals.
 
 fn main() {
     App::new()
@@ -10,10 +15,12 @@ fn main() {
         .add_plugin(DefaultRaycastingPlugin::<MyRaycastSet>::default())
         .add_startup_system(setup)
         .add_system(rotator)
+        .add_system(intersection)
         .run();
 }
 
-// Mark our generic `RayCastMesh`s and `RayCastSource`s as part of the same group, or "RayCastSet".
+// Mark our generic `RayCastMesh`s and `RayCastSource`s as part of the same "RayCastSet". This
+// plugin uses generics to distinguish between groups of raycasters.
 struct MyRaycastSet;
 
 // Set up a simple scene with a sphere, camera, and light.
@@ -38,7 +45,10 @@ fn setup(
         .insert(RayCastSource::<MyRaycastSet>::new_transform_empty());
     commands
         .spawn_bundle(PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::Icosphere::default())),
+            mesh: meshes.add(Mesh::from(shape::Icosphere {
+                radius: 1.0,
+                subdivisions: 1,
+            })),
             material: materials.add(Color::rgb(1.0, 1.0, 1.0).into()),
             transform: Transform::from_translation(Vec3::new(0.0, 0.0, -5.0)),
             ..Default::default()
@@ -50,11 +60,23 @@ fn setup(
     });
 }
 
-// Rotate the camera up and down to show that the raycast intersection is updated every frame.
+/// Report intersections
+fn intersection(query: Query<(&Intersection<MyRaycastSet>, &Handle<Mesh>)>) {
+    for (intersection, mesh) in query.iter() {
+        info!("{mesh:?}");
+        info!(
+            "Distance {:.3}, Position {:?}",
+            intersection.distance(),
+            intersection.position()
+        );
+    }
+}
+
+/// Rotate the camera up and down to show that the raycast intersection is updated every frame.
 fn rotator(time: Res<Time>, mut query: Query<&mut Transform, With<RayCastSource<MyRaycastSet>>>) {
     for mut transform in query.iter_mut() {
         *transform = Transform::from_rotation(
-            Quat::from_rotation_x(time.seconds_since_startup().sin() as f32 * 0.15)
+            Quat::from_rotation_x(time.seconds_since_startup().sin() as f32 * 0.2)
                 * Quat::from_rotation_y((time.seconds_since_startup() * 1.5).sin() as f32 * 0.1),
         );
     }

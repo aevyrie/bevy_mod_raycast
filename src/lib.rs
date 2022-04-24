@@ -19,11 +19,13 @@ use bevy::{
 };
 use std::{
     collections::BTreeMap,
+    fmt::Debug,
+    hash::{Hash, Hasher},
     marker::PhantomData,
     sync::{Arc, Mutex},
 };
 
-pub struct DefaultRaycastingPlugin<T: 'static + Send + Sync>(pub PhantomData<T>);
+pub struct DefaultRaycastingPlugin<T>(pub PhantomData<fn() -> T>);
 impl<T: 'static + Send + Sync> Plugin for DefaultRaycastingPlugin<T> {
     fn build(&self, app: &mut App) {
         app.init_resource::<DefaultPluginState<T>>()
@@ -32,33 +34,41 @@ impl<T: 'static + Send + Sync> Plugin for DefaultRaycastingPlugin<T> {
                 SystemSet::new()
                     .with_system(
                         build_rays::<T>
-                            .label(RaycastSystem::BuildRays)
+                            .label(RaycastSystem::BuildRays::<T>)
                             .with_run_criteria(|state: Res<DefaultPluginState<T>>| {
                                 bool_criteria(state.build_rays)
                             }),
                     )
                     .with_system(
                         update_raycast::<T>
-                            .label(RaycastSystem::UpdateRaycast)
+                            .label(RaycastSystem::UpdateRaycast::<T>)
                             .with_run_criteria(|state: Res<DefaultPluginState<T>>| {
                                 bool_criteria(state.update_raycast)
                             })
-                            .after(RaycastSystem::BuildRays),
+                            .after(RaycastSystem::BuildRays::<T>),
+                    )
+                    .with_system(
+                        update_intersections::<T>
+                            .label(RaycastSystem::UpdateIntersections::<T>)
+                            .with_run_criteria(|state: Res<DefaultPluginState<T>>| {
+                                bool_criteria(state.update_raycast)
+                            })
+                            .after(RaycastSystem::UpdateRaycast::<T>),
                     )
                     .with_system(
                         update_debug_cursor::<T>
-                            .label(RaycastSystem::UpdateDebugCursor)
+                            .label(RaycastSystem::UpdateDebugCursor::<T>)
                             .with_run_criteria(|state: Res<DefaultPluginState<T>>| {
                                 bool_criteria(state.update_debug_cursor)
                             })
-                            .after(RaycastSystem::UpdateRaycast),
+                            .after(RaycastSystem::UpdateIntersections::<T>),
                     ),
             );
     }
 }
-impl<T: 'static + Send + Sync> Default for DefaultRaycastingPlugin<T> {
+impl<T> Default for DefaultRaycastingPlugin<T> {
     fn default() -> Self {
-        DefaultRaycastingPlugin(PhantomData::<T>)
+        DefaultRaycastingPlugin(PhantomData)
     }
 }
 
@@ -70,11 +80,48 @@ fn bool_criteria(flag: bool) -> ShouldRun {
     }
 }
 
-#[derive(Debug, Hash, PartialEq, Eq, Clone, SystemLabel)]
-pub enum RaycastSystem {
+#[derive(SystemLabel)]
+pub enum RaycastSystem<T> {
     BuildRays,
     UpdateRaycast,
+    UpdateIntersections,
     UpdateDebugCursor,
+    _Phantom(PhantomData<fn() -> T>),
+}
+impl<T> PartialEq for RaycastSystem<T> {
+    fn eq(&self, other: &Self) -> bool {
+        core::mem::discriminant(self) == core::mem::discriminant(other)
+    }
+}
+impl<T> Eq for RaycastSystem<T> {}
+impl<T> Debug for RaycastSystem<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let set = std::any::type_name::<T>();
+        match self {
+            Self::BuildRays => write!(f, "BuildRays ({})", set),
+            Self::UpdateRaycast => write!(f, "UpdateRaycast ({})", set),
+            Self::UpdateIntersections => write!(f, "UpdateIntersections ({})", set),
+            Self::UpdateDebugCursor => write!(f, "UpdateDebugCursor ({})", set),
+            Self::_Phantom(_) => write!(f, "PhantomData<{}>", set),
+        }
+    }
+}
+impl<T> Hash for RaycastSystem<T> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        let set = std::any::type_name::<T>();
+        (core::mem::discriminant(self), set).hash(state);
+    }
+}
+impl<T> Clone for RaycastSystem<T> {
+    fn clone(&self) -> Self {
+        match self {
+            Self::BuildRays => Self::BuildRays,
+            Self::UpdateRaycast => Self::UpdateRaycast,
+            Self::UpdateIntersections => Self::UpdateIntersections,
+            Self::UpdateDebugCursor => Self::UpdateDebugCursor,
+            Self::_Phantom(_) => Self::_Phantom(PhantomData),
+        }
+    }
 }
 
 /// Global plugin state used to enable or disable all ray casting for a given type T.
@@ -83,7 +130,7 @@ pub struct DefaultPluginState<T> {
     pub build_rays: bool,
     pub update_raycast: bool,
     pub update_debug_cursor: bool,
-    _marker: PhantomData<T>,
+    _marker: PhantomData<fn() -> T>,
 }
 
 impl<T> Default for DefaultPluginState<T> {
@@ -92,7 +139,7 @@ impl<T> Default for DefaultPluginState<T> {
             build_rays: true,
             update_raycast: true,
             update_debug_cursor: false,
-            _marker: PhantomData::<T>::default(),
+            _marker: PhantomData,
         }
     }
 }
@@ -113,13 +160,13 @@ impl<T> DefaultPluginState<T> {
 /// The marked entity must also have a [Mesh] component.
 #[derive(Component, Debug)]
 pub struct RayCastMesh<T> {
-    _marker: PhantomData<T>,
+    _marker: PhantomData<fn() -> T>,
 }
 
 impl<T> Default for RayCastMesh<T> {
     fn default() -> Self {
         RayCastMesh {
-            _marker: PhantomData::default(),
+            _marker: PhantomData,
         }
     }
 }
@@ -131,8 +178,8 @@ impl<T> Default for RayCastMesh<T> {
 pub struct RayCastSource<T> {
     pub cast_method: RayCastMethod,
     ray: Option<Ray3d>,
-    intersections: Vec<(Entity, Intersection)>,
-    _marker: PhantomData<T>,
+    intersections: Vec<(Entity, Intersection<T>)>,
+    _marker: PhantomData<fn() -> T>,
 }
 
 impl<T> Default for RayCastSource<T> {
@@ -154,7 +201,7 @@ impl<T> RayCastSource<T> {
     }
     /// Initializes a [RayCastSource] with a valid screenspace ray.
     pub fn with_ray_screenspace(
-        &self,
+        self,
         cursor_pos_screen: Vec2,
         windows: &Res<Windows>,
         images: &Res<Assets<Image>>,
@@ -170,16 +217,16 @@ impl<T> RayCastSource<T> {
                 camera,
                 camera_transform,
             ),
-            intersections: self.intersections.clone(),
+            intersections: self.intersections,
             _marker: self._marker,
         }
     }
     /// Initializes a [RayCastSource] with a valid ray derived from a transform.
-    pub fn with_ray_transform(&self, transform: Mat4) -> Self {
+    pub fn with_ray_transform(self, transform: Mat4) -> Self {
         RayCastSource {
             cast_method: RayCastMethod::Transform,
             ray: Some(Ray3d::from_transform(transform)),
-            intersections: self.intersections.clone(),
+            intersections: self.intersections,
             _marker: self._marker,
         }
     }
@@ -216,21 +263,21 @@ impl<T> RayCastSource<T> {
             ..Default::default()
         }
     }
-    pub fn intersect_list(&self) -> Option<&Vec<(Entity, Intersection)>> {
+    pub fn intersect_list(&self) -> Option<&Vec<(Entity, Intersection<T>)>> {
         if self.intersections.is_empty() {
             None
         } else {
             Some(&self.intersections)
         }
     }
-    pub fn intersect_top(&self) -> Option<(Entity, Intersection)> {
+    pub fn intersect_top(&self) -> Option<(Entity, &Intersection<T>)> {
         if self.intersections.is_empty() {
             None
         } else {
-            self.intersections.first().copied()
+            self.intersections.first().map(|(e, i)| (*e, i))
         }
     }
-    pub fn intersect_primitive(&self, shape: Primitive3d) -> Option<Intersection> {
+    pub fn intersect_primitive(&self, shape: Primitive3d) -> Option<IntersectionData> {
         let ray = self.ray?;
         match shape {
             Primitive3d::Plane {
@@ -243,7 +290,7 @@ impl<T> RayCastSource<T> {
                     let point_to_point = plane_origin - ray.origin();
                     let intersect_dist = plane_normal.dot(point_to_point) / denominator;
                     let intersect_position = ray.direction() * intersect_dist + ray.origin();
-                    Some(Intersection::new(
+                    Some(IntersectionData::new(
                         intersect_position,
                         plane_normal,
                         intersect_dist,
@@ -261,7 +308,7 @@ impl<T> RayCastSource<T> {
     }
 
     /// Get a mutable reference to the ray cast source's intersections.
-    pub fn intersections_mut(&mut self) -> &mut Vec<(Entity, Intersection)> {
+    pub fn intersections_mut(&mut self) -> &mut Vec<(Entity, Intersection<T>)> {
         &mut self.intersections
     }
 }
@@ -286,7 +333,7 @@ pub enum RayCastMethod {
 }
 
 #[allow(clippy::type_complexity)]
-pub fn build_rays<T: 'static + Send + Sync>(
+pub fn build_rays<T: 'static>(
     windows: Res<Windows>,
     images: Res<Assets<Image>>,
     mut pick_source_query: Query<(
@@ -347,7 +394,7 @@ pub fn build_rays<T: 'static + Send + Sync>(
 /// intersections. If these entities have bounding volumes, these will be checked first, greatly
 /// accelerating the process.
 #[allow(clippy::type_complexity)]
-pub fn update_raycast<T: 'static + Send + Sync>(
+pub fn update_raycast<T: 'static>(
     // Resources
     meshes: Res<Assets<Mesh>>,
     task_pool: Res<ComputeTaskPool>,
@@ -441,8 +488,24 @@ pub fn update_raycast<T: 'static + Send + Sync>(
                 },
             );
             let picks = Arc::try_unwrap(picks).unwrap().into_inner().unwrap();
-            pick_source.intersections = picks.into_values().collect();
+            pick_source.intersections = picks
+                .into_values()
+                .map(|(e, i)| (e, Intersection::new(i)))
+                .collect();
         }
+    }
+}
+
+pub fn update_intersections<T: 'static>(
+    mut commands: Commands,
+    intersections: Query<Entity, With<Intersection<T>>>,
+    sources: Query<&RayCastSource<T>>,
+) {
+    for entity in intersections.iter() {
+        commands.entity(entity).remove::<Intersection<T>>();
+    }
+    for (entity, intersection) in sources.iter().filter_map(|source| source.intersect_top()) {
+        commands.entity(entity).insert(intersection.to_owned());
     }
 }
 
@@ -451,7 +514,7 @@ pub fn ray_intersection_over_mesh(
     mesh: &Mesh,
     mesh_to_world: &Mat4,
     ray: &Ray3d,
-) -> Option<Intersection> {
+) -> Option<IntersectionData> {
     if mesh.primitive_topology() != PrimitiveTopology::TriangleList {
         error!("bevy_mod_picking only supports TriangleList mesh topology");
         return None;
@@ -524,7 +587,7 @@ pub fn ray_mesh_intersection(
     vertex_normals: Option<&[[f32; 3]]>,
     pick_ray: &Ray3d,
     indices: Option<&Vec<impl IntoUsize>>,
-) -> Option<Intersection> {
+) -> Option<IntersectionData> {
     // The ray cast can hit the same mesh many times, so we need to track which hit is
     // closest to the camera, and record that.
     let mut min_pick_distance = f32::MAX;
@@ -566,13 +629,13 @@ pub fn ray_mesh_intersection(
                 mesh_space_ray,
             );
             if let Some(i) = intersection {
-                pick_intersection = Some(Intersection::new(
+                pick_intersection = Some(IntersectionData::new(
                     mesh_to_world.transform_point3(i.position()),
                     mesh_to_world.transform_vector3(i.normal()),
                     mesh_to_world
                         .transform_vector3(mesh_space_ray.direction() * i.distance())
                         .length(),
-                    i.world_triangle().map(|tri| {
+                    i.triangle().map(|tri| {
                         Triangle::from([
                             mesh_to_world.transform_point3a(tri.v0),
                             mesh_to_world.transform_point3a(tri.v1),
@@ -604,13 +667,13 @@ pub fn ray_mesh_intersection(
                 mesh_space_ray,
             );
             if let Some(i) = intersection {
-                pick_intersection = Some(Intersection::new(
+                pick_intersection = Some(IntersectionData::new(
                     mesh_to_world.transform_point3(i.position()),
                     mesh_to_world.transform_vector3(i.normal()),
                     mesh_to_world
                         .transform_vector3(mesh_space_ray.direction() * i.distance())
                         .length(),
-                    i.world_triangle().map(|tri| {
+                    i.triangle().map(|tri| {
                         Triangle::from([
                             mesh_to_world.transform_point3a(tri.v0),
                             mesh_to_world.transform_point3a(tri.v1),
@@ -630,7 +693,7 @@ fn triangle_intersection(
     tri_normals: Option<[Vec3A; 3]>,
     max_distance: f32,
     ray: Ray3d,
-) -> Option<Intersection> {
+) -> Option<IntersectionData> {
     if tri_vertices
         .iter()
         .any(|&vertex| (vertex - ray.origin).length_squared() < max_distance.powi(2))
@@ -651,7 +714,7 @@ fn triangle_intersection(
                         .cross(tri_vertices.v2() - tri_vertices.v0())
                         .normalize()
                 };
-                let intersection = Intersection::new(
+                let intersection = IntersectionData::new(
                     position,
                     normal.into(),
                     distance,
