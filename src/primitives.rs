@@ -114,7 +114,7 @@ impl<T> Intersection<T> {
     }
     /// Triangle that was intersected with in World coordinates
     pub fn world_triangle(&self) -> Option<Triangle> {
-        self.data().map(|data| data.triangle).flatten()
+        self.data().and_then(|data| data.triangle)
     }
     fn data(&self) -> Option<&IntersectionData> {
         self.data.as_ref()
