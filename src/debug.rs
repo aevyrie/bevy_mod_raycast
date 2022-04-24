@@ -52,6 +52,8 @@ pub fn update_debug_cursor<T: 'static>(
     for (intersection, mut transform) in cursors.iter_mut() {
         if let Some(new_matrix) = intersection.normal_ray() {
             *transform = Transform::from_matrix(new_matrix.to_transform());
+        } else {
+            *transform = Transform::from_translation(Vec3::NAN);
         }
     }
     // Spawn a new debug cursor for intersections without one
