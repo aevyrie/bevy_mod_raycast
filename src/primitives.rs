@@ -14,15 +14,17 @@ pub struct IntersectionData {
     normal: Vec3,
     distance: f32,
     triangle: Option<Triangle>,
+    indices: Option<TriangleFace>,
 }
 
 impl IntersectionData {
-    pub fn new(position: Vec3, normal: Vec3, distance: f32, triangle: Option<Triangle>) -> Self {
+    pub fn new(position: Vec3, normal: Vec3, distance: f32, triangle: Option<Triangle>,indices: Option<TriangleFace>) -> Self {
         Self {
             position,
             normal,
             distance,
             triangle,
+            indices
         }
     }
 
@@ -48,6 +50,12 @@ impl IntersectionData {
     #[must_use]
     pub fn triangle(&self) -> Option<Triangle> {
         self.triangle
+    }
+
+    /// Get the intersection vertex indices.
+    #[must_use]
+    pub fn indices(&self) -> Option<TriangleFace> {
+        self.indices
     }
 }
 
@@ -288,6 +296,23 @@ impl From<[Vec3A; 3]> for Triangle {
             v0: vertices[0],
             v1: vertices[1],
             v2: vertices[2],
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Copy, Clone)]
+pub struct TriangleFace{
+    pub i0: u32,
+    pub i1: u32,
+    pub i2: u32,
+}
+
+impl From<[u32; 3]> for TriangleFace {
+    fn from(face_indices: [u32; 3]) -> Self {
+        TriangleFace {
+            i0: face_indices[0],
+            i1: face_indices[1],
+            i2: face_indices[2],
         }
     }
 }

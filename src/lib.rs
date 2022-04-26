@@ -294,6 +294,7 @@ impl<T> RayCastSource<T> {
                         plane_normal,
                         intersect_dist,
                         None,
+                        None,
                     ))
                 } else {
                     None
@@ -650,6 +651,9 @@ pub fn ray_mesh_intersection(
                             mesh_to_world.transform_point3a(tri.v2),
                         ])
                     }),
+                    i.indices().map(|face| {
+                        TriangleFace::from([face.i0,face.i1,face.i2])
+                    }),
                 ));
                 min_pick_distance = i.distance();
             }
@@ -688,6 +692,7 @@ pub fn ray_mesh_intersection(
                             mesh_to_world.transform_point3a(tri.v2),
                         ])
                     }),
+                    None
                 ));
                 min_pick_distance = i.distance();
             }
@@ -727,6 +732,7 @@ fn triangle_intersection(
                     normal.into(),
                     distance,
                     Some(tri_vertices.to_triangle()),
+                    None
                 );
                 return Some(intersection);
             }
