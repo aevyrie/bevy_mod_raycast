@@ -5,7 +5,7 @@ mod raycast;
 use crate::raycast::*;
 pub use crate::{debug::*, primitives::*};
 use bevy::{
-    bevy::utils::FloatOrd,
+    utils::FloatOrd,
     ecs::schedule::ShouldRun,
     math::Vec3A,
     prelude::*,
