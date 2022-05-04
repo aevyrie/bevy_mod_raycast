@@ -64,9 +64,10 @@ fn setup(
 fn intersection(query: Query<&Intersection<MyRaycastSet>>) {
     for intersection in query.iter() {
         info!(
-            "Distance {:?}, Position {:?}",
+            "Distance {:?}, Position {:?}, Face {:?}",
             intersection.distance(),
-            intersection.position()
+            intersection.position(),
+            intersection.world_triangle_indices()
         );
     }
 }

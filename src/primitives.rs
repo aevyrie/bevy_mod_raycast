@@ -80,6 +80,7 @@ impl<T> std::fmt::Debug for Intersection<T> {
                 .field("normal", &data.normal)
                 .field("distance", &data.distance)
                 .field("triangle", &data.triangle)
+                .field("indices", &data.indices)
                 .finish(),
             None => write!(f, "None"),
         }
@@ -124,6 +125,12 @@ impl<T> Intersection<T> {
     pub fn world_triangle(&self) -> Option<Triangle> {
         self.data().and_then(|data| data.triangle)
     }
+
+    /// Triangle indices of intersected triangle
+    pub fn world_triangle_indices(&self) -> Option<TriangleFace> {
+        self.data().and_then(|data| data.indices)
+    }
+
     fn data(&self) -> Option<&IntersectionData> {
         self.data.as_ref()
     }
@@ -302,13 +309,13 @@ impl From<[Vec3A; 3]> for Triangle {
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub struct TriangleFace{
-    pub i0: u32,
-    pub i1: u32,
-    pub i2: u32,
+    pub i0: usize,
+    pub i1: usize,
+    pub i2: usize,
 }
 
-impl From<[u32; 3]> for TriangleFace {
-    fn from(face_indices: [u32; 3]) -> Self {
+impl From<[usize; 3]> for TriangleFace {
+    fn from(face_indices: [usize; 3]) -> Self {
         TriangleFace {
             i0: face_indices[0],
             i1: face_indices[1],

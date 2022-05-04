@@ -565,6 +565,7 @@ pub fn ray_intersection_over_mesh(
             ),
         }
     } else {
+
         ray_mesh_intersection(
             mesh_to_world,
             vertex_positions,
@@ -651,10 +652,9 @@ pub fn ray_mesh_intersection(
                             mesh_to_world.transform_point3a(tri.v2),
                         ])
                     }),
-                    i.indices().map(|face| {
-                        TriangleFace::from([face.i0,face.i1,face.i2])
-                    }),
+                    Some(TriangleFace::from([index[0].into_usize(),index[1].into_usize(),index[2].into_usize()])),
                 ));
+
                 min_pick_distance = i.distance();
             }
         }
