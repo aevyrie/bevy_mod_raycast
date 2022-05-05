@@ -5,7 +5,6 @@ mod raycast;
 use crate::raycast::*;
 pub use crate::{debug::*, primitives::*};
 use bevy::{
-    utils::FloatOrd,
     ecs::schedule::ShouldRun,
     math::Vec3A,
     prelude::*,
@@ -15,6 +14,7 @@ use bevy::{
         render_resource::PrimitiveTopology,
     },
     tasks::ComputeTaskPool,
+    utils::FloatOrd,
 };
 use std::{
     collections::BTreeMap,
