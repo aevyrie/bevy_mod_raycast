@@ -413,6 +413,7 @@ pub fn update_raycast<T: 'static>(
         (
             &Handle<Mesh>,
             Option<&SimplifiedMesh>,
+            Option<&NoBackfaceCulling>,
             &GlobalTransform,
             Entity,
         ),
@@ -466,16 +467,23 @@ pub fn update_raycast<T: 'static>(
             mesh_query.par_for_each(
                 &task_pool,
                 32,
-                |(mesh_handle, simplified_mesh, transform, entity)| {
+                |(mesh_handle, simplified_mesh, no_backface_culling, transform, entity)| {
                     if culled_list.contains(&entity) {
                         let _raycast_guard = raycast.enter();
                         // Use the mesh handle to get a reference to a mesh asset
                         if let Some(mesh) =
                             meshes.get(simplified_mesh.map(|bm| &bm.mesh).unwrap_or(mesh_handle))
                         {
-                            if let Some(intersection) =
-                                ray_intersection_over_mesh(mesh, &transform.compute_matrix(), &ray)
-                            {
+                            if let Some(intersection) = ray_intersection_over_mesh(
+                                mesh,
+                                &transform.compute_matrix(),
+                                &ray,
+                                if no_backface_culling.is_some() {
+                                    Backfaces::Include
+                                } else {
+                                    Backfaces::Cull
+                                },
+                            ) {
                                 picks.lock().unwrap().insert(
                                     FloatOrd(intersection.distance()),
                                     (entity, intersection),
@@ -522,6 +530,7 @@ pub fn ray_intersection_over_mesh(
     mesh: &Mesh,
     mesh_to_world: &Mat4,
     ray: &Ray3d,
+    backface_culling: Backfaces,
 ) -> Option<IntersectionData> {
     if mesh.primitive_topology() != PrimitiveTopology::TriangleList {
         error!("bevy_mod_picking only supports TriangleList mesh topology");
@@ -554,6 +563,7 @@ pub fn ray_intersection_over_mesh(
                 vertex_normals,
                 ray,
                 Some(vertex_indices),
+                backface_culling,
             ),
             Indices::U32(vertex_indices) => ray_mesh_intersection(
                 mesh_to_world,
@@ -561,6 +571,7 @@ pub fn ray_intersection_over_mesh(
                 vertex_normals,
                 ray,
                 Some(vertex_indices),
+                backface_culling,
             ),
         }
     } else {
@@ -570,6 +581,7 @@ pub fn ray_intersection_over_mesh(
             vertex_normals,
             ray,
             None::<&Vec<u32>>,
+            backface_culling,
         )
     }
 }
@@ -595,6 +607,7 @@ pub fn ray_mesh_intersection(
     vertex_normals: Option<&[[f32; 3]]>,
     pick_ray: &Ray3d,
     indices: Option<&Vec<impl IntoUsize>>,
+    backface_culling: Backfaces,
 ) -> Option<IntersectionData> {
     // The ray cast can hit the same mesh many times, so we need to track which hit is
     // closest to the camera, and record that.
@@ -635,6 +648,7 @@ pub fn ray_mesh_intersection(
                 tri_normals,
                 min_pick_distance,
                 mesh_space_ray,
+                backface_culling,
             );
             if let Some(i) = intersection {
                 pick_intersection = Some(IntersectionData::new(
@@ -673,6 +687,7 @@ pub fn ray_mesh_intersection(
                 tri_normals,
                 min_pick_distance,
                 mesh_space_ray,
+                backface_culling,
             );
             if let Some(i) = intersection {
                 pick_intersection = Some(IntersectionData::new(
@@ -701,14 +716,14 @@ fn triangle_intersection(
     tri_normals: Option<[Vec3A; 3]>,
     max_distance: f32,
     ray: Ray3d,
+    backface_culling: Backfaces,
 ) -> Option<IntersectionData> {
     if tri_vertices
         .iter()
         .any(|&vertex| (vertex - ray.origin).length_squared() < max_distance.powi(2))
     {
         // Run the raycast on the ray and triangle
-        if let Some(ray_hit) = ray_triangle_intersection(&ray, &tri_vertices, Backfaces::default())
-        {
+        if let Some(ray_hit) = ray_triangle_intersection(&ray, &tri_vertices, backface_culling) {
             let distance = *ray_hit.distance();
             if distance > 0.0 && distance < max_distance {
                 let position = ray.position(distance);
@@ -778,3 +793,6 @@ impl TriangleTrait for Triangle {
 pub struct SimplifiedMesh {
     pub mesh: Handle<Mesh>,
 }
+
+#[derive(Component)]
+pub struct NoBackfaceCulling;

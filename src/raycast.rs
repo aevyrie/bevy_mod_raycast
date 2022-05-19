@@ -3,6 +3,7 @@ use std::f32::EPSILON;
 use crate::{primitives::*, TriangleTrait};
 use bevy::math::Vec3A;
 
+#[derive(Copy, Clone)]
 #[allow(dead_code)]
 pub enum Backfaces {
     Cull,
