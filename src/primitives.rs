@@ -203,7 +203,7 @@ pub mod rays {
             let world_to_ndc = projection * view;
             let is_orthographic = projection.w_axis[3] == 1.0;
 
-            // Calculate the camer's near plane using the projection matrix
+            // Calculate the camera's near plane using the projection matrix
             let projection = projection.to_cols_array_2d();
             let camera_near = (2.0 * projection[3][2]) / (2.0 * projection[2][2] - 2.0);
 
