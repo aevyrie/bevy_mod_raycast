@@ -13,6 +13,7 @@ use bevy::{
         mesh::{Indices, Mesh, VertexAttributeValues},
         render_resource::PrimitiveTopology,
     },
+    sprite::Mesh2dHandle,
     tasks::ComputeTaskPool,
     utils::FloatOrd,
 };
@@ -419,6 +420,15 @@ pub fn update_raycast<T: 'static>(
         ),
         With<RayCastMesh<T>>,
     >,
+    mesh2d_query: Query<
+        (
+            &Mesh2dHandle,
+            Option<&SimplifiedMesh>,
+            &GlobalTransform,
+            Entity,
+        ),
+        With<RayCastMesh<T>>,
+    >,
 ) {
     for mut pick_source in pick_source_query.iter_mut() {
         if let Some(ray) = pick_source.ray {
@@ -464,10 +474,15 @@ pub fn update_raycast<T: 'static>(
             drop(ray_cull_guard);
 
             let picks = Arc::new(Mutex::new(BTreeMap::new()));
-            mesh_query.par_for_each(
-                &task_pool,
-                32,
-                |(mesh_handle, simplified_mesh, no_backface_culling, transform, entity)| {
+
+            let pick_mesh =
+                |(mesh_handle, simplified_mesh, no_backface_culling, transform, entity): (
+                    &Handle<Mesh>,
+                    Option<&SimplifiedMesh>,
+                    Option<&NoBackfaceCulling>,
+                    &GlobalTransform,
+                    Entity,
+                )| {
                     if culled_list.contains(&entity) {
                         let _raycast_guard = raycast.enter();
                         // Use the mesh handle to get a reference to a mesh asset
@@ -491,8 +506,23 @@ pub fn update_raycast<T: 'static>(
                             }
                         }
                     }
+                };
+
+            mesh_query.par_for_each(&task_pool, 32, pick_mesh);
+            mesh2d_query.par_for_each(
+                &task_pool,
+                32,
+                |(mesh_handle, simplified_mesh, transform, entity)| {
+                    pick_mesh((
+                        &mesh_handle.0,
+                        simplified_mesh,
+                        Some(&NoBackfaceCulling),
+                        transform,
+                        entity,
+                    ))
                 },
             );
+
             let picks = Arc::try_unwrap(picks).unwrap().into_inner().unwrap();
             pick_source.intersections = picks.into_values().map(|(e, i)| (e, i)).collect();
         }
