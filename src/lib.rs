@@ -533,7 +533,9 @@ pub fn ray_intersection_over_mesh(
     backface_culling: Backfaces,
 ) -> Option<IntersectionData> {
     if mesh.primitive_topology() != PrimitiveTopology::TriangleList {
-        error!("bevy_mod_picking only supports TriangleList mesh topology");
+        error!(
+            "Invalid intersection check: `TriangleList` is the only supported `PrimitiveTopology`"
+        );
         return None;
     }
     // Get the vertex positions from the mesh reference resolved from the mesh handle
