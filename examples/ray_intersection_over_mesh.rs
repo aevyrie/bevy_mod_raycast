@@ -2,8 +2,8 @@ use std::f32::consts::FRAC_PI_2;
 
 use bevy::{prelude::*, window::PresentMode};
 use bevy_mod_raycast::{
-    ray_intersection_over_mesh, DefaultPluginState, DefaultRaycastingPlugin, Ray3d, RayCastMesh,
-    RayCastMethod, RayCastSource, RaycastSystem,
+    ray_intersection_over_mesh, Backfaces, DefaultPluginState, DefaultRaycastingPlugin, Ray3d,
+    RayCastMesh, RayCastMethod, RayCastSource, RaycastSystem,
 };
 
 // This example shows how to use `ray_intersection_over_mesh` to cast a ray over a mesh
@@ -279,9 +279,12 @@ fn check_path(
                             let mesh_to_world = transform.compute_matrix();
 
                             // Check for intersection with this obstacle
-                            if let Some(intersection) =
-                                ray_intersection_over_mesh(mesh, &mesh_to_world, &ray)
-                            {
+                            if let Some(intersection) = ray_intersection_over_mesh(
+                                mesh,
+                                &mesh_to_world,
+                                &ray,
+                                Backfaces::Cull,
+                            ) {
                                 // There was an intersection, check if it is before the cursor
                                 // on the ray
                                 let hit_distance = intersection.distance();
