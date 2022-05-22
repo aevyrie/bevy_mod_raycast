@@ -2,7 +2,7 @@ mod debug;
 mod primitives;
 mod raycast;
 
-use crate::raycast::*;
+pub use crate::raycast::*;
 pub use crate::{debug::*, primitives::*};
 use bevy::{
     ecs::schedule::ShouldRun,
