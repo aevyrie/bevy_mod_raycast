@@ -14,7 +14,6 @@ use bevy::{
         render_resource::PrimitiveTopology,
     },
     sprite::Mesh2dHandle,
-    tasks::ComputeTaskPool,
     utils::FloatOrd,
 };
 use std::{
@@ -397,7 +396,6 @@ pub fn build_rays<T: 'static>(
 pub fn update_raycast<T: 'static>(
     // Resources
     meshes: Res<Assets<Mesh>>,
-    task_pool: Res<ComputeTaskPool>,
     // Queries
     mut pick_source_query: Query<&mut RayCastSource<T>>,
     culling_query: Query<
@@ -508,20 +506,16 @@ pub fn update_raycast<T: 'static>(
                     }
                 };
 
-            mesh_query.par_for_each(&task_pool, 32, pick_mesh);
-            mesh2d_query.par_for_each(
-                &task_pool,
-                32,
-                |(mesh_handle, simplified_mesh, transform, entity)| {
-                    pick_mesh((
-                        &mesh_handle.0,
-                        simplified_mesh,
-                        Some(&NoBackfaceCulling),
-                        transform,
-                        entity,
-                    ))
-                },
-            );
+            mesh_query.par_for_each(32, pick_mesh);
+            mesh2d_query.par_for_each(32, |(mesh_handle, simplified_mesh, transform, entity)| {
+                pick_mesh((
+                    &mesh_handle.0,
+                    simplified_mesh,
+                    Some(&NoBackfaceCulling),
+                    transform,
+                    entity,
+                ))
+            });
 
             let picks = Arc::try_unwrap(picks).unwrap().into_inner().unwrap();
             pick_source.intersections = picks.into_values().map(|(e, i)| (e, i)).collect();
