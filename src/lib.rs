@@ -508,18 +508,15 @@ pub fn update_raycast<T: 'static>(
                 };
 
             mesh_query.par_for_each(32, pick_mesh);
-            mesh2d_query.par_for_each(
-                32,
-                |(mesh_handle, simplified_mesh, transform, entity)| {
-                    pick_mesh((
-                        &mesh_handle.0,
-                        simplified_mesh,
-                        Some(&NoBackfaceCulling),
-                        transform,
-                        entity,
-                    ))
-                },
-            );
+            mesh2d_query.par_for_each(32, |(mesh_handle, simplified_mesh, transform, entity)| {
+                pick_mesh((
+                    &mesh_handle.0,
+                    simplified_mesh,
+                    Some(&NoBackfaceCulling),
+                    transform,
+                    entity,
+                ))
+            });
 
             let picks = Arc::try_unwrap(picks).unwrap().into_inner().unwrap();
             pick_source.intersections = picks.into_values().map(|(e, i)| (e, i)).collect();
