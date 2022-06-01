@@ -14,7 +14,6 @@ use bevy::{
         render_resource::PrimitiveTopology,
     },
     sprite::Mesh2dHandle,
-    tasks::ComputeTaskPool,
     utils::FloatOrd,
 };
 use std::{
