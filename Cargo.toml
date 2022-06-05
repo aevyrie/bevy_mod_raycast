@@ -11,15 +11,11 @@ categories = ["game-engines", "rendering"]
 resolver = "2"
 
 [dependencies]
-bevy = { git = "https://github.com/bevyengine/bevy", branch = "main", default-features = false, features = [
-    "render",
-] }
+bevy = "0.7"
+float-ord = "0.3.2"
 
 [dev-dependencies]
-bevy = { git = "https://github.com/bevyengine/bevy", branch = "main", default-features = false, features = [
-    "bevy_winit",
-    "x11",
-] }
+bevy = "0.7"
 criterion = "0.3"
 
 [[bench]]

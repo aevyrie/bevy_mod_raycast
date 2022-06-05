@@ -43,7 +43,7 @@ fn update_raycast_with_cursor(
 }
 
 fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn_bundle(Camera2dBundle::default());
+    commands.spawn_bundle(OrthographicCameraBundle::new_2d());
     let font = asset_server.load("fonts/FiraMono-Medium.ttf");
     commands
         .spawn_bundle(TextBundle {
@@ -107,7 +107,7 @@ fn setup(
     commands.insert_resource(DefaultPluginState::<Ground>::default().with_debug_cursor());
     // Spawn the camera
     commands
-        .spawn_bundle(Camera3dBundle {
+        .spawn_bundle(PerspectiveCameraBundle {
             transform: Transform::from_xyz(-5.0, 10.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
             ..Default::default()
         })

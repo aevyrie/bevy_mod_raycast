@@ -72,7 +72,7 @@ fn setup_scene(
     });
 
     commands
-        .spawn_bundle(Camera3dBundle::default())
+        .spawn_bundle(PerspectiveCameraBundle::default())
         .insert(RayCastSource::<MyRaycastSet>::new()); // Designate the camera as our source
 
     let mesh = asset_server.load("models/monkey/Monkey.gltf#Mesh0/Primitive0");
@@ -101,7 +101,7 @@ fn setup_scene(
 
 // Set up UI to show status of bounding volume
 fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn_bundle(Camera2dBundle::default());
+    commands.spawn_bundle(UiCameraBundle::default());
     let font = asset_server.load("fonts/FiraMono-Medium.ttf");
     commands
         .spawn_bundle(NodeBundle {
