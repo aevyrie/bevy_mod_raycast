@@ -176,7 +176,7 @@ impl<T> Default for RayCastMesh<T> {
 #[derive(Component)]
 pub struct RayCastSource<T> {
     pub cast_method: RayCastMethod,
-    ray: Option<Ray3d>,
+    pub ray: Option<Ray3d>,
     intersections: Vec<(Entity, IntersectionData)>,
     _marker: PhantomData<fn() -> T>,
 }
