@@ -202,20 +202,12 @@ impl<T> RayCastSource<T> {
     pub fn with_ray_screenspace(
         self,
         cursor_pos_screen: Vec2,
-        windows: &Res<Windows>,
-        images: &Res<Assets<Image>>,
         camera: &Camera,
         camera_transform: &GlobalTransform,
     ) -> Self {
         RayCastSource {
             cast_method: RayCastMethod::Screenspace(cursor_pos_screen),
-            ray: Ray3d::from_screenspace(
-                cursor_pos_screen,
-                windows,
-                images,
-                camera,
-                camera_transform,
-            ),
+            ray: Ray3d::from_screenspace(cursor_pos_screen, camera, camera_transform),
             intersections: self.intersections,
             _marker: self._marker,
         }
@@ -232,18 +224,10 @@ impl<T> RayCastSource<T> {
     /// Instantiates and initializes a [RayCastSource] with a valid screenspace ray.
     pub fn new_screenspace(
         cursor_pos_screen: Vec2,
-        windows: &Res<Windows>,
-        images: &Res<Assets<Image>>,
         camera: &Camera,
         camera_transform: &GlobalTransform,
     ) -> Self {
-        RayCastSource::new().with_ray_screenspace(
-            cursor_pos_screen,
-            windows,
-            images,
-            camera,
-            camera_transform,
-        )
+        RayCastSource::new().with_ray_screenspace(cursor_pos_screen, camera, camera_transform)
     }
     /// Initializes a [RayCastSource] with a valid ray derived from a transform.
     pub fn new_transform(transform: Mat4) -> Self {
@@ -333,8 +317,6 @@ pub enum RayCastMethod {
 
 #[allow(clippy::type_complexity)]
 pub fn build_rays<T: 'static>(
-    windows: Res<Windows>,
-    images: Res<Assets<Image>>,
     mut pick_source_query: Query<(
         &mut RayCastSource<T>,
         Option<&GlobalTransform>,
@@ -363,13 +345,7 @@ pub fn build_rays<T: 'static>(
                         return;
                     }
                 };
-                Ray3d::from_screenspace(
-                    *cursor_pos_screen,
-                    &windows,
-                    &images,
-                    camera,
-                    camera_transform,
-                )
+                Ray3d::from_screenspace(*cursor_pos_screen, camera, camera_transform)
             }
             // Use the specified transform as the origin and direction of the ray
             RayCastMethod::Transform => {
