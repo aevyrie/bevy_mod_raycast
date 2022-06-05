@@ -61,7 +61,7 @@ fn setup_scene(
 ) {
     commands.insert_resource(DefaultPluginState::<MyRaycastSet>::default().with_debug_cursor());
     commands
-        .spawn_bundle(PerspectiveCameraBundle::default())
+        .spawn_bundle(Camera3dBundle::default())
         .insert(RayCastSource::<MyRaycastSet>::new()); // Designate the camera as our source
     commands
         .spawn_bundle(PbrBundle {
@@ -84,7 +84,7 @@ fn setup_scene(
 
 // Set up UI to show status of simplified mesh
 fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn_bundle(UiCameraBundle::default());
+    commands.spawn_bundle(Camera2dBundle::default());
     let font = asset_server.load("fonts/FiraMono-Medium.ttf");
     commands
         .spawn_bundle(NodeBundle {
