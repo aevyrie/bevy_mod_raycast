@@ -15,7 +15,7 @@ use bevy_mod_raycast::{
 fn main() {
     App::new()
         .insert_resource(WindowDescriptor {
-            present_mode: PresentMode::Mailbox, // Reduces input lag.
+            present_mode: PresentMode::AutoNoVsync, // Reduces input lag.
             ..Default::default()
         })
         .add_plugins(DefaultPlugins)

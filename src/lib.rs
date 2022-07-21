@@ -85,6 +85,7 @@ pub enum RaycastSystem<T> {
     UpdateRaycast,
     UpdateIntersections,
     UpdateDebugCursor,
+    #[system_label(ignore_fields)]
     _Phantom(PhantomData<fn() -> T>),
 }
 impl<T> PartialEq for RaycastSystem<T> {
@@ -233,9 +234,10 @@ impl<T> RayCastSource<T> {
     pub fn new_transform(transform: Mat4) -> Self {
         RayCastSource::new().with_ray_transform(transform)
     }
-    /// Instantiates a [RayCastSource] with [RayCastMethod::Transform], and an empty ray. It will not
-    /// be initialized until the [update_raycast] system is run and a [GlobalTransform] is present on
-    /// this entity.
+    /// Instantiates a [RayCastSource] with [RayCastMethod::Transform], and an empty ray. It will
+    /// not be initialized until the [update_raycast] system is run and a [GlobalTransform] is
+    /// present on this entity.
+    ///
     /// # Warning
     /// Only use this if the entity this is associated with will have its [Transform] or
     /// [GlobalTransform] specified elsewhere. If the [GlobalTransform] is not set, this ray casting
@@ -419,7 +421,7 @@ pub fn update_raycast<T: 'static>(
                     |(visibility, comp_visibility, bound_vol, transform, entity)| {
                         let should_raycast =
                             if let RayCastMethod::Screenspace(_) = pick_source.cast_method {
-                                visibility.is_visible && comp_visibility.is_visible
+                                visibility.is_visible && comp_visibility.is_visible()
                             } else {
                                 visibility.is_visible
                             };
