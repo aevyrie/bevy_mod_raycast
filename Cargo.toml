@@ -1,6 +1,6 @@
 [package]
 name = "bevy_mod_raycast"
-version = "0.5.0"
+version = "0.5.1"
 authors = ["Aevyrie <aevyrie@gmail.com>"]
 edition = "2021"
 license = "MIT"
@@ -11,12 +11,12 @@ categories = ["game-engines", "rendering"]
 resolver = "2"
 
 [dependencies]
-bevy = "0.7"
+bevy = { version = "0.7", default-features = false, features = ["bevy_render", "bevy_pbr", "bevy_sprite", "bevy_text", "bevy_ui"] }
 float-ord = "0.3.2"
 
 [dev-dependencies]
-bevy = "0.7"
 criterion = "0.3"
+bevy = { version = "0.7", default-features = false, features = ["render", "bevy_winit", "x11"] }
 
 [[bench]]
 name = "ray_mesh_intersection"
