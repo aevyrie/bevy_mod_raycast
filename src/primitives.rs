@@ -157,9 +157,14 @@ pub mod rays {
             (self.origin + self.direction * distance).into()
         }
         pub fn to_transform(self) -> Mat4 {
+            self.to_aligned_transform([0., 1., 0.].into())
+        }
+        /// Create a transform whose origin is at the origin of the ray and
+        /// whose up-axis is aligned with the direction of the ray. Use `up` to
+        /// specify which axis of the transform should align with the ray.
+        pub fn to_aligned_transform(self, up: Vec3) -> Mat4 {
             let position = self.origin();
             let normal = self.direction();
-            let up = Vec3::from([0.0, 1.0, 0.0]);
             let axis = up.cross(normal).normalize();
             let angle = up.dot(normal).acos();
             let epsilon = f32::EPSILON;
