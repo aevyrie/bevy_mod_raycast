@@ -72,7 +72,7 @@ fn setup_scene(
     });
 
     commands
-        .spawn_bundle(Camera3dBundle::default())
+        .spawn_bundle(PerspectiveCameraBundle::default())
         .insert(RayCastSource::<MyRaycastSet>::new()); // Designate the camera as our source
 
     let mesh = asset_server.load("models/monkey/Monkey.gltf#Mesh0/Primitive0");
