@@ -11,13 +11,10 @@ categories = ["game-engines", "rendering"]
 resolver = "2"
 
 [dependencies]
-bevy = { git = "https://github.com/bevyengine/bevy", branch = "main", default-features = false, features = [
-    "render",
-    "bevy_asset"
-] }
+bevy = { version = "0.8", default-features = false, features = ["render", "bevy_asset","bevy_scene",] }
 
 [dev-dependencies]
-bevy = { git = "https://github.com/bevyengine/bevy", branch = "main", default-features = false, features = [
+bevy = { version = "0.8", default-features = false, features = [
     "bevy_winit",
     "x11",
 ] }
