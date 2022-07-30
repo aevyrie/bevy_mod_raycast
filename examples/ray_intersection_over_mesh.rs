@@ -35,7 +35,7 @@ fn update_raycast_with_cursor(
     mut cursor: EventReader<CursorMoved>,
     mut query: Query<&mut RayCastSource<Ground>>,
 ) {
-    for mut pick_source in &mut query.iter_mut() {
+    for mut pick_source in &mut query {
         if let Some(cursor_latest) = cursor.iter().last() {
             pick_source.cast_method = RayCastMethod::Screenspace(cursor_latest.position);
         }
@@ -43,7 +43,6 @@ fn update_raycast_with_cursor(
 }
 
 fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn_bundle(Camera2dBundle::default());
     let font = asset_server.load("fonts/FiraMono-Medium.ttf");
     commands
         .spawn_bundle(TextBundle {
@@ -274,7 +273,7 @@ fn check_path(
                     let mut closest_hit = f32::MAX;
 
                     // Check for an obstacle on path
-                    for (mesh_handle, transform) in obstacles.iter() {
+                    for (mesh_handle, transform) in &obstacles {
                         if let Some(mesh) = meshes.get(mesh_handle) {
                             let mesh_to_world = transform.compute_matrix();
 

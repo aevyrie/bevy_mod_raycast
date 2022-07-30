@@ -49,7 +49,7 @@ fn update_raycast_with_cursor(
         None => return,
     };
 
-    for mut pick_source in &mut query.iter_mut() {
+    for mut pick_source in &mut query {
         pick_source.cast_method = RayCastMethod::Screenspace(cursor_position);
     }
 }
