@@ -15,7 +15,7 @@ use bevy_mod_raycast::{
 fn main() {
     App::new()
         .insert_resource(WindowDescriptor {
-            present_mode: PresentMode::Mailbox, // Reduces input latency
+            present_mode: PresentMode::AutoNoVsync, // Reduces input latency
             ..Default::default()
         })
         .add_plugins(DefaultPlugins)
@@ -35,7 +35,7 @@ fn update_raycast_with_cursor(
     mut cursor: EventReader<CursorMoved>,
     mut query: Query<&mut RayCastSource<Ground>>,
 ) {
-    for mut pick_source in &mut query.iter_mut() {
+    for mut pick_source in &mut query {
         if let Some(cursor_latest) = cursor.iter().last() {
             pick_source.cast_method = RayCastMethod::Screenspace(cursor_latest.position);
         }
@@ -43,7 +43,6 @@ fn update_raycast_with_cursor(
 }
 
 fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn_bundle(OrthographicCameraBundle::new_2d());
     let font = asset_server.load("fonts/FiraMono-Medium.ttf");
     commands
         .spawn_bundle(TextBundle {
@@ -107,7 +106,7 @@ fn setup(
     commands.insert_resource(DefaultPluginState::<Ground>::default().with_debug_cursor());
     // Spawn the camera
     commands
-        .spawn_bundle(PerspectiveCameraBundle {
+        .spawn_bundle(Camera3dBundle {
             transform: Transform::from_xyz(-5.0, 10.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
             ..Default::default()
         })
@@ -274,7 +273,7 @@ fn check_path(
                     let mut closest_hit = f32::MAX;
 
                     // Check for an obstacle on path
-                    for (mesh_handle, transform) in obstacles.iter() {
+                    for (mesh_handle, transform) in &obstacles {
                         if let Some(mesh) = meshes.get(mesh_handle) {
                             let mesh_to_world = transform.compute_matrix();
 

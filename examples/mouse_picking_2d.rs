@@ -29,14 +29,14 @@ fn update_raycast_with_cursor(
         None => return,
     };
 
-    for mut pick_source in &mut query.iter_mut() {
+    for mut pick_source in &mut query {
         pick_source.cast_method = RayCastMethod::Screenspace(cursor_position);
     }
 }
 
 /// Report intersections
 fn intersection(query: Query<&Intersection<MyRaycastSet>>) {
-    for intersection in query.iter() {
+    for intersection in &query {
         info!(
             "Distance {:?}, Position {:?}",
             intersection.distance(),
@@ -51,7 +51,7 @@ fn setup(
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     commands
-        .spawn_bundle(OrthographicCameraBundle::new_2d())
+        .spawn_bundle(Camera2dBundle::default())
         .insert(RayCastSource::<MyRaycastSet>::new()); // Designate the camera as our source;
     commands
         .spawn_bundle(MaterialMesh2dBundle {

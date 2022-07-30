@@ -4,7 +4,7 @@ mod raycast;
 
 pub use crate::raycast::*;
 pub use crate::{debug::*, primitives::*};
-use bevy::tasks::ComputeTaskPool;
+use bevy::utils::FloatOrd;
 use bevy::{
     ecs::schedule::ShouldRun,
     math::Vec3A,
@@ -85,6 +85,7 @@ pub enum RaycastSystem<T> {
     UpdateRaycast,
     UpdateIntersections,
     UpdateDebugCursor,
+    #[system_label(ignore_fields)]
     _Phantom(PhantomData<fn() -> T>),
 }
 impl<T> PartialEq for RaycastSystem<T> {
@@ -176,7 +177,7 @@ impl<T> Default for RayCastMesh<T> {
 #[derive(Component)]
 pub struct RayCastSource<T> {
     pub cast_method: RayCastMethod,
-    ray: Option<Ray3d>,
+    pub ray: Option<Ray3d>,
     intersections: Vec<(Entity, IntersectionData)>,
     _marker: PhantomData<fn() -> T>,
 }
@@ -202,20 +203,12 @@ impl<T> RayCastSource<T> {
     pub fn with_ray_screenspace(
         self,
         cursor_pos_screen: Vec2,
-        windows: &Res<Windows>,
-        images: &Res<Assets<Image>>,
         camera: &Camera,
         camera_transform: &GlobalTransform,
     ) -> Self {
         RayCastSource {
             cast_method: RayCastMethod::Screenspace(cursor_pos_screen),
-            ray: Ray3d::from_screenspace(
-                cursor_pos_screen,
-                windows,
-                images,
-                camera,
-                camera_transform,
-            ),
+            ray: Ray3d::from_screenspace(cursor_pos_screen, camera, camera_transform),
             intersections: self.intersections,
             _marker: self._marker,
         }
@@ -232,26 +225,19 @@ impl<T> RayCastSource<T> {
     /// Instantiates and initializes a [RayCastSource] with a valid screenspace ray.
     pub fn new_screenspace(
         cursor_pos_screen: Vec2,
-        windows: &Res<Windows>,
-        images: &Res<Assets<Image>>,
         camera: &Camera,
         camera_transform: &GlobalTransform,
     ) -> Self {
-        RayCastSource::new().with_ray_screenspace(
-            cursor_pos_screen,
-            windows,
-            images,
-            camera,
-            camera_transform,
-        )
+        RayCastSource::new().with_ray_screenspace(cursor_pos_screen, camera, camera_transform)
     }
     /// Initializes a [RayCastSource] with a valid ray derived from a transform.
     pub fn new_transform(transform: Mat4) -> Self {
         RayCastSource::new().with_ray_transform(transform)
     }
-    /// Instantiates a [RayCastSource] with [RayCastMethod::Transform], and an empty ray. It will not
-    /// be initialized until the [update_raycast] system is run and a [GlobalTransform] is present on
-    /// this entity.
+    /// Instantiates a [RayCastSource] with [RayCastMethod::Transform], and an empty ray. It will
+    /// not be initialized until the [update_raycast] system is run and a [GlobalTransform] is
+    /// present on this entity.
+    ///
     /// # Warning
     /// Only use this if the entity this is associated with will have its [Transform] or
     /// [GlobalTransform] specified elsewhere. If the [GlobalTransform] is not set, this ray casting
@@ -333,15 +319,13 @@ pub enum RayCastMethod {
 
 #[allow(clippy::type_complexity)]
 pub fn build_rays<T: 'static>(
-    windows: Res<Windows>,
-    images: Res<Assets<Image>>,
     mut pick_source_query: Query<(
         &mut RayCastSource<T>,
         Option<&GlobalTransform>,
         Option<&Camera>,
     )>,
 ) {
-    for (mut pick_source, transform, camera) in &mut pick_source_query.iter_mut() {
+    for (mut pick_source, transform, camera) in &mut pick_source_query {
         pick_source.ray = match &mut pick_source.cast_method {
             RayCastMethod::Screenspace(cursor_pos_screen) => {
                 // Get all the info we need from the camera and window
@@ -363,13 +347,7 @@ pub fn build_rays<T: 'static>(
                         return;
                     }
                 };
-                Ray3d::from_screenspace(
-                    *cursor_pos_screen,
-                    &windows,
-                    &images,
-                    camera,
-                    camera_transform,
-                )
+                Ray3d::from_screenspace(*cursor_pos_screen, camera, camera_transform)
             }
             // Use the specified transform as the origin and direction of the ray
             RayCastMethod::Transform => {
@@ -397,7 +375,6 @@ pub fn update_raycast<T: 'static>(
     // Resources
     meshes: Res<Assets<Mesh>>,
     // Queries
-    task_pool: Res<ComputeTaskPool>,
     mut pick_source_query: Query<&mut RayCastSource<T>>,
     culling_query: Query<
         (
@@ -429,7 +406,7 @@ pub fn update_raycast<T: 'static>(
         With<RayCastMesh<T>>,
     >,
 ) {
-    for mut pick_source in pick_source_query.iter_mut() {
+    for mut pick_source in &mut pick_source_query {
         if let Some(ray) = pick_source.ray {
             pick_source.intersections.clear();
             // Create spans for tracing
@@ -444,7 +421,7 @@ pub fn update_raycast<T: 'static>(
                     |(visibility, comp_visibility, bound_vol, transform, entity)| {
                         let should_raycast =
                             if let RayCastMethod::Screenspace(_) = pick_source.cast_method {
-                                visibility.is_visible && comp_visibility.is_visible
+                                visibility.is_visible && comp_visibility.is_visible()
                             } else {
                                 visibility.is_visible
                             };
@@ -499,7 +476,7 @@ pub fn update_raycast<T: 'static>(
                                 },
                             ) {
                                 picks.lock().unwrap().insert(
-                                    float_ord::FloatOrd(intersection.distance()),
+                                    FloatOrd(intersection.distance()),
                                     (entity, intersection),
                                 );
                             }
@@ -507,20 +484,16 @@ pub fn update_raycast<T: 'static>(
                     }
                 };
 
-            mesh_query.par_for_each(&task_pool, 32, pick_mesh);
-            mesh2d_query.par_for_each(
-                &task_pool,
-                32,
-                |(mesh_handle, simplified_mesh, transform, entity)| {
-                    pick_mesh((
-                        &mesh_handle.0,
-                        simplified_mesh,
-                        Some(&NoBackfaceCulling),
-                        transform,
-                        entity,
-                    ))
-                },
-            );
+            mesh_query.par_for_each(32, pick_mesh);
+            mesh2d_query.par_for_each(32, |(mesh_handle, simplified_mesh, transform, entity)| {
+                pick_mesh((
+                    &mesh_handle.0,
+                    simplified_mesh,
+                    Some(&NoBackfaceCulling),
+                    transform,
+                    entity,
+                ))
+            });
 
             let picks = Arc::try_unwrap(picks).unwrap().into_inner().unwrap();
             pick_source.intersections = picks.into_values().map(|(e, i)| (e, i)).collect();

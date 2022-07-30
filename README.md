@@ -9,10 +9,10 @@
 
 ![raycast_demo](https://user-images.githubusercontent.com/2632925/164993927-079d960e-210f-4722-80c2-91059c460efc.gif)
 
-</div>
-  
 A [Bevy](https://github.com/bevyengine/bevy) plugin for 3D ray casting against meshes. Used to build [`bevy_mod_picking`](https://github.com/aevyrie/bevy_mod_picking). Contributions welcome!
   
+</div>
+
 ## Uses
 
 This plugin makes it simple to create ray casting sources, such as a transform (first person, third person shooter), or screenspace coordinates (mouse picking). Rays are shot from these sources every frame using a bevy system, and the intersections are stored in the ray casting source's component. 
@@ -28,7 +28,7 @@ I intend to track the `main` branch of Bevy. PRs supporting this are welcome!
 
 |bevy|bevy_mod_raycast|
 |---|---|
-|0.7|0.4|
+|0.7|0.4, 0.5|
 |0.6|0.3|
 |0.5|0.2|
 |0.4|0.1|

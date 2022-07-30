@@ -11,12 +11,18 @@ categories = ["game-engines", "rendering"]
 resolver = "2"
 
 [dependencies]
-bevy = { version = "0.7", default-features = false, features = ["bevy_render", "bevy_pbr", "bevy_sprite", "bevy_text", "bevy_ui"] }
-float-ord = "0.3.2"
+bevy = { version = "0.8", default-features = false, features = [
+    "render",
+    "bevy_asset",
+] }
 
 [dev-dependencies]
+bevy = { version = "0.8", default-features = false, features = [
+    "bevy_scene",
+    "bevy_winit",
+    "x11",
+] }
 criterion = "0.3"
-bevy = { version = "0.7", default-features = false, features = ["render", "bevy_winit", "x11"] }
 
 [[bench]]
 name = "ray_mesh_intersection"

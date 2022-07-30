@@ -145,21 +145,31 @@ pub mod rays {
                 direction: direction.normalize().into(),
             }
         }
+
         /// Position vector describing the ray origin
         pub fn origin(&self) -> Vec3 {
             self.origin.into()
         }
+
         /// Unit vector describing the ray direction
         pub fn direction(&self) -> Vec3 {
             self.direction.into()
         }
+
         pub fn position(&self, distance: f32) -> Vec3 {
             (self.origin + self.direction * distance).into()
         }
+
         pub fn to_transform(self) -> Mat4 {
+            self.to_aligned_transform([0., 1., 0.].into())
+        }
+
+        /// Create a transform whose origin is at the origin of the ray and
+        /// whose up-axis is aligned with the direction of the ray. Use `up` to
+        /// specify which axis of the transform should align with the ray.
+        pub fn to_aligned_transform(self, up: Vec3) -> Mat4 {
             let position = self.origin();
             let normal = self.direction();
-            let up = Vec3::from([0.0, 1.0, 0.0]);
             let axis = up.cross(normal).normalize();
             let angle = up.dot(normal).acos();
             let epsilon = f32::EPSILON;
@@ -170,6 +180,7 @@ pub mod rays {
             };
             Mat4::from_rotation_translation(new_rotation, position)
         }
+
         pub fn from_transform(transform: Mat4) -> Self {
             let pick_position_ndc = Vec3::from([0.0, 0.0, -1.0]);
             let pick_position = transform.project_point3(pick_position_ndc);
@@ -177,48 +188,25 @@ pub mod rays {
             let ray_direction = pick_position - source_origin;
             Ray3d::new(source_origin, ray_direction)
         }
+
         pub fn from_screenspace(
             cursor_pos_screen: Vec2,
-            windows: &Res<Windows>,
-            images: &Res<Assets<Image>>,
             camera: &Camera,
             camera_transform: &GlobalTransform,
         ) -> Option<Self> {
             let view = camera_transform.compute_matrix();
-            let screen_size = match camera.target.get_logical_size(windows, images) {
-                Some(s) => s,
-                None => {
-                    error!(
-                        "Unable to get screen size for RenderTarget {:?}",
-                        camera.target
-                    );
-                    return None;
-                }
-            };
-            let projection = camera.projection_matrix;
-
-            // 2D Normalized device coordinate cursor position from (-1, -1) to (1, 1)
-            let cursor_ndc = (cursor_pos_screen / screen_size) * 2.0 - Vec2::from([1.0, 1.0]);
+            let screen_size = camera.logical_target_size()?;
+            let projection = camera.projection_matrix();
+            let far_ndc = projection.project_point3(Vec3::NEG_Z).z;
+            let near_ndc = projection.project_point3(Vec3::Z).z;
+            let cursor_ndc = (cursor_pos_screen / screen_size) * 2.0 - Vec2::ONE;
             let ndc_to_world: Mat4 = view * projection.inverse();
-            let world_to_ndc = projection * view;
-            let is_orthographic = projection.w_axis[3] == 1.0;
-
-            // Calculate the camera's near plane using the projection matrix
-            let projection = projection.to_cols_array_2d();
-            let camera_near = (2.0 * projection[3][2]) / (2.0 * projection[2][2] - 2.0);
-
-            // Compute the cursor position at the near plane. The bevy camera looks at -Z.
-            let ndc_near = world_to_ndc.transform_point3(-Vec3::Z * camera_near).z;
-            let cursor_pos_near = ndc_to_world.transform_point3(cursor_ndc.extend(ndc_near));
-
-            // Compute the ray's direction depending on the projection used.
-            let ray_direction = match is_orthographic {
-                true => view.transform_vector3(-Vec3::Z), // All screenspace rays are parallel in ortho
-                false => cursor_pos_near - camera_transform.translation, // Direction from camera to cursor
-            };
-
-            Some(Ray3d::new(cursor_pos_near, ray_direction))
+            let near = ndc_to_world.project_point3(cursor_ndc.extend(near_ndc));
+            let far = ndc_to_world.project_point3(cursor_ndc.extend(far_ndc));
+            let ray_direction = far - near;
+            Some(Ray3d::new(near, ray_direction))
         }
+
         /// Checks if the ray intersects with an AABB of a mesh.
         pub fn intersects_aabb(&self, aabb: &Aabb, model_to_world: &Mat4) -> Option<[f32; 2]> {
             // Transform the ray to model space

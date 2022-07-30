@@ -11,7 +11,7 @@ use bevy_mod_raycast::{
 fn main() {
     App::new()
         .insert_resource(WindowDescriptor {
-            present_mode: PresentMode::Mailbox, // Reduces input lag.
+            present_mode: PresentMode::AutoNoVsync, // Reduces input lag.
             ..Default::default()
         })
         .add_plugins(DefaultPlugins)
@@ -49,7 +49,7 @@ fn update_raycast_with_cursor(
         None => return,
     };
 
-    for mut pick_source in &mut query.iter_mut() {
+    for mut pick_source in &mut query {
         pick_source.cast_method = RayCastMethod::Screenspace(cursor_position);
     }
 }
@@ -65,7 +65,7 @@ fn setup(
     // default plugin is added.
     commands.insert_resource(DefaultPluginState::<MyRaycastSet>::default().with_debug_cursor());
     commands
-        .spawn_bundle(PerspectiveCameraBundle {
+        .spawn_bundle(Camera3dBundle {
             transform: Transform::from_xyz(-2.0, 2.0, 2.0).looking_at(Vec3::ZERO, Vec3::Y),
             ..Default::default()
         })
