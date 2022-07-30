@@ -61,7 +61,7 @@ fn setup_scene(
 ) {
     commands.insert_resource(DefaultPluginState::<MyRaycastSet>::default().with_debug_cursor());
     commands
-        .spawn_bundle(PerspectiveCameraBundle::default())
+        .spawn_bundle(Camera3dBundle::default())
         .insert(RayCastSource::<MyRaycastSet>::new()); // Designate the camera as our source
     commands
         .spawn_bundle(PbrBundle {

@@ -4,7 +4,7 @@ mod raycast;
 
 pub use crate::raycast::*;
 pub use crate::{debug::*, primitives::*};
-use bevy::tasks::ComputeTaskPool;
+use bevy::utils::FloatOrd;
 use bevy::{
     ecs::schedule::ShouldRun,
     math::Vec3A,
@@ -375,7 +375,6 @@ pub fn update_raycast<T: 'static>(
     // Resources
     meshes: Res<Assets<Mesh>>,
     // Queries
-    task_pool: Res<ComputeTaskPool>,
     mut pick_source_query: Query<&mut RayCastSource<T>>,
     culling_query: Query<
         (
@@ -477,7 +476,7 @@ pub fn update_raycast<T: 'static>(
                                 },
                             ) {
                                 picks.lock().unwrap().insert(
-                                    float_ord::FloatOrd(intersection.distance()),
+                                    FloatOrd(intersection.distance()),
                                     (entity, intersection),
                                 );
                             }
@@ -485,20 +484,16 @@ pub fn update_raycast<T: 'static>(
                     }
                 };
 
-            mesh_query.par_for_each(&task_pool, 32, pick_mesh);
-            mesh2d_query.par_for_each(
-                &task_pool,
-                32,
-                |(mesh_handle, simplified_mesh, transform, entity)| {
-                    pick_mesh((
-                        &mesh_handle.0,
-                        simplified_mesh,
-                        Some(&NoBackfaceCulling),
-                        transform,
-                        entity,
-                    ))
-                },
-            );
+            mesh_query.par_for_each(32, pick_mesh);
+            mesh2d_query.par_for_each(32, |(mesh_handle, simplified_mesh, transform, entity)| {
+                pick_mesh((
+                    &mesh_handle.0,
+                    simplified_mesh,
+                    Some(&NoBackfaceCulling),
+                    transform,
+                    entity,
+                ))
+            });
 
             let picks = Arc::try_unwrap(picks).unwrap().into_inner().unwrap();
             pick_source.intersections = picks.into_values().map(|(e, i)| (e, i)).collect();

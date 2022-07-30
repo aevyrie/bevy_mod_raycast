@@ -51,7 +51,7 @@ fn setup(
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     commands
-        .spawn_bundle(OrthographicCameraBundle::new_2d())
+        .spawn_bundle(Camera2dBundle::default())
         .insert(RayCastSource::<MyRaycastSet>::new()); // Designate the camera as our source;
     commands
         .spawn_bundle(MaterialMesh2dBundle {
