@@ -1,4 +1,4 @@
-use bevy::{prelude::*, render::camera::Projection};
+use bevy::prelude::*;
 use bevy_mod_raycast::{
     DefaultPluginState, DefaultRaycastingPlugin, Intersection, RayCastMesh, RayCastSource,
 };
@@ -35,11 +35,11 @@ fn setup(
     commands.insert_resource(DefaultPluginState::<MyRaycastSet>::default().with_debug_cursor());
     commands
         .spawn_bundle(Camera3dBundle {
-            projection: Projection::Orthographic(OrthographicProjection {
+            projection: bevy::render::camera::Projection::Orthographic(OrthographicProjection {
                 scale: 0.01,
-                ..Default::default()
+                ..default()
             }),
-            ..Default::default()
+            ..default()
         })
         // Designate the camera as our ray casting source. Using `new_transform_empty()` means that
         // the ray casting source will not be initialized with a valid ray. Instead, a ray will be
@@ -68,7 +68,7 @@ fn setup(
 
 /// Report intersections
 fn intersection(query: Query<&Intersection<MyRaycastSet>>) {
-    for intersection in query.iter() {
+    for intersection in &query {
         info!(
             "Distance {:?}, Position {:?}",
             intersection.distance(),
@@ -79,7 +79,7 @@ fn intersection(query: Query<&Intersection<MyRaycastSet>>) {
 
 /// Rotate the camera up and down to show that the raycast intersection is updated every frame.
 fn rotator(time: Res<Time>, mut query: Query<&mut Transform, With<RayCastSource<MyRaycastSet>>>) {
-    for mut transform in query.iter_mut() {
+    for mut transform in &mut query {
         *transform = Transform::from_rotation(
             Quat::from_rotation_x(time.seconds_since_startup().sin() as f32 * 0.2)
                 * Quat::from_rotation_y((time.seconds_since_startup() * 1.5).sin() as f32 * 0.1),

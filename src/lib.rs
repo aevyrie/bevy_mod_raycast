@@ -4,6 +4,7 @@ mod raycast;
 
 pub use crate::raycast::*;
 pub use crate::{debug::*, primitives::*};
+use bevy::utils::FloatOrd;
 use bevy::{
     ecs::schedule::ShouldRun,
     math::Vec3A,
@@ -14,7 +15,6 @@ use bevy::{
         render_resource::PrimitiveTopology,
     },
     sprite::Mesh2dHandle,
-    utils::FloatOrd,
 };
 use std::{
     collections::BTreeMap,
@@ -325,7 +325,7 @@ pub fn build_rays<T: 'static>(
         Option<&Camera>,
     )>,
 ) {
-    for (mut pick_source, transform, camera) in &mut pick_source_query.iter_mut() {
+    for (mut pick_source, transform, camera) in &mut pick_source_query {
         pick_source.ray = match &mut pick_source.cast_method {
             RayCastMethod::Screenspace(cursor_pos_screen) => {
                 // Get all the info we need from the camera and window
@@ -406,7 +406,7 @@ pub fn update_raycast<T: 'static>(
         With<RayCastMesh<T>>,
     >,
 ) {
-    for mut pick_source in pick_source_query.iter_mut() {
+    for mut pick_source in &mut pick_source_query {
         if let Some(ray) = pick_source.ray {
             pick_source.intersections.clear();
             // Create spans for tracing

@@ -26,12 +26,13 @@ This plugin makes it simple to create ray casting sources, such as a transform (
 
 I intend to track the `main` branch of Bevy. PRs supporting this are welcome! 
 
-|bevy|bevy_mod_raycast|
-|---|---|
-|0.7|0.4, 0.5|
-|0.6|0.3|
-|0.5|0.2|
-|0.4|0.1|
+| bevy | bevy_mod_raycast |
+| ---- | ---------------- |
+| 0.8  | 0.6              |
+| 0.7  | 0.4, 0.5         |
+| 0.6  | 0.3              |
+| 0.5  | 0.2              |
+| 0.4  | 0.1              |
 
 ## Examples
 
@@ -41,10 +42,21 @@ Mouse picking using a ray cast built using screen space coordinates:
 cargo run --example mouse_picking
 ```
 
+Mouse picking using a ray cast built using screen space coordinates, for 2D meshes:
+
+```shell
+cargo run --example mouse_picking_2d
+```
+
 Ray casting from a camera using ray casts from the camera entity's GlobalTransform:
 
 ```shell
 cargo run --example minimal
+```
+
+Manually compute raycast against primitive shape, and check for line-of-sight visibility
+```shell
+cargo run --example ray_intersection_over_mesh
 ```
 
 *Optimization* Mouse picking over many meshes using AABBs:

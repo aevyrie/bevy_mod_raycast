@@ -47,7 +47,7 @@ fn update_raycast_with_cursor(
     mut cursor: EventReader<CursorMoved>,
     mut query: Query<&mut RayCastSource<MyRaycastSet>>,
 ) {
-    for mut pick_source in &mut query.iter_mut() {
+    for mut pick_source in &mut query {
         // Grab the most recent cursor event if it exists:
         if let Some(cursor_latest) = cursor.iter().last() {
             pick_source.cast_method = RayCastMethod::Screenspace(cursor_latest.position);
@@ -101,7 +101,6 @@ fn setup_scene(
 
 // Set up UI to show status of bounding volume
 fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn_bundle(Camera2dBundle::default());
     let font = asset_server.load("fonts/FiraMono-Medium.ttf");
     commands
         .spawn_bundle(NodeBundle {
@@ -199,7 +198,7 @@ fn manage_aabb(
             }
         }
 
-        for (entity, mut aabb) in query.iter_mut() {
+        for (entity, mut aabb) in &mut query {
             if enabled.0 {
                 commands.entity(entity).remove::<Aabb>();
             } else {
@@ -210,7 +209,7 @@ fn manage_aabb(
 }
 
 fn update_fps(diagnostics: Res<Diagnostics>, mut query: Query<&mut Text, With<FpsText>>) {
-    for mut text in query.iter_mut() {
+    for mut text in &mut query {
         if let Some(fps) = diagnostics.get(FrameTimeDiagnosticsPlugin::FPS) {
             if let Some(average) = fps.average() {
                 // Update the value of the second section
