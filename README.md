@@ -22,6 +22,10 @@ This plugin makes it simple to create ray casting sources, such as a transform (
 - This plugin also provides some functionality to compute the intersection of rays with primitive shapes.
 - Acceleration is provided using Bevy's AABBs and visibility culling.
 
+## Alternatives
+
+For a more full featured and performant option, consider using [`bevy_rapier`](https://github.com/dimforge/bevy_rapier). Note that rapier is a full physics engine that can also do raycasting; by contrast, this crate prioritizes simplicity and ergonomics.
+
 ## Bevy Version Support
 
 I intend to track the `main` branch of Bevy. PRs supporting this are welcome! 
