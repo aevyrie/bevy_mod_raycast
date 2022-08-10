@@ -125,7 +125,7 @@ impl<T> Clone for RaycastSystem<T> {
 }
 
 /// Global plugin state used to enable or disable all ray casting for a given type T.
-#[derive(Component)]
+#[derive(Component, Resource)]
 pub struct DefaultPluginState<T> {
     pub build_rays: bool,
     pub update_raycast: bool,
