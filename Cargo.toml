@@ -24,6 +24,7 @@ bevy = { version = "0.8", default-features = false, features = [
     "bevy_core_pipeline",
     "bevy_text",
     "bevy_gltf",
+    "bevy_scene",
     "x11",
 ] }
 criterion = "0.3"
