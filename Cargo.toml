@@ -12,16 +12,26 @@ resolver = "2"
 
 [dependencies]
 bevy = { git = "https://github.com/bevyengine/bevy", branch = "main", default-features = false, features = [
-    "render",
+    "bevy_render",
     "bevy_asset",
 ] }
 
 [dev-dependencies]
 bevy = { git = "https://github.com/bevyengine/bevy", branch = "main", default-features = false, features = [
+    "bevy_pbr",
     "bevy_winit",
+    "bevy_ui",
+    "bevy_core_pipeline",
+    "bevy_text",
+    "bevy_gltf",
     "x11",
 ] }
 criterion = "0.3"
+
+[features]
+default = ["2d", "debug"]
+2d = ["bevy/bevy_sprite"]
+debug = ["bevy/bevy_pbr"]
 
 [[bench]]
 name = "ray_mesh_intersection"
