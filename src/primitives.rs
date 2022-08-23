@@ -1,6 +1,8 @@
-use bevy::{math::Vec3A, prelude::*};
-pub use rays::*;
 use std::marker::PhantomData;
+
+use bevy::{math::Vec3A, prelude::*};
+
+pub use rays::*;
 
 #[non_exhaustive]
 pub enum Primitive3d {
