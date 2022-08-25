@@ -92,6 +92,7 @@ pub enum RaycastSystem<T> {
     BuildRays,
     UpdateRaycast,
     UpdateIntersections,
+    #[cfg(feature = "debug")]
     UpdateDebugCursor,
     #[system_label(ignore_fields)]
     _Phantom(PhantomData<fn() -> T>),
@@ -109,6 +110,7 @@ impl<T> Debug for RaycastSystem<T> {
             Self::BuildRays => write!(f, "BuildRays ({})", set),
             Self::UpdateRaycast => write!(f, "UpdateRaycast ({})", set),
             Self::UpdateIntersections => write!(f, "UpdateIntersections ({})", set),
+            #[cfg(feature = "debug")]
             Self::UpdateDebugCursor => write!(f, "UpdateDebugCursor ({})", set),
             Self::_Phantom(_) => write!(f, "PhantomData<{}>", set),
         }
@@ -126,6 +128,7 @@ impl<T> Clone for RaycastSystem<T> {
             Self::BuildRays => Self::BuildRays,
             Self::UpdateRaycast => Self::UpdateRaycast,
             Self::UpdateIntersections => Self::UpdateIntersections,
+            #[cfg(feature = "debug")]
             Self::UpdateDebugCursor => Self::UpdateDebugCursor,
             Self::_Phantom(_) => Self::_Phantom(PhantomData),
         }
@@ -137,6 +140,7 @@ impl<T> Clone for RaycastSystem<T> {
 pub struct DefaultPluginState<T> {
     pub build_rays: bool,
     pub update_raycast: bool,
+    #[cfg(feature = "debug")]
     pub update_debug_cursor: bool,
     _marker: PhantomData<fn() -> T>,
 }
@@ -146,12 +150,14 @@ impl<T> Default for DefaultPluginState<T> {
         DefaultPluginState {
             build_rays: true,
             update_raycast: true,
+            #[cfg(feature = "debug")]
             update_debug_cursor: false,
             _marker: PhantomData,
         }
     }
 }
 
+#[cfg(feature = "debug")]
 impl<T> DefaultPluginState<T> {
     pub fn with_debug_cursor(self) -> Self {
         DefaultPluginState {
