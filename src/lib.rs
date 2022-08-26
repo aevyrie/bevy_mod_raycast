@@ -248,13 +248,6 @@ impl<T> RayCastSource<T> {
             ..Default::default()
         }
     }
-    pub fn intersect_list(&self) -> Option<&Vec<(Entity, IntersectionData)>> {
-        if self.intersections.is_empty() {
-            None
-        } else {
-            Some(&self.intersections)
-        }
-    }
     pub fn intersect_top(&self) -> Option<(Entity, &IntersectionData)> {
         if self.intersections.is_empty() {
             None
@@ -295,6 +288,11 @@ impl<T> RayCastSource<T> {
     /// Get a mutable reference to the ray cast source's intersections.
     pub fn intersections_mut(&mut self) -> &mut Vec<(Entity, IntersectionData)> {
         &mut self.intersections
+    }
+
+    /// Get a reference to the ray cast source's intersections.
+    pub fn intersections(&self) -> &[(Entity, IntersectionData)] {
+        &self.intersections
     }
 }
 
