@@ -16,6 +16,17 @@ pub struct IntersectionData {
     triangle: Option<Triangle>,
 }
 
+impl From<rays::PrimitiveIntersection> for IntersectionData {
+    fn from(data: rays::PrimitiveIntersection) -> Self {
+        Self {
+            position: data.position(),
+            normal: data.normal(),
+            distance: data.distance(),
+            triangle: None,
+        }
+    }
+}
+
 impl IntersectionData {
     pub fn new(position: Vec3, normal: Vec3, distance: f32, triangle: Option<Triangle>) -> Self {
         Self {
@@ -129,6 +140,41 @@ pub mod rays {
         prelude::*,
         render::{camera::Camera, primitives::Aabb},
     };
+    use super::Primitive3d;
+
+    pub struct PrimitiveIntersection {
+        position: Vec3,
+        normal: Vec3,
+        distance: f32,
+    }
+
+    impl PrimitiveIntersection {
+        pub fn new(position: Vec3, normal: Vec3, distance: f32) -> Self {
+            Self {
+                position,
+                normal,
+                distance,
+            }
+        }
+
+        /// Get the intersection's position
+        #[must_use]
+        pub fn position(&self) -> Vec3 {
+            self.position
+        }
+
+        /// Get the normal vector of the primitive at the point of intersection
+        #[must_use]
+        pub fn normal(&self) -> Vec3 {
+            self.normal
+        }
+
+        /// Get the distance between the ray origin and the intersection position
+        #[must_use]
+        pub fn distance(&self) -> f32 {
+            self.distance
+        }
+    }
 
     /// A 3D ray, with an origin and direction. The direction is guaranteed to be normalized.
     #[derive(Debug, PartialEq, Copy, Clone, Default)]
@@ -252,6 +298,31 @@ pub mod rays {
                 hit_far = t_max.z;
             }
             Some([hit_near, hit_far])
+        }
+
+        /// Checks if the ray intersects with a primitive shape
+        pub fn intersects_primitive(&self, shape: Primitive3d) -> Option<PrimitiveIntersection> {
+            match shape {
+                Primitive3d::Plane {
+                    point: plane_origin,
+                    normal: plane_normal,
+                } => {
+                    // assuming vectors are all normalized
+                    let denominator = self.direction().dot(plane_normal);
+                    if denominator.abs() > f32::EPSILON {
+                        let point_to_point = plane_origin - self.origin();
+                        let intersect_dist = plane_normal.dot(point_to_point) / denominator;
+                        let intersect_position = self.direction() * intersect_dist + self.origin();
+                        Some(PrimitiveIntersection::new(
+                            intersect_position,
+                            plane_normal,
+                            intersect_dist,
+                        ))
+                    } else {
+                        None
+                    }
+                }
+            }
         }
     }
 }
