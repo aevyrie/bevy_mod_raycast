@@ -51,10 +51,10 @@ fn setup(
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     commands
-        .spawn_bundle(Camera2dBundle::default())
+        .spawn(Camera2dBundle::default())
         .insert(RayCastSource::<MyRaycastSet>::new()); // Designate the camera as our source;
     commands
-        .spawn_bundle(MaterialMesh2dBundle {
+        .spawn(MaterialMesh2dBundle {
             mesh: meshes.add(Mesh::from(shape::Quad::default())).into(),
             transform: Transform::default().with_scale(Vec3::splat(128.)),
             material: materials.add(ColorMaterial::from(Color::PURPLE)),

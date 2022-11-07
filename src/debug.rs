@@ -80,7 +80,7 @@ fn spawn_cursor<T: 'static>(
     let cube_size = 0.04;
     let cube_tail_scale = 20.0;
     let ball_size = 0.08;
-    let debug_material = &materials.add(StandardMaterial {
+    let debug_material = materials.add(StandardMaterial {
         base_color: Color::rgb(0.0, 1.0, 0.0),
         unlit: true,
         ..Default::default()
@@ -88,7 +88,7 @@ fn spawn_cursor<T: 'static>(
     commands
         .entity(entity)
         // cursor
-        .insert_bundle(PbrBundle {
+        .insert(PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Icosphere {
                 subdivisions: 4,
                 radius: ball_size,
@@ -103,11 +103,12 @@ fn spawn_cursor<T: 'static>(
                 (cube_size * cube_tail_scale) / 2.0,
                 0.0,
             ));
-            tail_transform.apply_non_uniform_scale(Vec3::from([1.0, cube_tail_scale, 1.0]));
+            // apply non-uniform scale
+            tail_transform.scale *= Vec3::from([1.0, cube_tail_scale, 1.0]);
 
             // child cube
             parent
-                .spawn_bundle(PbrBundle {
+                .spawn(PbrBundle {
                     mesh: meshes.add(Mesh::from(shape::Cube { size: cube_size })),
                     material: debug_material.clone(),
                     transform: tail_transform,

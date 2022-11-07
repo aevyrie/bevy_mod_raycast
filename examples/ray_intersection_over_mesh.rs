@@ -1,8 +1,9 @@
 use std::f32::consts::FRAC_PI_2;
 
 use bevy::{prelude::*, window::PresentMode};
+
 use bevy_mod_raycast::{
-    ray_intersection_over_mesh, Backfaces, DefaultPluginState, DefaultRaycastingPlugin, Ray3d,
+    Backfaces, DefaultPluginState, DefaultRaycastingPlugin, Ray3d, ray_intersection_over_mesh,
     RayCastMesh, RayCastMethod, RayCastSource, RaycastSystem,
 };
 
@@ -14,11 +15,13 @@ use bevy_mod_raycast::{
 
 fn main() {
     App::new()
-        .insert_resource(WindowDescriptor {
-            present_mode: PresentMode::AutoNoVsync, // Reduces input latency
-            ..Default::default()
-        })
-        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            window: WindowDescriptor {
+                present_mode: PresentMode::AutoNoVsync, // Reduces input latency
+                ..default()
+            },
+            ..default()
+        }))
         .add_plugin(DefaultRaycastingPlugin::<Ground>::default())
         .add_startup_system(setup)
         .add_startup_system(setup_ui)
@@ -45,7 +48,7 @@ fn update_raycast_with_cursor(
 fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
     let font = asset_server.load("fonts/FiraMono-Medium.ttf");
     commands
-        .spawn_bundle(TextBundle {
+        .spawn(TextBundle {
             style: Style {
                 align_self: AlignSelf::FlexStart,
                 flex_direction: FlexDirection::Column,
@@ -80,9 +83,11 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
 // Marker struct for the text
 #[derive(Component)]
 struct PathStatus;
+
 // Marker struct for the ground, used to get cursor position
 #[derive(Component)]
 struct Ground;
+
 // Marker struct for the path origin, shown by a cyan sphere
 #[derive(Component)]
 struct PathOrigin;
@@ -90,9 +95,11 @@ struct PathOrigin;
 // Marker struct for the path pointer, shown by a cyan box
 #[derive(Component)]
 struct PathPointer;
+
 // Marker struct for obstacles
 #[derive(Component)]
 struct PathObstacle;
+
 // Marker struct for the intersection point
 #[derive(Component)]
 struct PathObstaclePoint;
@@ -106,7 +113,7 @@ fn setup(
     commands.insert_resource(DefaultPluginState::<Ground>::default().with_debug_cursor());
     // Spawn the camera
     commands
-        .spawn_bundle(Camera3dBundle {
+        .spawn(Camera3dBundle {
             transform: Transform::from_xyz(-5.0, 10.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
             ..Default::default()
         })
@@ -114,7 +121,7 @@ fn setup(
 
     // Spawn a plane that will represent the ground. It will be used to pick the mouse location in 3D space
     commands
-        .spawn_bundle(PbrBundle {
+        .spawn(PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Plane { size: 500.0 })),
             material: materials.add(Color::DARK_GRAY.into()),
             ..Default::default()
@@ -125,7 +132,7 @@ fn setup(
     for x in -2..=2 {
         for z in -2..=2 {
             commands
-                .spawn_bundle(PbrBundle {
+                .spawn(PbrBundle {
                     mesh: meshes.add(Mesh::from(shape::Cube::default())),
                     material: materials.add(Color::BLACK.into()),
                     transform: Transform::from_xyz(x as f32 * 4.0, 0.0, z as f32 * 4.0),
@@ -136,7 +143,7 @@ fn setup(
     }
     // Spawn the path origin
     commands
-        .spawn_bundle(PbrBundle {
+        .spawn(PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Cube::new(0.5))),
             material: materials.add(Color::CYAN.into()),
             transform: Transform {
@@ -148,7 +155,7 @@ fn setup(
         .insert(PathOrigin)
         .with_children(|from| {
             // Spawn a visual indicator for the path direction
-            from.spawn_bundle(PbrBundle {
+            from.spawn(PbrBundle {
                 mesh: meshes.add(Mesh::from(shape::Box::default())),
                 material: materials.add(StandardMaterial {
                     unlit: true,
@@ -158,12 +165,12 @@ fn setup(
                 transform: Transform::from_scale(Vec3::ZERO),
                 ..Default::default()
             })
-            .insert(PathPointer);
+                .insert(PathPointer);
         });
 
     // Spawn the intersection point, invisible by default until there is an intersection
     commands
-        .spawn_bundle(PbrBundle {
+        .spawn(PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Icosphere::default())),
             material: materials.add(StandardMaterial {
                 unlit: true,
@@ -179,7 +186,7 @@ fn setup(
         })
         .insert(PathObstaclePoint);
 
-    commands.spawn_bundle(DirectionalLightBundle {
+    commands.spawn(DirectionalLightBundle {
         transform: Transform::from_translation(Vec3::new(4.0, 8.0, 4.0))
             .looking_at(Vec3::ZERO, Vec3::Y),
         ..Default::default()
@@ -263,7 +270,7 @@ fn check_path(
             let ray = Ray3d::new(from, ray_direction);
             if let Ok(mut text) = status_query.get_single_mut() {
                 if let Ok((mut intersection_transform, mut visible)) =
-                    intersection_point.get_single_mut()
+                intersection_point.get_single_mut()
                 {
                     // Set everything as OK in case there are no obstacle in path
                     text.sections[1].value = "Direct!".to_string();

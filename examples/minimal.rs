@@ -34,8 +34,8 @@ fn setup(
     // default plugin is added.
     commands.insert_resource(DefaultPluginState::<MyRaycastSet>::default().with_debug_cursor());
     commands
-        .spawn_bundle(Camera3dBundle {
-            projection: bevy::render::camera::Projection::Orthographic(OrthographicProjection {
+        .spawn(Camera3dBundle {
+            projection: Projection::Orthographic(OrthographicProjection {
                 scale: 0.01,
                 ..default()
             }),
@@ -50,7 +50,7 @@ fn setup(
         // will build a valid ray every frame using the camera's updated position.
         .insert(RayCastSource::<MyRaycastSet>::new_transform_empty());
     commands
-        .spawn_bundle(PbrBundle {
+        .spawn(PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Icosphere {
                 radius: 1.0,
                 subdivisions: 1,
@@ -60,7 +60,7 @@ fn setup(
             ..Default::default()
         })
         .insert(RayCastMesh::<MyRaycastSet>::default()); // Make this mesh ray cast-able
-    commands.spawn_bundle(PointLightBundle {
+    commands.spawn(PointLightBundle {
         transform: Transform::from_translation(Vec3::new(4.0, 8.0, 4.0)),
         ..Default::default()
     });
@@ -81,8 +81,8 @@ fn intersection(query: Query<&Intersection<MyRaycastSet>>) {
 fn rotator(time: Res<Time>, mut query: Query<&mut Transform, With<RayCastSource<MyRaycastSet>>>) {
     for mut transform in &mut query {
         *transform = Transform::from_rotation(
-            Quat::from_rotation_x(time.seconds_since_startup().sin() as f32 * 0.2)
-                * Quat::from_rotation_y((time.seconds_since_startup() * 1.5).sin() as f32 * 0.1),
+            Quat::from_rotation_x(time.elapsed_seconds().sin() as f32 * 0.2)
+                * Quat::from_rotation_y((time.elapsed_seconds() * 1.5).sin() as f32 * 0.1),
         );
     }
 }

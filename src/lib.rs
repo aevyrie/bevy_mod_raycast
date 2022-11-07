@@ -515,7 +515,7 @@ pub fn update_intersections<T: 'static>(
             None => {
                 // If there are no intersections left in the world, spawn one.
                 commands
-                    .spawn()
+                    .spawn_empty()
                     .insert(Intersection::<T>::new(new_intersection.to_owned()));
             }
         }

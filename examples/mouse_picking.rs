@@ -1,4 +1,5 @@
 use bevy::{prelude::*, window::PresentMode};
+
 use bevy_mod_raycast::{
     DefaultPluginState, DefaultRaycastingPlugin, RayCastMesh, RayCastMethod, RayCastSource,
     RaycastSystem,
@@ -10,11 +11,13 @@ use bevy_mod_raycast::{
 
 fn main() {
     App::new()
-        .insert_resource(WindowDescriptor {
-            present_mode: PresentMode::AutoNoVsync, // Reduces input lag.
-            ..Default::default()
-        })
-        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            window: WindowDescriptor {
+                present_mode: PresentMode::AutoNoVsync, // Reduces input lag.
+                ..default()
+            },
+            ..default()
+        }))
         // The DefaultRaycastingPlugin bundles all the functionality you might need into a single
         // plugin. This includes building rays, casting them, and placing a debug cursor at the
         // intersection. For more advanced uses, you can compose the systems in this plugin however
@@ -65,19 +68,19 @@ fn setup(
     // default plugin is added.
     commands.insert_resource(DefaultPluginState::<MyRaycastSet>::default().with_debug_cursor());
     commands
-        .spawn_bundle(Camera3dBundle {
+        .spawn(Camera3dBundle {
             transform: Transform::from_xyz(-2.0, 2.0, 2.0).looking_at(Vec3::ZERO, Vec3::Y),
             ..Default::default()
         })
         .insert(RayCastSource::<MyRaycastSet>::new()); // Designate the camera as our source
     commands
-        .spawn_bundle(PbrBundle {
+        .spawn(PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Icosphere::default())),
             material: materials.add(Color::rgb(1.0, 1.0, 1.0).into()),
             ..Default::default()
         })
         .insert(RayCastMesh::<MyRaycastSet>::default()); // Make this mesh ray cast-able
-    commands.spawn_bundle(PointLightBundle {
+    commands.spawn(PointLightBundle {
         transform: Transform::from_translation(Vec3::new(4.0, 8.0, 4.0)),
         ..Default::default()
     });

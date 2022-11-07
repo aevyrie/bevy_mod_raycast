@@ -5,6 +5,7 @@ use bevy::{
     render::primitives::Aabb,
     window::PresentMode,
 };
+
 use bevy_mod_raycast::{
     DefaultPluginState, DefaultRaycastingPlugin, RayCastMesh, RayCastMethod, RayCastSource,
     RaycastSystem,
@@ -16,11 +17,13 @@ use bevy_mod_raycast::{
 
 fn main() {
     App::new()
-        .insert_resource(WindowDescriptor {
-            present_mode: PresentMode::AutoNoVsync, // Reduces input lag.
-            ..Default::default()
-        })
-        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            window: WindowDescriptor {
+                present_mode: PresentMode::AutoNoVsync,
+                ..default()
+            },
+            ..default()
+        }))
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
         .add_plugin(DefaultRaycastingPlugin::<MyRaycastSet>::default())
         // You will need to pay attention to what order you add systems! Putting them in the wrong
@@ -62,7 +65,7 @@ fn setup_scene(
     asset_server: Res<AssetServer>,
 ) {
     commands.insert_resource(DefaultPluginState::<MyRaycastSet>::default().with_debug_cursor());
-    commands.spawn_bundle(DirectionalLightBundle {
+    commands.spawn(DirectionalLightBundle {
         transform: Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, 20.0, 20.0, 0.0)),
         directional_light: DirectionalLight {
             illuminance: 5000.0,
@@ -72,7 +75,7 @@ fn setup_scene(
     });
 
     commands
-        .spawn_bundle(Camera3dBundle::default())
+        .spawn(Camera3dBundle::default())
         .insert(RayCastSource::<MyRaycastSet>::new()); // Designate the camera as our source
 
     let mesh = asset_server.load("models/monkey/Monkey.gltf#Mesh0/Primitive0");
@@ -83,7 +86,7 @@ fn setup_scene(
         for j in -n..=n {
             for k in -n..=n {
                 commands
-                    .spawn_bundle(PbrBundle {
+                    .spawn(PbrBundle {
                         mesh: mesh.clone(),
                         material: material.clone(),
                         transform: Transform::from_translation(Vec3::new(
@@ -103,17 +106,17 @@ fn setup_scene(
 fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
     let font = asset_server.load("fonts/FiraMono-Medium.ttf");
     commands
-        .spawn_bundle(NodeBundle {
+        .spawn(NodeBundle {
             style: Style {
                 align_self: AlignSelf::FlexStart,
                 flex_direction: FlexDirection::Column,
                 ..Default::default()
             },
-            color: Color::NONE.into(),
+            background_color: Color::NONE.into(),
             ..Default::default()
         })
         .with_children(|ui| {
-            ui.spawn_bundle(TextBundle {
+            ui.spawn(TextBundle {
                 text: Text {
                     sections: vec![
                         TextSection {
@@ -137,8 +140,8 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                 },
                 ..Default::default()
             })
-            .insert(FpsText);
-            ui.spawn_bundle(TextBundle {
+                .insert(FpsText);
+            ui.spawn(TextBundle {
                 text: Text {
                     sections: vec![
                         TextSection {
@@ -162,16 +165,18 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                 },
                 ..Default::default()
             })
-            .insert(BoundVolStatus);
+                .insert(BoundVolStatus);
         });
 }
 
 #[derive(Component)]
 struct BoundVolStatus;
+
 #[derive(Component)]
 struct FpsText;
 
 struct Enabled(bool);
+
 impl Default for Enabled {
     fn default() -> Self {
         Enabled(true)
