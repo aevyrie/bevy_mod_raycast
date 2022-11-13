@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_mod_raycast::{
-    DefaultPluginState, DefaultRaycastingPlugin, Intersection, RayCastMesh, RayCastSource,
+    DefaultPluginState, DefaultRaycastingPlugin, Intersection, RayCastMesh, RaycastSource,
 };
 
 // This example casts a ray from the camera using its transform, intersects a mesh, displays
@@ -19,7 +19,7 @@ fn main() {
         .run();
 }
 
-// Mark our generic `RayCastMesh`s and `RayCastSource`s as part of the same "RayCastSet". This
+// Mark our generic `RayCastMesh`s and `RaycastSource`s as part of the same "RayCastSet". This
 // plugin uses generics to distinguish between groups of raycasters.
 struct MyRaycastSet;
 
@@ -48,7 +48,7 @@ fn setup(
         // GlobalTransform on the camera entity, and build a ray using this transform. In this
         // example, this means that as the camera rotates in the scene, the update_raycast system
         // will build a valid ray every frame using the camera's updated position.
-        .insert(RayCastSource::<MyRaycastSet>::new_transform_empty());
+        .insert(RaycastSource::<MyRaycastSet>::new_transform_empty());
     commands
         .spawn_bundle(PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Icosphere {
@@ -78,7 +78,7 @@ fn intersection(query: Query<&Intersection<MyRaycastSet>>) {
 }
 
 /// Rotate the camera up and down to show that the raycast intersection is updated every frame.
-fn rotator(time: Res<Time>, mut query: Query<&mut Transform, With<RayCastSource<MyRaycastSet>>>) {
+fn rotator(time: Res<Time>, mut query: Query<&mut Transform, With<RaycastSource<MyRaycastSet>>>) {
     for mut transform in &mut query {
         *transform = Transform::from_rotation(
             Quat::from_rotation_x(time.seconds_since_startup().sin() as f32 * 0.2)

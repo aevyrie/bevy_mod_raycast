@@ -1,6 +1,6 @@
 use bevy::{prelude::*, sprite::MaterialMesh2dBundle};
 use bevy_mod_raycast::{
-    DefaultRaycastingPlugin, Intersection, RayCastMesh, RayCastMethod, RayCastSource, RaycastSystem,
+    DefaultRaycastingPlugin, Intersection, RayCastMesh, RayCastMethod, RaycastSource, RaycastSystem,
 };
 
 fn main() {
@@ -18,10 +18,10 @@ fn main() {
 
 struct MyRaycastSet;
 
-// Update our `RayCastSource` with the current cursor position every frame.
+// Update our `RaycastSource` with the current cursor position every frame.
 fn update_raycast_with_cursor(
     mut cursor: EventReader<CursorMoved>,
-    mut query: Query<&mut RayCastSource<MyRaycastSet>>,
+    mut query: Query<&mut RaycastSource<MyRaycastSet>>,
 ) {
     // Grab the most recent cursor event if it exists:
     let cursor_position = match cursor.iter().last() {
@@ -52,7 +52,7 @@ fn setup(
 ) {
     commands
         .spawn_bundle(Camera2dBundle::default())
-        .insert(RayCastSource::<MyRaycastSet>::new()); // Designate the camera as our source;
+        .insert(RaycastSource::<MyRaycastSet>::new()); // Designate the camera as our source;
     commands
         .spawn_bundle(MaterialMesh2dBundle {
             mesh: meshes.add(Mesh::from(shape::Quad::default())).into(),

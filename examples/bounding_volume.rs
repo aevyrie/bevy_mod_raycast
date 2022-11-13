@@ -6,7 +6,7 @@ use bevy::{
     window::PresentMode,
 };
 use bevy_mod_raycast::{
-    DefaultPluginState, DefaultRaycastingPlugin, RayCastMesh, RayCastMethod, RayCastSource,
+    DefaultPluginState, DefaultRaycastingPlugin, RayCastMesh, RayCastMethod, RaycastSource,
     RaycastSystem,
 };
 
@@ -37,15 +37,15 @@ fn main() {
         .run();
 }
 
-// This is a unit struct we will use to mark our generic `RayCastMesh`s and `RayCastSource` as part
+// This is a unit struct we will use to mark our generic `RayCastMesh`s and `RaycastSource` as part
 // of the same group, or "RayCastSet". For more complex use cases, you might use this to associate
 // some meshes with one ray casting source, and other meshes with a different ray casting source."
 struct MyRaycastSet;
 
-// Update our `RayCastSource` with the current cursor position every frame.
+// Update our `RaycastSource` with the current cursor position every frame.
 fn update_raycast_with_cursor(
     mut cursor: EventReader<CursorMoved>,
-    mut query: Query<&mut RayCastSource<MyRaycastSet>>,
+    mut query: Query<&mut RaycastSource<MyRaycastSet>>,
 ) {
     for mut pick_source in &mut query {
         // Grab the most recent cursor event if it exists:
@@ -73,7 +73,7 @@ fn setup_scene(
 
     commands
         .spawn_bundle(Camera3dBundle::default())
-        .insert(RayCastSource::<MyRaycastSet>::new()); // Designate the camera as our source
+        .insert(RaycastSource::<MyRaycastSet>::new()); // Designate the camera as our source
 
     let mesh = asset_server.load("models/monkey/Monkey.gltf#Mesh0/Primitive0");
     let material = materials.add(Color::rgb(1.0, 1.0, 1.0).into());

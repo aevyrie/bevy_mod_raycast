@@ -171,20 +171,20 @@ impl<T> Default for RayCastMesh<T> {
     }
 }
 
-/// The `RayCastSource` component is used to generate rays with the specified `cast_method`. A `ray`
-/// is generated when the RayCastSource is initialized, either by waiting for update_raycast system
+/// The `RaycastSource` component is used to generate rays with the specified `cast_method`. A `ray`
+/// is generated when the RaycastSource is initialized, either by waiting for update_raycast system
 /// to process the ray, or by using a `with_ray` function.
 #[derive(Component)]
-pub struct RayCastSource<T> {
+pub struct RaycastSource<T> {
     pub cast_method: RayCastMethod,
     pub ray: Option<Ray3d>,
     intersections: Vec<(Entity, IntersectionData)>,
     _marker: PhantomData<fn() -> T>,
 }
 
-impl<T> Default for RayCastSource<T> {
+impl<T> Default for RaycastSource<T> {
     fn default() -> Self {
-        RayCastSource {
+        RaycastSource {
             cast_method: RayCastMethod::Screenspace(Vec2::ZERO),
             ray: None,
             intersections: Vec::new(),
@@ -193,48 +193,48 @@ impl<T> Default for RayCastSource<T> {
     }
 }
 
-impl<T> RayCastSource<T> {
-    /// Instantiates a [RayCastSource]. It will not be initialized until the update_raycast system
+impl<T> RaycastSource<T> {
+    /// Instantiates a [RaycastSource]. It will not be initialized until the update_raycast system
     /// runs, or one of the `with_ray` functions is run.
-    pub fn new() -> RayCastSource<T> {
-        RayCastSource::default()
+    pub fn new() -> RaycastSource<T> {
+        RaycastSource::default()
     }
-    /// Initializes a [RayCastSource] with a valid screenspace ray.
+    /// Initializes a [RaycastSource] with a valid screenspace ray.
     pub fn with_ray_screenspace(
         self,
         cursor_pos_screen: Vec2,
         camera: &Camera,
         camera_transform: &GlobalTransform,
     ) -> Self {
-        RayCastSource {
+        RaycastSource {
             cast_method: RayCastMethod::Screenspace(cursor_pos_screen),
             ray: Ray3d::from_screenspace(cursor_pos_screen, camera, camera_transform),
             intersections: self.intersections,
             _marker: self._marker,
         }
     }
-    /// Initializes a [RayCastSource] with a valid ray derived from a transform.
+    /// Initializes a [RaycastSource] with a valid ray derived from a transform.
     pub fn with_ray_transform(self, transform: Mat4) -> Self {
-        RayCastSource {
+        RaycastSource {
             cast_method: RayCastMethod::Transform,
             ray: Some(Ray3d::from_transform(transform)),
             intersections: self.intersections,
             _marker: self._marker,
         }
     }
-    /// Instantiates and initializes a [RayCastSource] with a valid screenspace ray.
+    /// Instantiates and initializes a [RaycastSource] with a valid screenspace ray.
     pub fn new_screenspace(
         cursor_pos_screen: Vec2,
         camera: &Camera,
         camera_transform: &GlobalTransform,
     ) -> Self {
-        RayCastSource::new().with_ray_screenspace(cursor_pos_screen, camera, camera_transform)
+        RaycastSource::new().with_ray_screenspace(cursor_pos_screen, camera, camera_transform)
     }
-    /// Initializes a [RayCastSource] with a valid ray derived from a transform.
+    /// Initializes a [RaycastSource] with a valid ray derived from a transform.
     pub fn new_transform(transform: Mat4) -> Self {
-        RayCastSource::new().with_ray_transform(transform)
+        RaycastSource::new().with_ray_transform(transform)
     }
-    /// Instantiates a [RayCastSource] with [RayCastMethod::Transform], and an empty ray. It will
+    /// Instantiates a [RaycastSource] with [RayCastMethod::Transform], and an empty ray. It will
     /// not be initialized until the [update_raycast] system is run and a [GlobalTransform] is
     /// present on this entity.
     ///
@@ -243,18 +243,33 @@ impl<T> RayCastSource<T> {
     /// [GlobalTransform] specified elsewhere. If the [GlobalTransform] is not set, this ray casting
     /// source will never be able to generate a raycast.
     pub fn new_transform_empty() -> Self {
-        RayCastSource {
+        RaycastSource {
             cast_method: RayCastMethod::Transform,
             ..Default::default()
         }
     }
-    pub fn intersect_top(&self) -> Option<(Entity, &IntersectionData)> {
+    /// Get a reference to the ray cast source's intersections, if one exists.
+    pub fn get_intersections(&self) -> Option<&[(Entity, IntersectionData)]> {
+        if self.intersections.is_empty() {
+            None
+        } else {
+            Some(&self.intersections)
+        }
+    }
+    /// Get a reference to the ray cast source's intersections. Returns an empty list if there are
+    /// no intersections.
+    pub fn intersections(&self) -> &[(Entity, IntersectionData)] {
+        &self.intersections
+    }
+    /// Get a reference to the nearest intersection point, if there is one.
+    pub fn get_nearest_intersection(&self) -> Option<(Entity, &IntersectionData)> {
         if self.intersections.is_empty() {
             None
         } else {
             self.intersections.first().map(|(e, i)| (*e, i))
         }
     }
+    /// Run an intersection check between this [`RaycastSource`] and a 3D primitive [`Primitive3d`].
     pub fn intersect_primitive(&self, shape: Primitive3d) -> Option<IntersectionData> {
         let ray = self.ray?;
         match shape {
@@ -280,19 +295,14 @@ impl<T> RayCastSource<T> {
             }
         }
     }
-    /// Get a reference to the ray cast source's ray.
-    pub fn ray(&self) -> Option<Ray3d> {
+    /// Get a copy of the ray cast source's ray.
+    pub fn get_ray(&self) -> Option<Ray3d> {
         self.ray
     }
 
     /// Get a mutable reference to the ray cast source's intersections.
     pub fn intersections_mut(&mut self) -> &mut Vec<(Entity, IntersectionData)> {
         &mut self.intersections
-    }
-
-    /// Get a reference to the ray cast source's intersections.
-    pub fn intersections(&self) -> &[(Entity, IntersectionData)] {
-        &self.intersections
     }
 }
 
@@ -303,7 +313,7 @@ pub enum RayCastMethod {
     /// # Component Requirements
     ///
     /// This requires a [Windows] resource to convert the cursor coordinates to NDC, and a [Camera]
-    /// component associated with this [RayCastSource]'s entity, to determine where the screenspace
+    /// component associated with this [RaycastSource]'s entity, to determine where the screenspace
     /// ray is firing from in the world.
     Screenspace(Vec2),
     /// Use a transform in world space to define a pick ray. This transform is applied to a vector
@@ -311,14 +321,14 @@ pub enum RayCastMethod {
     ///
     /// # Component Requirements
     ///
-    /// Requires a [GlobalTransform] component associated with this [RayCastSource]'s entity.
+    /// Requires a [GlobalTransform] component associated with this [RaycastSource]'s entity.
     Transform,
 }
 
 #[allow(clippy::type_complexity)]
 pub fn build_rays<T: 'static>(
     mut pick_source_query: Query<(
-        &mut RayCastSource<T>,
+        &mut RaycastSource<T>,
         Option<&GlobalTransform>,
         Option<&Camera>,
     )>,
@@ -373,7 +383,7 @@ pub fn update_raycast<T: 'static>(
     // Resources
     meshes: Res<Assets<Mesh>>,
     // Queries
-    mut pick_source_query: Query<&mut RayCastSource<T>>,
+    mut pick_source_query: Query<&mut RaycastSource<T>>,
     culling_query: Query<
         (
             &Visibility,
@@ -501,7 +511,7 @@ pub fn update_raycast<T: 'static>(
 pub fn update_intersections<T: 'static>(
     mut commands: Commands,
     mut intersections: Query<&mut Intersection<T>>,
-    sources: Query<&RayCastSource<T>>,
+    sources: Query<&RaycastSource<T>>,
 ) {
     let mut intersect_iter = intersections.iter_mut();
     for (_, new_intersection) in sources.iter().filter_map(|source| source.intersect_top()) {
