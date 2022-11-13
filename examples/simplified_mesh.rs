@@ -65,8 +65,8 @@ fn setup_scene(
     commands
         .spawn(Camera3dBundle::default())
         .insert(RaycastSource::<MyRaycastSet>::new()); // Designate the camera as our source
-    commands
-        .spawn(PbrBundle {
+    commands.spawn((
+        PbrBundle {
             // This is a very complex mesh that will be hard to raycast on
             mesh: meshes.add(Mesh::from(shape::UVSphere {
                 radius: 1.0,
@@ -76,8 +76,12 @@ fn setup_scene(
             material: materials.add(Color::rgb(1.0, 1.0, 1.0).into()),
             transform: Transform::from_translation(Vec3::new(0.0, 0.0, -5.0)),
             ..Default::default()
-        })
-        .insert(RaycastMesh::<MyRaycastSet>::default()); // Make this mesh ray cast-able
+        },
+        SimplifiedMesh {
+            mesh: meshes.add(Mesh::from(shape::UVSphere::default())),
+        },
+        RaycastMesh::<MyRaycastSet>::default(), // Make this mesh ray cast-able
+    ));
     commands.spawn(PointLightBundle {
         transform: Transform::from_translation(Vec3::new(4.0, 8.0, 4.0)),
         ..Default::default()
@@ -136,11 +140,11 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                             },
                         },
                         TextSection {
-                            value: "OFF".to_string(),
+                            value: "ON".to_string(),
                             style: TextStyle {
                                 font: font.clone(),
                                 font_size: 30.0,
-                                color: Color::RED,
+                                color: Color::GREEN,
                             },
                         },
                     ],
