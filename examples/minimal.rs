@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_mod_raycast::{
-    DefaultPluginState, DefaultRaycastingPlugin, Intersection, RayCastMesh, RaycastSource,
+    DefaultPluginState, DefaultRaycastingPlugin, Intersection, RaycastMesh, RaycastSource,
 };
 
 // This example casts a ray from the camera using its transform, intersects a mesh, displays
@@ -19,7 +19,7 @@ fn main() {
         .run();
 }
 
-// Mark our generic `RayCastMesh`s and `RaycastSource`s as part of the same "RayCastSet". This
+// Mark our generic `RaycastMesh`s and `RaycastSource`s as part of the same "RaycastSet". This
 // plugin uses generics to distinguish between groups of raycasters.
 struct MyRaycastSet;
 
@@ -44,7 +44,7 @@ fn setup(
         // Designate the camera as our ray casting source. Using `new_transform_empty()` means that
         // the ray casting source will not be initialized with a valid ray. Instead, a ray will be
         // calculated the first time the update_raycast system runs. Because we are setting this as
-        // a RayCastMethod::Transform source, the update_raycast system will look for a
+        // a RaycastMethod::Transform source, the update_raycast system will look for a
         // GlobalTransform on the camera entity, and build a ray using this transform. In this
         // example, this means that as the camera rotates in the scene, the update_raycast system
         // will build a valid ray every frame using the camera's updated position.
@@ -59,7 +59,7 @@ fn setup(
             transform: Transform::from_translation(Vec3::new(0.0, 0.0, -5.0)),
             ..Default::default()
         })
-        .insert(RayCastMesh::<MyRaycastSet>::default()); // Make this mesh ray cast-able
+        .insert(RaycastMesh::<MyRaycastSet>::default()); // Make this mesh ray cast-able
     commands.spawn_bundle(PointLightBundle {
         transform: Transform::from_translation(Vec3::new(4.0, 8.0, 4.0)),
         ..Default::default()

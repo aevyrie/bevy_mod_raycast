@@ -1,6 +1,6 @@
 use bevy::{prelude::*, sprite::MaterialMesh2dBundle};
 use bevy_mod_raycast::{
-    DefaultRaycastingPlugin, Intersection, RayCastMesh, RayCastMethod, RaycastSource, RaycastSystem,
+    DefaultRaycastingPlugin, Intersection, RaycastMesh, RaycastMethod, RaycastSource, RaycastSystem,
 };
 
 fn main() {
@@ -30,7 +30,7 @@ fn update_raycast_with_cursor(
     };
 
     for mut pick_source in &mut query {
-        pick_source.cast_method = RayCastMethod::Screenspace(cursor_position);
+        pick_source.cast_method = RaycastMethod::Screenspace(cursor_position);
     }
 }
 
@@ -60,5 +60,5 @@ fn setup(
             material: materials.add(ColorMaterial::from(Color::PURPLE)),
             ..default()
         })
-        .insert(RayCastMesh::<MyRaycastSet>::default()); // Make this mesh ray cast-able;
+        .insert(RaycastMesh::<MyRaycastSet>::default()); // Make this mesh ray cast-able;
 }

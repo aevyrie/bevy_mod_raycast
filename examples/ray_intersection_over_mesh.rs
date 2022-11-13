@@ -3,7 +3,7 @@ use std::f32::consts::FRAC_PI_2;
 use bevy::{prelude::*, window::PresentMode};
 use bevy_mod_raycast::{
     ray_intersection_over_mesh, Backfaces, DefaultPluginState, DefaultRaycastingPlugin, Ray3d,
-    RayCastMesh, RayCastMethod, RaycastSource, RaycastSystem,
+    RaycastMesh, RaycastMethod, RaycastSource, RaycastSystem,
 };
 
 // This example shows how to use `ray_intersection_over_mesh` to cast a ray over a mesh
@@ -37,7 +37,7 @@ fn update_raycast_with_cursor(
 ) {
     for mut pick_source in &mut query {
         if let Some(cursor_latest) = cursor.iter().last() {
-            pick_source.cast_method = RayCastMethod::Screenspace(cursor_latest.position);
+            pick_source.cast_method = RaycastMethod::Screenspace(cursor_latest.position);
         }
     }
 }
@@ -119,7 +119,7 @@ fn setup(
             material: materials.add(Color::DARK_GRAY.into()),
             ..Default::default()
         })
-        .insert(RayCastMesh::<Ground>::default());
+        .insert(RaycastMesh::<Ground>::default());
 
     // Spawn obstacles
     for x in -2..=2 {

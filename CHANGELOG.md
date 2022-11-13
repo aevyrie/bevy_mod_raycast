@@ -2,7 +2,11 @@
 
 - All internal debug related code is now behind feature flags to enable running with
   `default_features = false`. 
-- Renamed `RayCastSource` to `RaycastSource`.
+- Renamed:
+  - `RayCastSource` to `RaycastSource`
+  - `RayCastMesh` to `RaycastMesh`
+  - `RayCastMethod` to `RaycastMethod`
+  - `RayCastSet` to `RaycastSet`
 - Update method naming to be more consistent with the ecosystem:
   - `intersect_list()` -> `get_intersections()`
   - `intersect_top()` -> `get_nearest_intersection()`

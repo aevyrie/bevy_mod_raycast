@@ -4,7 +4,7 @@ use bevy::{
     window::PresentMode,
 };
 use bevy_mod_raycast::{
-    DefaultPluginState, DefaultRaycastingPlugin, RayCastMesh, RayCastMethod, RaycastSource,
+    DefaultPluginState, DefaultRaycastingPlugin, RaycastMesh, RaycastMethod, RaycastSource,
     RaycastSystem, SimplifiedMesh,
 };
 
@@ -35,8 +35,8 @@ fn main() {
         .run();
 }
 
-// This is a unit struct we will use to mark our generic `RayCastMesh`s and `RaycastSource` as part
-// of the same group, or "RayCastSet". For more complex use cases, you might use this to associate
+// This is a unit struct we will use to mark our generic `RaycastMesh`s and `RaycastSource` as part
+// of the same group, or "RaycastSet". For more complex use cases, you might use this to associate
 // some meshes with one ray casting source, and other meshes with a different ray casting source."
 struct MyRaycastSet;
 
@@ -48,7 +48,7 @@ fn update_raycast_with_cursor_position(
     for mut pick_source in &mut query {
         // Grab the most recent cursor event if it exists:
         if let Some(cursor_latest) = cursor.iter().last() {
-            pick_source.cast_method = RayCastMethod::Screenspace(cursor_latest.position);
+            pick_source.cast_method = RaycastMethod::Screenspace(cursor_latest.position);
         }
     }
 }
@@ -75,7 +75,7 @@ fn setup_scene(
             transform: Transform::from_translation(Vec3::new(0.0, 0.0, -5.0)),
             ..Default::default()
         })
-        .insert(RayCastMesh::<MyRaycastSet>::default()); // Make this mesh ray cast-able
+        .insert(RaycastMesh::<MyRaycastSet>::default()); // Make this mesh ray cast-able
     commands.spawn_bundle(PointLightBundle {
         transform: Transform::from_translation(Vec3::new(4.0, 8.0, 4.0)),
         ..Default::default()
@@ -158,7 +158,7 @@ struct FpsText;
 // Insert or remove SimplifiedMesh component from the mesh being raycasted on.
 fn manage_simplified_mesh(
     mut commands: Commands,
-    query: Query<(Entity, Option<&SimplifiedMesh>), With<RayCastMesh<MyRaycastSet>>>,
+    query: Query<(Entity, Option<&SimplifiedMesh>), With<RaycastMesh<MyRaycastSet>>>,
     mut status_query: Query<&mut Text, With<SimplifiedStatus>>,
     keyboard: Res<Input<KeyCode>>,
     mut meshes: ResMut<Assets<Mesh>>,

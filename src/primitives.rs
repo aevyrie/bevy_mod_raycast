@@ -69,7 +69,7 @@ impl IntersectionData {
 /// ### Example
 ///
 /// Lets say you've created a raycasting set `T`. If you have a [`crate::RaycastSource<T>`], a
-/// [`crate::RayCastMesh<T>`], and an intersection occurs, the `RayCastMesh` will have an
+/// [`crate::RaycastMesh<T>`], and an intersection occurs, the `RaycastMesh` will have an
 /// `Intersection` component added to it, with the intersection data.
 #[derive(Component)]
 pub struct Intersection<T> {
