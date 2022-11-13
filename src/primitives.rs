@@ -135,12 +135,12 @@ impl<T> Intersection<T> {
 /// Encapsulates Ray3D, preventing use of struct literal syntax. This allows us to guarantee that
 /// the `Ray3d` direction is normalized, because it can only be instantiated with the constructor.
 pub mod rays {
+    use super::Primitive3d;
     use bevy::{
         math::Vec3A,
         prelude::*,
         render::{camera::Camera, primitives::Aabb},
     };
-    use super::Primitive3d;
 
     pub struct PrimitiveIntersection {
         position: Vec3,
