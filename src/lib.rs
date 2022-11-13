@@ -386,7 +386,17 @@ pub fn update_raycast<T: 'static>(
         ),
         With<RaycastMesh<T>>,
     >,
-    mesh_query: Query<
+    #[cfg(feature = "debug")] mesh_query: Query<
+        (
+            &Handle<Mesh>,
+            Option<&SimplifiedMesh>,
+            Option<&NoBackfaceCulling>,
+            &GlobalTransform,
+            Entity,
+        ),
+        (With<RaycastMesh<T>>, Without<DebugCursorMesh<T>>),
+    >,
+    #[cfg(not(feature = "debug"))] mesh_query: Query<
         (
             &Handle<Mesh>,
             Option<&SimplifiedMesh>,
