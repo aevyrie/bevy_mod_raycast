@@ -41,7 +41,6 @@ impl<T> Default for DebugCursorMesh<T> {
 }
 
 /// Updates the 3d cursor to be in the pointed world coordinates
-#[allow(clippy::type_complexity)]
 #[allow(clippy::too_many_arguments)]
 pub fn update_debug_cursor<T: 'static>(
     mut commands: Commands,

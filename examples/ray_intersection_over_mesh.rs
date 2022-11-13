@@ -178,10 +178,7 @@ fn setup(
                 ..Default::default()
             }),
             transform: Transform::from_scale(Vec3::splat(0.1)),
-            visibility: Visibility {
-                is_visible: false,
-                ..Default::default()
-            },
+            visibility: Visibility { is_visible: false },
             ..Default::default()
         })
         .insert(PathObstaclePoint);
@@ -217,7 +214,6 @@ fn move_origin(
     }
 }
 
-#[allow(clippy::type_complexity)]
 // Check the path between origin and mouse cursor position
 fn check_path(
     mut from: Query<

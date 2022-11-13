@@ -94,6 +94,7 @@ fn setup_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
     }
 }
 
+#[allow(clippy::type_complexity)]
 fn make_scene_pickable(
     mut commands: Commands,
     mesh_query: Query<Entity, (With<Handle<Mesh>>, Without<RaycastMesh<MyRaycastSet>>)>,

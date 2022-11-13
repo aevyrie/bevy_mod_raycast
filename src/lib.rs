@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 #[cfg(feature = "debug")]
 mod debug;
 mod primitives;
@@ -317,7 +319,6 @@ pub enum RaycastMethod {
     Transform,
 }
 
-#[allow(clippy::type_complexity)]
 pub fn build_rays<T: 'static>(
     mut pick_source_query: Query<(
         &mut RaycastSource<T>,
@@ -370,7 +371,6 @@ pub fn build_rays<T: 'static>(
 /// Iterates through all entities with the [RaycastMesh] component, checking for
 /// intersections. If these entities have bounding volumes, these will be checked first, greatly
 /// accelerating the process.
-#[allow(clippy::type_complexity)]
 pub fn update_raycast<T: 'static>(
     // Resources
     meshes: Res<Assets<Mesh>>,

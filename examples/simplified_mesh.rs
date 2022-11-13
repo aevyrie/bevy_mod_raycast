@@ -98,7 +98,6 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
             ..Default::default()
         })
         .with_children(|ui| {
-
             ui.spawn(TextBundle {
                 text: Text {
                     sections: vec![
@@ -123,7 +122,7 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                 },
                 ..Default::default()
             })
-                .insert(FpsText);
+            .insert(FpsText);
 
             ui.spawn(TextBundle {
                 text: Text {
@@ -149,7 +148,7 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                 },
                 ..Default::default()
             })
-                .insert(SimplifiedStatus);
+            .insert(SimplifiedStatus);
         });
 }
 
