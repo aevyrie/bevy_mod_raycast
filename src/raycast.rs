@@ -1,7 +1,8 @@
 use std::f32::EPSILON;
 
-use crate::{primitives::*, TriangleTrait};
 use bevy::math::Vec3A;
+
+use crate::{primitives::*, TriangleTrait};
 
 #[derive(Copy, Clone)]
 #[allow(dead_code)]
