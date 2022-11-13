@@ -27,7 +27,7 @@ bevy = { version = "0.9", default-features = false, features = [
     "bevy_scene",
     "x11",
 ] }
-criterion = "0.3"
+criterion = "0.4"
 
 [features]
 default = ["2d", "debug"]
