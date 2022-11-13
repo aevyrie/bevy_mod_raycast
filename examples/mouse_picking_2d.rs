@@ -16,6 +16,7 @@ fn main() {
         .run();
 }
 
+#[derive(Clone, Reflect)]
 struct MyRaycastSet;
 
 // Update our `RaycastSource` with the current cursor position every frame.
