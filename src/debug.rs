@@ -78,11 +78,11 @@ fn spawn_cursor<T: 'static>(
     meshes: &mut ResMut<Assets<Mesh>>,
     materials: &mut ResMut<Assets<StandardMaterial>>,
 ) {
-    let cube_size = 0.04;
+    let cube_size = 0.02;
     let cube_tail_scale = 20.0;
     let ball_size = 0.08;
     let debug_material = materials.add(StandardMaterial {
-        base_color: Color::rgb(0.0, 1.0, 0.0),
+        base_color: Color::rgb(0.0, 1e7, 0.0),
         unlit: true,
         ..Default::default()
     });
