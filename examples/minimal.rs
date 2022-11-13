@@ -33,14 +33,14 @@ fn setup(
     // removed if the debug cursor isn't needed as the state is set to default values when the
     // default plugin is added.
     commands.insert_resource(DefaultPluginState::<MyRaycastSet>::default().with_debug_cursor());
-    commands
-        .spawn(Camera3dBundle {
+    commands.spawn((
+        Camera3dBundle {
             projection: Projection::Orthographic(OrthographicProjection {
                 scale: 0.01,
                 ..default()
             }),
             ..default()
-        })
+        },
         // Designate the camera as our ray casting source. Using `new_transform_empty()` means that
         // the ray casting source will not be initialized with a valid ray. Instead, a ray will be
         // calculated the first time the update_raycast system runs. Because we are setting this as
@@ -48,18 +48,17 @@ fn setup(
         // GlobalTransform on the camera entity, and build a ray using this transform. In this
         // example, this means that as the camera rotates in the scene, the update_raycast system
         // will build a valid ray every frame using the camera's updated position.
-        .insert(RaycastSource::<MyRaycastSet>::new_transform_empty());
-    commands
-        .spawn(PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::Icosphere {
-                radius: 1.0,
-                subdivisions: 1,
-            })),
+        RaycastSource::<MyRaycastSet>::new_transform_empty(),
+    ));
+    commands.spawn((
+        PbrBundle {
+            mesh: meshes.add(Mesh::from(shape::Icosphere::default())),
             material: materials.add(Color::rgb(1.0, 1.0, 1.0).into()),
             transform: Transform::from_translation(Vec3::new(0.0, 0.0, -5.0)),
             ..Default::default()
-        })
-        .insert(RaycastMesh::<MyRaycastSet>::default()); // Make this mesh ray cast-able
+        },
+        RaycastMesh::<MyRaycastSet>::default(), // Make this mesh ray cast-able
+    ));
     commands.spawn(PointLightBundle {
         transform: Transform::from_translation(Vec3::new(4.0, 8.0, 4.0)),
         ..Default::default()
