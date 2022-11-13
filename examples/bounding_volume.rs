@@ -5,6 +5,7 @@ use bevy::{
     render::primitives::Aabb,
     window::PresentMode,
 };
+
 use bevy_mod_raycast::{
     DefaultPluginState, DefaultRaycastingPlugin, RaycastMesh, RaycastMethod, RaycastSource,
     RaycastSystem,
@@ -16,11 +17,13 @@ use bevy_mod_raycast::{
 
 fn main() {
     App::new()
-        .insert_resource(WindowDescriptor {
-            present_mode: PresentMode::AutoNoVsync, // Reduces input lag.
-            ..Default::default()
-        })
-        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            window: WindowDescriptor {
+                present_mode: PresentMode::AutoNoVsync,
+                ..default()
+            },
+            ..default()
+        }))
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
         .add_plugin(DefaultRaycastingPlugin::<MyRaycastSet>::default())
         // You will need to pay attention to what order you add systems! Putting them in the wrong
@@ -33,6 +36,7 @@ fn main() {
         .add_startup_system(setup_scene)
         .add_startup_system(setup_ui)
         .add_system(update_fps)
+        .add_system(make_scene_pickable)
         .add_system_to_stage(CoreStage::First, manage_aabb)
         .run();
 }
@@ -56,13 +60,9 @@ fn update_raycast_with_cursor(
 }
 
 // Set up a simple 3D scene
-fn setup_scene(
-    mut commands: Commands,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-    asset_server: Res<AssetServer>,
-) {
+fn setup_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(DefaultPluginState::<MyRaycastSet>::default().with_debug_cursor());
-    commands.spawn_bundle(DirectionalLightBundle {
+    commands.spawn(DirectionalLightBundle {
         transform: Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, 20.0, 20.0, 0.0)),
         directional_light: DirectionalLight {
             illuminance: 5000.0,
@@ -72,30 +72,37 @@ fn setup_scene(
     });
 
     commands
-        .spawn_bundle(Camera3dBundle::default())
+        .spawn(Camera3dBundle::default())
         .insert(RaycastSource::<MyRaycastSet>::new()); // Designate the camera as our source
 
-    let mesh = asset_server.load("models/monkey/Monkey.gltf#Mesh0/Primitive0");
-    let material = materials.add(Color::rgb(1.0, 1.0, 1.0).into());
     // Spawn multiple mesh to raycast on
     let n = 8;
     for i in -n..=n {
         for j in -n..=n {
             for k in -n..=n {
-                commands
-                    .spawn_bundle(PbrBundle {
-                        mesh: mesh.clone(),
-                        material: material.clone(),
-                        transform: Transform::from_translation(Vec3::new(
-                            i as f32 * 3.0,
-                            j as f32 * 3.0,
-                            k as f32 * 3.0 - n as f32 * 4.0,
-                        )),
-                        ..Default::default()
-                    })
-                    .insert(RaycastMesh::<MyRaycastSet>::default()); // Make this mesh ray cast-able
+                commands.spawn((bevy::prelude::SceneBundle {
+                    scene: asset_server.load("models/monkey/Monkey.gltf#Scene0"),
+                    transform: Transform::from_translation(Vec3::new(
+                        i as f32 * 3.0,
+                        j as f32 * 3.0,
+                        k as f32 * 3.0 - n as f32 * 4.0,
+                    )),
+                    ..default()
+                },));
             }
         }
+    }
+}
+
+#[allow(clippy::type_complexity)]
+fn make_scene_pickable(
+    mut commands: Commands,
+    mesh_query: Query<Entity, (With<Handle<Mesh>>, Without<RaycastMesh<MyRaycastSet>>)>,
+) {
+    for entity in &mesh_query {
+        commands
+            .entity(entity)
+            .insert(RaycastMesh::<MyRaycastSet>::default()); // Make this mesh ray cast-able
     }
 }
 
@@ -103,17 +110,17 @@ fn setup_scene(
 fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
     let font = asset_server.load("fonts/FiraMono-Medium.ttf");
     commands
-        .spawn_bundle(NodeBundle {
+        .spawn(NodeBundle {
             style: Style {
                 align_self: AlignSelf::FlexStart,
                 flex_direction: FlexDirection::Column,
                 ..Default::default()
             },
-            color: Color::NONE.into(),
+            background_color: Color::NONE.into(),
             ..Default::default()
         })
         .with_children(|ui| {
-            ui.spawn_bundle(TextBundle {
+            ui.spawn(TextBundle {
                 text: Text {
                     sections: vec![
                         TextSection {
@@ -138,7 +145,7 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                 ..Default::default()
             })
             .insert(FpsText);
-            ui.spawn_bundle(TextBundle {
+            ui.spawn(TextBundle {
                 text: Text {
                     sections: vec![
                         TextSection {
@@ -168,10 +175,12 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
 
 #[derive(Component)]
 struct BoundVolStatus;
+
 #[derive(Component)]
 struct FpsText;
 
 struct Enabled(bool);
+
 impl Default for Enabled {
     fn default() -> Self {
         Enabled(true)
@@ -211,7 +220,7 @@ fn manage_aabb(
 fn update_fps(diagnostics: Res<Diagnostics>, mut query: Query<&mut Text, With<FpsText>>) {
     for mut text in &mut query {
         if let Some(fps) = diagnostics.get(FrameTimeDiagnosticsPlugin::FPS) {
-            if let Some(average) = fps.average() {
+            if let Some(average) = fps.smoothed() {
                 // Update the value of the second section
                 text.sections[1].value = format!("{:.2}", average);
             }

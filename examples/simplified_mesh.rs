@@ -14,11 +14,13 @@ use bevy_mod_raycast::{
 
 fn main() {
     App::new()
-        .insert_resource(WindowDescriptor {
-            present_mode: PresentMode::AutoNoVsync, // Reduces input lag.
-            ..Default::default()
-        })
-        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            window: WindowDescriptor {
+                present_mode: PresentMode::AutoNoVsync, // Reduces input lag.
+                ..Default::default()
+            },
+            ..default()
+        }))
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
         .add_plugin(DefaultRaycastingPlugin::<MyRaycastSet>::default())
         // You will need to pay attention to what order you add systems! Putting them in the wrong
@@ -61,10 +63,10 @@ fn setup_scene(
 ) {
     commands.insert_resource(DefaultPluginState::<MyRaycastSet>::default().with_debug_cursor());
     commands
-        .spawn_bundle(Camera3dBundle::default())
+        .spawn(Camera3dBundle::default())
         .insert(RaycastSource::<MyRaycastSet>::new()); // Designate the camera as our source
-    commands
-        .spawn_bundle(PbrBundle {
+    commands.spawn((
+        PbrBundle {
             // This is a very complex mesh that will be hard to raycast on
             mesh: meshes.add(Mesh::from(shape::UVSphere {
                 radius: 1.0,
@@ -74,9 +76,13 @@ fn setup_scene(
             material: materials.add(Color::rgb(1.0, 1.0, 1.0).into()),
             transform: Transform::from_translation(Vec3::new(0.0, 0.0, -5.0)),
             ..Default::default()
-        })
-        .insert(RaycastMesh::<MyRaycastSet>::default()); // Make this mesh ray cast-able
-    commands.spawn_bundle(PointLightBundle {
+        },
+        SimplifiedMesh {
+            mesh: meshes.add(Mesh::from(shape::UVSphere::default())),
+        },
+        RaycastMesh::<MyRaycastSet>::default(), // Make this mesh ray cast-able
+    ));
+    commands.spawn(PointLightBundle {
         transform: Transform::from_translation(Vec3::new(4.0, 8.0, 4.0)),
         ..Default::default()
     });
@@ -86,17 +92,17 @@ fn setup_scene(
 fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
     let font = asset_server.load("fonts/FiraMono-Medium.ttf");
     commands
-        .spawn_bundle(NodeBundle {
+        .spawn(NodeBundle {
             style: Style {
                 align_self: AlignSelf::FlexStart,
                 flex_direction: FlexDirection::Column,
                 ..Default::default()
             },
-            color: Color::NONE.into(),
+            background_color: Color::NONE.into(),
             ..Default::default()
         })
         .with_children(|ui| {
-            ui.spawn_bundle(TextBundle {
+            ui.spawn(TextBundle {
                 text: Text {
                     sections: vec![
                         TextSection {
@@ -121,7 +127,8 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                 ..Default::default()
             })
             .insert(FpsText);
-            ui.spawn_bundle(TextBundle {
+
+            ui.spawn(TextBundle {
                 text: Text {
                     sections: vec![
                         TextSection {
@@ -133,11 +140,11 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                             },
                         },
                         TextSection {
-                            value: "OFF".to_string(),
+                            value: "ON".to_string(),
                             style: TextStyle {
                                 font: font.clone(),
                                 font_size: 30.0,
-                                color: Color::RED,
+                                color: Color::GREEN,
                             },
                         },
                     ],

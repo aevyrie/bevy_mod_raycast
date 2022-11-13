@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 #[cfg(feature = "debug")]
 mod debug;
 mod primitives;
@@ -317,7 +319,6 @@ pub enum RaycastMethod {
     Transform,
 }
 
-#[allow(clippy::type_complexity)]
 pub fn build_rays<T: 'static>(
     mut pick_source_query: Query<(
         &mut RaycastSource<T>,
@@ -370,7 +371,6 @@ pub fn build_rays<T: 'static>(
 /// Iterates through all entities with the [RaycastMesh] component, checking for
 /// intersections. If these entities have bounding volumes, these will be checked first, greatly
 /// accelerating the process.
-#[allow(clippy::type_complexity)]
 pub fn update_raycast<T: 'static>(
     // Resources
     meshes: Res<Assets<Mesh>>,
@@ -386,7 +386,17 @@ pub fn update_raycast<T: 'static>(
         ),
         With<RaycastMesh<T>>,
     >,
-    mesh_query: Query<
+    #[cfg(feature = "debug")] mesh_query: Query<
+        (
+            &Handle<Mesh>,
+            Option<&SimplifiedMesh>,
+            Option<&NoBackfaceCulling>,
+            &GlobalTransform,
+            Entity,
+        ),
+        (With<RaycastMesh<T>>, Without<DebugCursorMesh<T>>),
+    >,
+    #[cfg(not(feature = "debug"))] mesh_query: Query<
         (
             &Handle<Mesh>,
             Option<&SimplifiedMesh>,
@@ -507,7 +517,10 @@ pub fn update_intersections<T: 'static>(
     sources: Query<&RaycastSource<T>>,
 ) {
     let mut intersect_iter = intersections.iter_mut();
-    for (_, new_intersection) in sources.iter().filter_map(|source| source.intersect_top()) {
+    for (_, new_intersection) in sources
+        .iter()
+        .filter_map(|source| source.get_nearest_intersection())
+    {
         match intersect_iter.next() {
             Some(mut intersection) => {
                 // If there is an existing intersection, reuse it.
@@ -516,7 +529,7 @@ pub fn update_intersections<T: 'static>(
             None => {
                 // If there are no intersections left in the world, spawn one.
                 commands
-                    .spawn()
+                    .spawn_empty()
                     .insert(Intersection::<T>::new(new_intersection.to_owned()));
             }
         }
