@@ -507,7 +507,10 @@ pub fn update_intersections<T: 'static>(
     sources: Query<&RaycastSource<T>>,
 ) {
     let mut intersect_iter = intersections.iter_mut();
-    for (_, new_intersection) in sources.iter().filter_map(|source| source.intersect_top()) {
+    for (_, new_intersection) in sources
+        .iter()
+        .filter_map(|source| source.get_nearest_intersection())
+    {
         match intersect_iter.next() {
             Some(mut intersection) => {
                 // If there is an existing intersection, reuse it.

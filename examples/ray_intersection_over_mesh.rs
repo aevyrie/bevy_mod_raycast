@@ -3,7 +3,7 @@ use std::f32::consts::FRAC_PI_2;
 use bevy::{prelude::*, window::PresentMode};
 
 use bevy_mod_raycast::{
-    Backfaces, DefaultPluginState, DefaultRaycastingPlugin, Ray3d, ray_intersection_over_mesh,
+    ray_intersection_over_mesh, Backfaces, DefaultPluginState, DefaultRaycastingPlugin, Ray3d,
     RaycastMesh, RaycastMethod, RaycastSource, RaycastSystem,
 };
 
@@ -165,7 +165,7 @@ fn setup(
                 transform: Transform::from_scale(Vec3::ZERO),
                 ..Default::default()
             })
-                .insert(PathPointer);
+            .insert(PathPointer);
         });
 
     // Spawn the intersection point, invisible by default until there is an intersection
@@ -204,7 +204,7 @@ fn move_origin(
     mouse_event: Res<Input<MouseButton>>,
 ) {
     if let Ok(raycast_source) = to.get_single() {
-        if let Some(top_intersection) = raycast_source.intersect_top() {
+        if let Some(top_intersection) = raycast_source.get_nearest_intersection() {
             let mut new_position = top_intersection.1.position();
             new_position.y = 0.0;
 
@@ -253,7 +253,7 @@ fn check_path(
     if let Ok(mut origin_transform) = from.get_single_mut() {
         let raycast_source = to.single();
         let mut pointer = pointer.single_mut();
-        if let Some(top_intersection) = raycast_source.intersect_top() {
+        if let Some(top_intersection) = raycast_source.get_nearest_intersection() {
             let from = origin_transform.translation;
             let to = top_intersection.1.position();
             let ray_direction = (to - from).normalize();
@@ -270,7 +270,7 @@ fn check_path(
             let ray = Ray3d::new(from, ray_direction);
             if let Ok(mut text) = status_query.get_single_mut() {
                 if let Ok((mut intersection_transform, mut visible)) =
-                intersection_point.get_single_mut()
+                    intersection_point.get_single_mut()
                 {
                     // Set everything as OK in case there are no obstacle in path
                     text.sections[1].value = "Direct!".to_string();

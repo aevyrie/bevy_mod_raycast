@@ -36,6 +36,7 @@ fn main() {
         .add_startup_system(setup_scene)
         .add_startup_system(setup_ui)
         .add_system(update_fps)
+        .add_system(make_scene_pickable)
         .add_system_to_stage(CoreStage::First, manage_aabb)
         .run();
 }
@@ -59,11 +60,7 @@ fn update_raycast_with_cursor(
 }
 
 // Set up a simple 3D scene
-fn setup_scene(
-    mut commands: Commands,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-    asset_server: Res<AssetServer>,
-) {
+fn setup_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(DefaultPluginState::<MyRaycastSet>::default().with_debug_cursor());
     commands.spawn(DirectionalLightBundle {
         transform: Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, 20.0, 20.0, 0.0)),
@@ -78,27 +75,33 @@ fn setup_scene(
         .spawn(Camera3dBundle::default())
         .insert(RaycastSource::<MyRaycastSet>::new()); // Designate the camera as our source
 
-    let mesh = asset_server.load("models/monkey/Monkey.gltf#Mesh0/Primitive0");
-    let material = materials.add(Color::rgb(1.0, 1.0, 1.0).into());
     // Spawn multiple mesh to raycast on
     let n = 8;
     for i in -n..=n {
         for j in -n..=n {
             for k in -n..=n {
-                commands
-                    .spawn(PbrBundle {
-                        mesh: mesh.clone(),
-                        material: material.clone(),
-                        transform: Transform::from_translation(Vec3::new(
-                            i as f32 * 3.0,
-                            j as f32 * 3.0,
-                            k as f32 * 3.0 - n as f32 * 4.0,
-                        )),
-                        ..Default::default()
-                    })
-                    .insert(RaycastMesh::<MyRaycastSet>::default()); // Make this mesh ray cast-able
+                commands.spawn((bevy::prelude::SceneBundle {
+                    scene: asset_server.load("models/monkey/Monkey.gltf#Scene0"),
+                    transform: Transform::from_translation(Vec3::new(
+                        i as f32 * 3.0,
+                        j as f32 * 3.0,
+                        k as f32 * 3.0 - n as f32 * 4.0,
+                    )),
+                    ..default()
+                },));
             }
         }
+    }
+}
+
+fn make_scene_pickable(
+    mut commands: Commands,
+    mesh_query: Query<Entity, (With<Handle<Mesh>>, Without<RaycastMesh<MyRaycastSet>>)>,
+) {
+    for entity in &mesh_query {
+        commands
+            .entity(entity)
+            .insert(RaycastMesh::<MyRaycastSet>::default()); // Make this mesh ray cast-able
     }
 }
 
@@ -140,7 +143,7 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                 },
                 ..Default::default()
             })
-                .insert(FpsText);
+            .insert(FpsText);
             ui.spawn(TextBundle {
                 text: Text {
                     sections: vec![
@@ -165,7 +168,7 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                 },
                 ..Default::default()
             })
-                .insert(BoundVolStatus);
+            .insert(BoundVolStatus);
         });
 }
 
@@ -216,7 +219,7 @@ fn manage_aabb(
 fn update_fps(diagnostics: Res<Diagnostics>, mut query: Query<&mut Text, With<FpsText>>) {
     for mut text in &mut query {
         if let Some(fps) = diagnostics.get(FrameTimeDiagnosticsPlugin::FPS) {
-            if let Some(average) = fps.average() {
+            if let Some(average) = fps.smoothed() {
                 // Update the value of the second section
                 text.sections[1].value = format!("{:.2}", average);
             }
