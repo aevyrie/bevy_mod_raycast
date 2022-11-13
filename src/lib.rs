@@ -277,29 +277,7 @@ impl<T> RayCastSource<T> {
         }
     }
     pub fn intersect_primitive(&self, shape: Primitive3d) -> Option<IntersectionData> {
-        let ray = self.ray?;
-        match shape {
-            Primitive3d::Plane {
-                point: plane_origin,
-                normal: plane_normal,
-            } => {
-                // assuming vectors are all normalized
-                let denominator = ray.direction().dot(plane_normal);
-                if denominator.abs() > f32::EPSILON {
-                    let point_to_point = plane_origin - ray.origin();
-                    let intersect_dist = plane_normal.dot(point_to_point) / denominator;
-                    let intersect_position = ray.direction() * intersect_dist + ray.origin();
-                    Some(IntersectionData::new(
-                        intersect_position,
-                        plane_normal,
-                        intersect_dist,
-                        None,
-                    ))
-                } else {
-                    None
-                }
-            }
-        }
+        Some(self.ray?.intersects_primitive(shape)?.into())
     }
     /// Get a reference to the ray cast source's ray.
     pub fn ray(&self) -> Option<Ray3d> {
@@ -410,8 +388,7 @@ pub fn update_raycast<T: 'static>(
         ),
         With<RayCastMesh<T>>,
     >,
-    #[cfg(feature = "2d")]
-    mesh2d_query: Query<
+    #[cfg(feature = "2d")] mesh2d_query: Query<
         (
             &Mesh2dHandle,
             Option<&SimplifiedMesh>,
