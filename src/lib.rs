@@ -388,8 +388,7 @@ pub fn update_raycast<T: 'static>(
         ),
         With<RayCastMesh<T>>,
     >,
-    #[cfg(feature = "2d")]
-    mesh2d_query: Query<
+    #[cfg(feature = "2d")] mesh2d_query: Query<
         (
             &Mesh2dHandle,
             Option<&SimplifiedMesh>,
