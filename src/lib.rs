@@ -1,10 +1,18 @@
+#[cfg(feature = "debug")]
 mod debug;
 mod primitives;
 mod raycast;
 
-pub use crate::raycast::*;
-pub use crate::{debug::*, primitives::*};
-use bevy::utils::FloatOrd;
+use std::{
+    collections::BTreeMap,
+    fmt::Debug,
+    hash::{Hash, Hasher},
+    marker::PhantomData,
+    sync::{Arc, Mutex},
+};
+
+#[cfg(feature = "2d")]
+use bevy::sprite::Mesh2dHandle;
 use bevy::{
     ecs::schedule::ShouldRun,
     math::Vec3A,
@@ -14,15 +22,12 @@ use bevy::{
         mesh::{Indices, Mesh, VertexAttributeValues},
         render_resource::PrimitiveTopology,
     },
-    sprite::Mesh2dHandle,
+    utils::FloatOrd,
 };
-use std::{
-    collections::BTreeMap,
-    fmt::Debug,
-    hash::{Hash, Hasher},
-    marker::PhantomData,
-    sync::{Arc, Mutex},
-};
+
+pub use crate::{primitives::*, raycast::*};
+#[cfg(feature = "debug")]
+pub use debug::*;
 
 pub struct DefaultRaycastingPlugin<T>(pub PhantomData<fn() -> T>);
 impl<T: 'static + Send + Sync> Plugin for DefaultRaycastingPlugin<T> {
@@ -53,16 +58,19 @@ impl<T: 'static + Send + Sync> Plugin for DefaultRaycastingPlugin<T> {
                                 bool_criteria(state.update_raycast)
                             })
                             .after(RaycastSystem::UpdateRaycast::<T>),
-                    )
-                    .with_system(
-                        update_debug_cursor::<T>
-                            .label(RaycastSystem::UpdateDebugCursor::<T>)
-                            .with_run_criteria(|state: Res<DefaultPluginState<T>>| {
-                                bool_criteria(state.update_debug_cursor)
-                            })
-                            .after(RaycastSystem::UpdateIntersections::<T>),
                     ),
             );
+
+        #[cfg(feature = "debug")]
+        app.add_system_to_stage(
+            CoreStage::First,
+            update_debug_cursor::<T>
+                .label(RaycastSystem::UpdateDebugCursor::<T>)
+                .with_run_criteria(|state: Res<DefaultPluginState<T>>| {
+                    bool_criteria(state.update_debug_cursor)
+                })
+                .after(RaycastSystem::UpdateIntersections::<T>),
+        );
     }
 }
 impl<T> Default for DefaultRaycastingPlugin<T> {
@@ -84,6 +92,7 @@ pub enum RaycastSystem<T> {
     BuildRays,
     UpdateRaycast,
     UpdateIntersections,
+    #[cfg(feature = "debug")]
     UpdateDebugCursor,
     #[system_label(ignore_fields)]
     _Phantom(PhantomData<fn() -> T>),
@@ -101,6 +110,7 @@ impl<T> Debug for RaycastSystem<T> {
             Self::BuildRays => write!(f, "BuildRays ({})", set),
             Self::UpdateRaycast => write!(f, "UpdateRaycast ({})", set),
             Self::UpdateIntersections => write!(f, "UpdateIntersections ({})", set),
+            #[cfg(feature = "debug")]
             Self::UpdateDebugCursor => write!(f, "UpdateDebugCursor ({})", set),
             Self::_Phantom(_) => write!(f, "PhantomData<{}>", set),
         }
@@ -118,6 +128,7 @@ impl<T> Clone for RaycastSystem<T> {
             Self::BuildRays => Self::BuildRays,
             Self::UpdateRaycast => Self::UpdateRaycast,
             Self::UpdateIntersections => Self::UpdateIntersections,
+            #[cfg(feature = "debug")]
             Self::UpdateDebugCursor => Self::UpdateDebugCursor,
             Self::_Phantom(_) => Self::_Phantom(PhantomData),
         }
@@ -129,6 +140,7 @@ impl<T> Clone for RaycastSystem<T> {
 pub struct DefaultPluginState<T> {
     pub build_rays: bool,
     pub update_raycast: bool,
+    #[cfg(feature = "debug")]
     pub update_debug_cursor: bool,
     _marker: PhantomData<fn() -> T>,
 }
@@ -138,12 +150,14 @@ impl<T> Default for DefaultPluginState<T> {
         DefaultPluginState {
             build_rays: true,
             update_raycast: true,
+            #[cfg(feature = "debug")]
             update_debug_cursor: false,
             _marker: PhantomData,
         }
     }
 }
 
+#[cfg(feature = "debug")]
 impl<T> DefaultPluginState<T> {
     pub fn with_debug_cursor(self) -> Self {
         DefaultPluginState {
@@ -271,29 +285,7 @@ impl<T> RaycastSource<T> {
     }
     /// Run an intersection check between this [`RaycastSource`] and a 3D primitive [`Primitive3d`].
     pub fn intersect_primitive(&self, shape: Primitive3d) -> Option<IntersectionData> {
-        let ray = self.ray?;
-        match shape {
-            Primitive3d::Plane {
-                point: plane_origin,
-                normal: plane_normal,
-            } => {
-                // assuming vectors are all normalized
-                let denominator = ray.direction().dot(plane_normal);
-                if denominator.abs() > f32::EPSILON {
-                    let point_to_point = plane_origin - ray.origin();
-                    let intersect_dist = plane_normal.dot(point_to_point) / denominator;
-                    let intersect_position = ray.direction() * intersect_dist + ray.origin();
-                    Some(IntersectionData::new(
-                        intersect_position,
-                        plane_normal,
-                        intersect_dist,
-                        None,
-                    ))
-                } else {
-                    None
-                }
-            }
-        }
+        Some(self.ray?.intersects_primitive(shape)?.into())
     }
     /// Get a copy of the ray cast source's ray.
     pub fn get_ray(&self) -> Option<Ray3d> {
@@ -404,7 +396,7 @@ pub fn update_raycast<T: 'static>(
         ),
         With<RayCastMesh<T>>,
     >,
-    mesh2d_query: Query<
+    #[cfg(feature = "2d")] mesh2d_query: Query<
         (
             &Mesh2dHandle,
             Option<&SimplifiedMesh>,
@@ -493,6 +485,7 @@ pub fn update_raycast<T: 'static>(
                 };
 
             mesh_query.par_for_each(32, pick_mesh);
+            #[cfg(feature = "2d")]
             mesh2d_query.par_for_each(32, |(mesh_handle, simplified_mesh, transform, entity)| {
                 pick_mesh((
                     &mesh_handle.0,
