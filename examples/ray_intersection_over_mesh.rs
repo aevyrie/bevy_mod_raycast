@@ -4,7 +4,7 @@ use bevy::{prelude::*, window::PresentMode};
 
 use bevy_mod_raycast::{
     Backfaces, DefaultPluginState, DefaultRaycastingPlugin, Ray3d, ray_intersection_over_mesh,
-    RayCastMesh, RayCastMethod, RayCastSource, RaycastSystem,
+    RaycastMesh, RaycastMethod, RaycastSource, RaycastSystem,
 };
 
 // This example shows how to use `ray_intersection_over_mesh` to cast a ray over a mesh
@@ -36,11 +36,11 @@ fn main() {
 
 fn update_raycast_with_cursor(
     mut cursor: EventReader<CursorMoved>,
-    mut query: Query<&mut RayCastSource<Ground>>,
+    mut query: Query<&mut RaycastSource<Ground>>,
 ) {
     for mut pick_source in &mut query {
         if let Some(cursor_latest) = cursor.iter().last() {
-            pick_source.cast_method = RayCastMethod::Screenspace(cursor_latest.position);
+            pick_source.cast_method = RaycastMethod::Screenspace(cursor_latest.position);
         }
     }
 }
@@ -117,7 +117,7 @@ fn setup(
             transform: Transform::from_xyz(-5.0, 10.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
             ..Default::default()
         })
-        .insert(RayCastSource::<Ground>::new());
+        .insert(RaycastSource::<Ground>::new());
 
     // Spawn a plane that will represent the ground. It will be used to pick the mouse location in 3D space
     commands
@@ -126,7 +126,7 @@ fn setup(
             material: materials.add(Color::DARK_GRAY.into()),
             ..Default::default()
         })
-        .insert(RayCastMesh::<Ground>::default());
+        .insert(RaycastMesh::<Ground>::default());
 
     // Spawn obstacles
     for x in -2..=2 {
@@ -200,7 +200,7 @@ fn setup(
 // Move the path origin on mouse click
 fn move_origin(
     mut from: Query<&mut Transform, With<PathOrigin>>,
-    to: Query<&RayCastSource<Ground>>,
+    to: Query<&RaycastSource<Ground>>,
     mouse_event: Res<Input<MouseButton>>,
 ) {
     if let Ok(raycast_source) = to.get_single() {
@@ -236,7 +236,7 @@ fn check_path(
             Without<PathObstacle>,
         ),
     >,
-    to: Query<&RayCastSource<Ground>>,
+    to: Query<&RaycastSource<Ground>>,
     obstacles: Query<(&Handle<Mesh>, &Transform), With<PathObstacle>>,
     meshes: Res<Assets<Mesh>>,
     mut status_query: Query<&mut Text, With<PathStatus>>,

@@ -1,6 +1,6 @@
 use bevy::{prelude::*, sprite::MaterialMesh2dBundle};
 use bevy_mod_raycast::{
-    DefaultRaycastingPlugin, Intersection, RayCastMesh, RayCastMethod, RayCastSource, RaycastSystem,
+    DefaultRaycastingPlugin, Intersection, RaycastMesh, RaycastMethod, RaycastSource, RaycastSystem,
 };
 
 fn main() {
@@ -18,10 +18,10 @@ fn main() {
 
 struct MyRaycastSet;
 
-// Update our `RayCastSource` with the current cursor position every frame.
+// Update our `RaycastSource` with the current cursor position every frame.
 fn update_raycast_with_cursor(
     mut cursor: EventReader<CursorMoved>,
-    mut query: Query<&mut RayCastSource<MyRaycastSet>>,
+    mut query: Query<&mut RaycastSource<MyRaycastSet>>,
 ) {
     // Grab the most recent cursor event if it exists:
     let cursor_position = match cursor.iter().last() {
@@ -30,7 +30,7 @@ fn update_raycast_with_cursor(
     };
 
     for mut pick_source in &mut query {
-        pick_source.cast_method = RayCastMethod::Screenspace(cursor_position);
+        pick_source.cast_method = RaycastMethod::Screenspace(cursor_position);
     }
 }
 
@@ -52,7 +52,7 @@ fn setup(
 ) {
     commands
         .spawn(Camera2dBundle::default())
-        .insert(RayCastSource::<MyRaycastSet>::new()); // Designate the camera as our source;
+        .insert(RaycastSource::<MyRaycastSet>::new()); // Designate the camera as our source;
     commands
         .spawn(MaterialMesh2dBundle {
             mesh: meshes.add(Mesh::from(shape::Quad::default())).into(),
@@ -60,5 +60,5 @@ fn setup(
             material: materials.add(ColorMaterial::from(Color::PURPLE)),
             ..default()
         })
-        .insert(RayCastMesh::<MyRaycastSet>::default()); // Make this mesh ray cast-able;
+        .insert(RaycastMesh::<MyRaycastSet>::default()); // Make this mesh ray cast-able;
 }

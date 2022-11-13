@@ -7,7 +7,7 @@ use bevy::{
 };
 
 use bevy_mod_raycast::{
-    DefaultPluginState, DefaultRaycastingPlugin, RayCastMesh, RayCastMethod, RayCastSource,
+    DefaultPluginState, DefaultRaycastingPlugin, RaycastMesh, RaycastMethod, RaycastSource,
     RaycastSystem,
 };
 
@@ -40,20 +40,20 @@ fn main() {
         .run();
 }
 
-// This is a unit struct we will use to mark our generic `RayCastMesh`s and `RayCastSource` as part
-// of the same group, or "RayCastSet". For more complex use cases, you might use this to associate
+// This is a unit struct we will use to mark our generic `RaycastMesh`s and `RaycastSource` as part
+// of the same group, or "RaycastSet". For more complex use cases, you might use this to associate
 // some meshes with one ray casting source, and other meshes with a different ray casting source."
 struct MyRaycastSet;
 
-// Update our `RayCastSource` with the current cursor position every frame.
+// Update our `RaycastSource` with the current cursor position every frame.
 fn update_raycast_with_cursor(
     mut cursor: EventReader<CursorMoved>,
-    mut query: Query<&mut RayCastSource<MyRaycastSet>>,
+    mut query: Query<&mut RaycastSource<MyRaycastSet>>,
 ) {
     for mut pick_source in &mut query {
         // Grab the most recent cursor event if it exists:
         if let Some(cursor_latest) = cursor.iter().last() {
-            pick_source.cast_method = RayCastMethod::Screenspace(cursor_latest.position);
+            pick_source.cast_method = RaycastMethod::Screenspace(cursor_latest.position);
         }
     }
 }
@@ -76,7 +76,7 @@ fn setup_scene(
 
     commands
         .spawn(Camera3dBundle::default())
-        .insert(RayCastSource::<MyRaycastSet>::new()); // Designate the camera as our source
+        .insert(RaycastSource::<MyRaycastSet>::new()); // Designate the camera as our source
 
     let mesh = asset_server.load("models/monkey/Monkey.gltf#Mesh0/Primitive0");
     let material = materials.add(Color::rgb(1.0, 1.0, 1.0).into());
@@ -96,7 +96,7 @@ fn setup_scene(
                         )),
                         ..Default::default()
                     })
-                    .insert(RayCastMesh::<MyRaycastSet>::default()); // Make this mesh ray cast-able
+                    .insert(RaycastMesh::<MyRaycastSet>::default()); // Make this mesh ray cast-able
             }
         }
     }
@@ -187,7 +187,7 @@ impl Default for Enabled {
 fn manage_aabb(
     mut commands: Commands,
     mut enabled: Local<Enabled>,
-    mut query: Query<(Entity, &mut Aabb), With<RayCastMesh<MyRaycastSet>>>,
+    mut query: Query<(Entity, &mut Aabb), With<RaycastMesh<MyRaycastSet>>>,
     mut status_query: Query<&mut Text, With<BoundVolStatus>>,
     keyboard: Res<Input<KeyCode>>,
 ) {

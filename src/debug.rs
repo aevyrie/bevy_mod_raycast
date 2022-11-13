@@ -1,6 +1,8 @@
-use crate::Intersection;
-use bevy::prelude::*;
 use std::marker::PhantomData;
+
+use bevy::prelude::*;
+
+use crate::Intersection;
 
 #[derive(Component)]
 pub struct DebugCursor<T> {

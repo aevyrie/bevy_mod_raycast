@@ -1,7 +1,7 @@
 use bevy::{prelude::*, window::PresentMode};
 
 use bevy_mod_raycast::{
-    DefaultPluginState, DefaultRaycastingPlugin, RayCastMesh, RayCastMethod, RayCastSource,
+    DefaultPluginState, DefaultRaycastingPlugin, RaycastMesh, RaycastMethod, RaycastSource,
     RaycastSystem,
 };
 
@@ -36,15 +36,15 @@ fn main() {
         .run();
 }
 
-/// This is a unit struct we will use to mark our generic `RayCastMesh`s and `RayCastSource` as part
-/// of the same group, or "RayCastSet". For more complex use cases, you might use this to associate
+/// This is a unit struct we will use to mark our generic `RaycastMesh`s and `RaycastSource` as part
+/// of the same group, or "RaycastSet". For more complex use cases, you might use this to associate
 /// some meshes with one ray casting source, and other meshes with a different ray casting source."
 struct MyRaycastSet;
 
-// Update our `RayCastSource` with the current cursor position every frame.
+// Update our `RaycastSource` with the current cursor position every frame.
 fn update_raycast_with_cursor(
     mut cursor: EventReader<CursorMoved>,
-    mut query: Query<&mut RayCastSource<MyRaycastSet>>,
+    mut query: Query<&mut RaycastSource<MyRaycastSet>>,
 ) {
     // Grab the most recent cursor event if it exists:
     let cursor_position = match cursor.iter().last() {
@@ -53,7 +53,7 @@ fn update_raycast_with_cursor(
     };
 
     for mut pick_source in &mut query {
-        pick_source.cast_method = RayCastMethod::Screenspace(cursor_position);
+        pick_source.cast_method = RaycastMethod::Screenspace(cursor_position);
     }
 }
 
@@ -72,14 +72,14 @@ fn setup(
             transform: Transform::from_xyz(-2.0, 2.0, 2.0).looking_at(Vec3::ZERO, Vec3::Y),
             ..Default::default()
         })
-        .insert(RayCastSource::<MyRaycastSet>::new()); // Designate the camera as our source
+        .insert(RaycastSource::<MyRaycastSet>::new()); // Designate the camera as our source
     commands
         .spawn(PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Icosphere::default())),
             material: materials.add(Color::rgb(1.0, 1.0, 1.0).into()),
             ..Default::default()
         })
-        .insert(RayCastMesh::<MyRaycastSet>::default()); // Make this mesh ray cast-able
+        .insert(RaycastMesh::<MyRaycastSet>::default()); // Make this mesh ray cast-able
     commands.spawn(PointLightBundle {
         transform: Transform::from_translation(Vec3::new(4.0, 8.0, 4.0)),
         ..Default::default()
