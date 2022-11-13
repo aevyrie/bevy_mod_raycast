@@ -214,6 +214,7 @@ fn move_origin(
     }
 }
 
+#[allow(clippy::type_complexity)]
 // Check the path between origin and mouse cursor position
 fn check_path(
     mut from: Query<
