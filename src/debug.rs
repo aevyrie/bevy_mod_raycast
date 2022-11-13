@@ -17,18 +17,6 @@ impl<T> Default for DebugCursor<T> {
 }
 
 #[derive(Component)]
-pub struct DebugCursorTail<T> {
-    _phantom: PhantomData<fn() -> T>,
-}
-impl<T> Default for DebugCursorTail<T> {
-    fn default() -> Self {
-        DebugCursorTail {
-            _phantom: PhantomData::default(),
-        }
-    }
-}
-
-#[derive(Component)]
 pub struct DebugCursorMesh<T> {
     _phantom: PhantomData<fn() -> T>,
 }
@@ -78,46 +66,77 @@ fn spawn_cursor<T: 'static>(
     meshes: &mut ResMut<Assets<Mesh>>,
     materials: &mut ResMut<Assets<StandardMaterial>>,
 ) {
-    let cube_size = 0.02;
-    let cube_tail_scale = 20.0;
-    let ball_size = 0.08;
-    let debug_material = materials.add(StandardMaterial {
+    let cube_size = 0.01;
+    let cube_tail_scale = 80.0;
+    let matl_x = materials.add(StandardMaterial {
+        base_color: Color::rgb(1e7, 0.0, 0.0),
+        emissive: Color::rgb(1e7, 0.0, 0.0),
+        unlit: true,
+        ..Default::default()
+    });
+    let matl_y = materials.add(StandardMaterial {
         base_color: Color::rgb(0.0, 1e7, 0.0),
+        emissive: Color::rgb(0.0, 1e7, 0.0),
+        unlit: true,
+        ..Default::default()
+    });
+    let matl_z = materials.add(StandardMaterial {
+        base_color: Color::rgb(0.0, 0.0, 1e7),
+        emissive: Color::rgb(0.0, 0.0, 1e7),
         unlit: true,
         ..Default::default()
     });
     commands
         .entity(entity)
-        // cursor
-        .insert(PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::Icosphere {
-                subdivisions: 4,
-                radius: ball_size,
-            })),
-            material: debug_material.clone(),
+        .insert(SpatialBundle {
             transform,
-            ..Default::default()
+            ..default()
         })
+        // cursor
         .with_children(|parent| {
-            let mut tail_transform = Transform::from_translation(Vec3::new(
-                0.0,
-                (cube_size * cube_tail_scale) / 2.0,
-                0.0,
-            ));
-            // apply non-uniform scale
-            tail_transform.scale *= Vec3::from([1.0, cube_tail_scale, 1.0]);
-
-            // child cube
-            parent
-                .spawn(PbrBundle {
+            let tail_scale = (cube_size * cube_tail_scale) / 2.0;
+            let t_x = Transform {
+                translation: (Vec3::X * tail_scale),
+                scale: Vec3::ONE + Vec3::X * cube_tail_scale,
+                ..default()
+            };
+            let t_y = Transform {
+                translation: (Vec3::Y * tail_scale),
+                scale: Vec3::ONE + Vec3::Y * cube_tail_scale,
+                ..default()
+            };
+            let t_z = Transform {
+                translation: (Vec3::Z * tail_scale),
+                scale: Vec3::ONE + Vec3::Z * cube_tail_scale,
+                ..default()
+            };
+            parent.spawn((
+                PbrBundle {
                     mesh: meshes.add(Mesh::from(shape::Cube { size: cube_size })),
-                    material: debug_material.clone(),
-                    transform: tail_transform,
+                    material: matl_x,
+                    transform: t_x,
                     ..Default::default()
-                })
-                .insert(DebugCursorTail::<T>::default())
-                .insert(DebugCursorMesh::<T>::default());
+                },
+                DebugCursorMesh::<T>::default(),
+            ));
+            parent.spawn((
+                PbrBundle {
+                    mesh: meshes.add(Mesh::from(shape::Cube { size: cube_size })),
+                    material: matl_y,
+                    transform: t_y,
+                    ..Default::default()
+                },
+                DebugCursorMesh::<T>::default(),
+            ));
+            parent.spawn((
+                PbrBundle {
+                    mesh: meshes.add(Mesh::from(shape::Cube { size: cube_size })),
+                    material: matl_z,
+                    transform: t_z,
+                    ..Default::default()
+                },
+                DebugCursorMesh::<T>::default(),
+            ));
         })
-        .insert(DebugCursor::<T>::default())
-        .insert(DebugCursorMesh::<T>::default());
+        .insert(DebugCursor::<T>::default());
 }
