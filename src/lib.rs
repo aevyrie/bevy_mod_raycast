@@ -513,31 +513,31 @@ pub fn update_raycast<T: 'static>(
 }
 pub fn update_intersections<T: 'static>(
     mut commands: Commands,
-    mut intersections: Query<&mut Intersection<T>>,
+    mut old_intersections: Query<(Entity, &mut Intersection<T>)>,
     sources: Query<&RaycastSource<T>>,
 ) {
-    let mut intersect_iter = intersections.iter_mut();
-    for (_, new_intersection) in sources
+    let new_intersections = sources
         .iter()
         .filter_map(|source| source.get_nearest_intersection())
-    {
-        match intersect_iter.next() {
-            Some(mut intersection) => {
-                // If there is an existing intersection, reuse it.
-                intersection.data = Some(new_intersection.to_owned());
-            }
-            None => {
-                // If there are no intersections left in the world, spawn one.
-                commands
-                    .spawn_empty()
-                    .insert(Intersection::<T>::new(new_intersection.to_owned()));
-            }
+        .collect::<BTreeMap<_, _>>();
+
+    for (entity, _) in old_intersections.iter() {
+        if !new_intersections.contains_key(&entity) {
+            // Remove Intersection components that have no intersection this frame
+            commands.entity(entity).remove::<Intersection<T>>();
         }
     }
-    // Reset and despawn any remaining intersection. We need to be able to reset, because commands
-    // take a full stage to update.
-    for mut unused_intersect in intersect_iter {
-        unused_intersect.data = None;
+    for (entity, new_intersect) in new_intersections.into_iter() {
+        match old_intersections.get_mut(entity) {
+            // Update Intersection components that already exist
+            Ok((_, mut old_intersect)) => old_intersect.data = Some(new_intersect.to_owned()),
+            // Add Intersection components to entities that did not have them already
+            Err(_) => {
+                commands
+                    .entity(entity)
+                    .insert(Intersection::<T>::new(new_intersect.to_owned()));
+            }
+        }
     }
 }
 
