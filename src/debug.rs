@@ -39,23 +39,17 @@ pub fn update_debug_cursor<T: 'static>(
 ) {
     // Set the cursor translation to the top pick's world coordinates
     for (intersection, mut transform) in &mut cursors {
-        if let Some(new_matrix) = intersection.normal_ray() {
-            *transform = Transform::from_matrix(new_matrix.to_transform());
-        } else {
-            *transform = Transform::from_translation(Vec3::NAN);
-        }
+        *transform = Transform::from_matrix(intersection.normal_ray().to_transform());
     }
     // Spawn a new debug cursor for intersections without one
     for (entity, intersection) in &intersection_without_cursor {
-        if let Some(new_matrix) = intersection.normal_ray() {
-            spawn_cursor::<T>(
-                &mut commands,
-                entity,
-                Transform::from_matrix(new_matrix.to_transform()),
-                &mut meshes,
-                &mut materials,
-            );
-        }
+        spawn_cursor::<T>(
+            &mut commands,
+            entity,
+            Transform::from_matrix(intersection.normal_ray().to_transform()),
+            &mut meshes,
+            &mut materials,
+        );
     }
 }
 

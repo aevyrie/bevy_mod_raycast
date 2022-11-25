@@ -73,21 +73,17 @@ impl IntersectionData {
 /// `Intersection` component added to it, with the intersection data.
 #[derive(Component)]
 pub struct Intersection<T> {
-    pub(crate) data: Option<IntersectionData>,
+    pub(crate) data: IntersectionData,
     _phantom: PhantomData<fn(T) -> T>,
 }
 impl<T> std::fmt::Debug for Intersection<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match &self.data {
-            Some(data) => f
-                .debug_struct("Intersection")
-                .field("position", &data.position)
-                .field("normal", &data.normal)
-                .field("distance", &data.distance)
-                .field("triangle", &data.triangle)
-                .finish(),
-            None => write!(f, "None"),
-        }
+        f.debug_struct("Intersection")
+            .field("position", &self.data.position)
+            .field("normal", &self.data.normal)
+            .field("distance", &self.data.distance)
+            .field("triangle", &self.data.triangle)
+            .finish()
     }
 }
 impl<T> Clone for Intersection<T> {
@@ -101,36 +97,28 @@ impl<T> Clone for Intersection<T> {
 impl<T> Intersection<T> {
     pub fn new(data: IntersectionData) -> Self {
         Intersection {
-            data: Some(data),
+            data,
             _phantom: PhantomData,
         }
     }
     /// Position vector describing the intersection position.
-    pub fn position(&self) -> Option<&Vec3> {
-        if let Some(data) = &self.data {
-            Some(&data.position)
-        } else {
-            None
-        }
+    pub fn position(&self) -> Vec3 {
+        self.data.position
     }
     /// Unit vector describing the normal of the intersected triangle.
-    pub fn normal(&self) -> Option<Vec3> {
-        self.data().map(|data| data.normal)
+    pub fn normal(&self) -> Vec3 {
+        self.data.normal
     }
-    pub fn normal_ray(&self) -> Option<Ray3d> {
-        self.data()
-            .map(|data| Ray3d::new(data.position, data.normal))
+    pub fn normal_ray(&self) -> Ray3d {
+        Ray3d::new(self.data.position, self.data.normal)
     }
     /// Distance from the picking source to the entity.
-    pub fn distance(&self) -> Option<f32> {
-        self.data().map(|data| data.distance)
+    pub fn distance(&self) -> f32 {
+        self.data.distance
     }
     /// Triangle that was intersected with in World coordinates
     pub fn world_triangle(&self) -> Option<Triangle> {
-        self.data().and_then(|data| data.triangle)
-    }
-    fn data(&self) -> Option<&IntersectionData> {
-        self.data.as_ref()
+        self.data.triangle
     }
 }
 

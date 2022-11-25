@@ -530,7 +530,7 @@ pub fn update_intersections<T: 'static>(
     for (entity, new_intersect) in new_intersections.into_iter() {
         match old_intersections.get_mut(entity) {
             // Update Intersection components that already exist
-            Ok((_, mut old_intersect)) => old_intersect.data = Some(new_intersect.to_owned()),
+            Ok((_, mut old_intersect)) => old_intersect.data = new_intersect.to_owned(),
             // Add Intersection components to entities that did not have them already
             Err(_) => {
                 commands
