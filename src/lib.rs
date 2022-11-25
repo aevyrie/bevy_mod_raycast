@@ -194,6 +194,7 @@ impl<T> Default for RaycastMesh<T> {
 pub struct RaycastSource<T> {
     pub cast_method: RaycastMethod,
     pub ray: Option<Ray3d>,
+    pub enabled: bool,
     intersections: Vec<(Entity, IntersectionData)>,
     _marker: PhantomData<fn() -> T>,
 }
@@ -203,6 +204,7 @@ impl<T> Default for RaycastSource<T> {
         RaycastSource {
             cast_method: RaycastMethod::Screenspace(Vec2::ZERO),
             ray: None,
+            enabled: true,
             intersections: Vec::new(),
             _marker: PhantomData::default(),
         }
@@ -225,6 +227,7 @@ impl<T> RaycastSource<T> {
         RaycastSource {
             cast_method: RaycastMethod::Screenspace(cursor_pos_screen),
             ray: Ray3d::from_screenspace(cursor_pos_screen, camera, camera_transform),
+            enabled: true,
             intersections: self.intersections,
             _marker: self._marker,
         }
@@ -234,6 +237,7 @@ impl<T> RaycastSource<T> {
         RaycastSource {
             cast_method: RaycastMethod::Transform,
             ray: Some(Ray3d::from_transform(transform)),
+            enabled: true,
             intersections: self.intersections,
             _marker: self._marker,
         }
@@ -327,6 +331,10 @@ pub fn build_rays<T: 'static>(
     )>,
 ) {
     for (mut pick_source, transform, camera) in &mut pick_source_query {
+        if !pick_source.enabled {
+            pick_source.ray = None;
+            continue;
+        }
         pick_source.ray = match &mut pick_source.cast_method {
             RaycastMethod::Screenspace(cursor_pos_screen) => {
                 // Get all the info we need from the camera and window
@@ -418,7 +426,6 @@ pub fn update_raycast<T: 'static>(
 ) {
     for mut pick_source in &mut pick_source_query {
         if let Some(ray) = pick_source.ray {
-            pick_source.intersections.clear();
             // Create spans for tracing
             let ray_cull = info_span!("ray culling");
             let raycast = info_span!("raycast");
@@ -508,6 +515,8 @@ pub fn update_raycast<T: 'static>(
 
             let picks = Arc::try_unwrap(picks).unwrap().into_inner().unwrap();
             pick_source.intersections = picks.into_values().map(|(e, i)| (e, i)).collect();
+        } else {
+            pick_source.intersections.clear();
         }
     }
 }
