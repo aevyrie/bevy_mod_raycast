@@ -10,7 +10,7 @@ pub enum Primitive3d {
     Plane { point: Vec3, normal: Vec3 },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct IntersectionData {
     position: Vec3,
     normal: Vec3,

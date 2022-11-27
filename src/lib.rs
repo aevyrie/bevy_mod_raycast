@@ -536,12 +536,18 @@ pub fn update_intersections<T: 'static>(
             commands.entity(entity).remove::<Intersection<T>>();
         }
     }
+
     for (entity, new_intersect) in new_intersections.into_iter() {
         match old_intersections.get_mut(entity) {
-            // Update Intersection components that already exist
-            Ok((_, mut old_intersect)) => old_intersect.data = new_intersect.to_owned(),
-            // Add Intersection components to entities that did not have them already
+            Ok((_, mut old_intersect)) => {
+                // Update Intersection components that already exist.
+                // Only trigger change detection if the value has really changed
+                if &old_intersect.data != new_intersect {
+                    old_intersect.data = new_intersect.to_owned();
+                }
+            }
             Err(_) => {
+                // Add Intersection components to entities that did not have them already
                 commands
                     .entity(entity)
                     .insert(Intersection::<T>::new(new_intersect.to_owned()));
