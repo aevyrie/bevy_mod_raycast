@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use bevy::prelude::*;
+use bevy::{pbr::NotShadowCaster, prelude::*};
 
 use crate::Intersection;
 
@@ -118,6 +118,7 @@ fn spawn_cursor<T: 'static>(
                     ..Default::default()
                 },
                 DebugCursorMesh::<T>::default(),
+                NotShadowCaster,
             ));
             parent.spawn((
                 PbrBundle {
@@ -127,6 +128,7 @@ fn spawn_cursor<T: 'static>(
                     ..Default::default()
                 },
                 DebugCursorMesh::<T>::default(),
+                NotShadowCaster,
             ));
             parent.spawn((
                 PbrBundle {
@@ -136,6 +138,7 @@ fn spawn_cursor<T: 'static>(
                     ..Default::default()
                 },
                 DebugCursorMesh::<T>::default(),
+                NotShadowCaster,
             ));
         })
         .insert(DebugCursor::<T>::default());
