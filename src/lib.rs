@@ -687,17 +687,17 @@ pub fn ray_mesh_intersection(
             }
         }
     } else {
-        for vertex in vertex_positions.chunks(3) {
+        for i in (0..vertex_positions.len()).step_by(3) {
             let tri_vertex_positions = [
-                Vec3A::from(vertex[0]),
-                Vec3A::from(vertex[1]),
-                Vec3A::from(vertex[2]),
+                Vec3A::from(vertex_positions[i]),
+                Vec3A::from(vertex_positions[i + 1]),
+                Vec3A::from(vertex_positions[i + 2]),
             ];
             let tri_normals = vertex_normals.map(|normals| {
                 [
-                    Vec3A::from(normals[0]),
-                    Vec3A::from(normals[1]),
-                    Vec3A::from(normals[2]),
+                    Vec3A::from(normals[i]),
+                    Vec3A::from(normals[i + 1]),
+                    Vec3A::from(normals[i + 2]),
                 ]
             });
             let intersection = triangle_intersection(
