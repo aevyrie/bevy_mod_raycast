@@ -16,7 +16,6 @@ use std::{
 #[cfg(feature = "2d")]
 use bevy::sprite::Mesh2dHandle;
 use bevy::{
-    ecs::schedule::ShouldRun,
     math::Vec3A,
     prelude::*,
     render::{
@@ -34,43 +33,28 @@ pub use debug::*;
 pub struct DefaultRaycastingPlugin<T>(pub PhantomData<fn() -> T>);
 impl<T: 'static + Send + Sync> Plugin for DefaultRaycastingPlugin<T> {
     fn build(&self, app: &mut App) {
-        app.init_resource::<DefaultPluginState<T>>()
-            .add_system_set_to_stage(
-                CoreStage::First,
-                SystemSet::new()
-                    .with_system(
-                        build_rays::<T>
-                            .label(RaycastSystem::BuildRays::<T>)
-                            .with_run_criteria(|state: Res<DefaultPluginState<T>>| {
-                                bool_criteria(state.build_rays)
-                            }),
-                    )
-                    .with_system(
-                        update_raycast::<T>
-                            .label(RaycastSystem::UpdateRaycast::<T>)
-                            .with_run_criteria(|state: Res<DefaultPluginState<T>>| {
-                                bool_criteria(state.update_raycast)
-                            })
-                            .after(RaycastSystem::BuildRays::<T>),
-                    )
-                    .with_system(
-                        update_intersections::<T>
-                            .label(RaycastSystem::UpdateIntersections::<T>)
-                            .with_run_criteria(|state: Res<DefaultPluginState<T>>| {
-                                bool_criteria(state.update_raycast)
-                            })
-                            .after(RaycastSystem::UpdateRaycast::<T>),
-                    ),
-            );
+        app.init_resource::<DefaultPluginState<T>>().add_systems(
+            (
+                build_rays::<T>
+                    .in_set(RaycastSystem::BuildRays::<T>)
+                    .run_if(|state: Res<DefaultPluginState<T>>| state.build_rays),
+                update_raycast::<T>
+                    .in_set(RaycastSystem::UpdateRaycast::<T>)
+                    .run_if(|state: Res<DefaultPluginState<T>>| state.update_raycast),
+                update_intersections::<T>
+                    .in_set(RaycastSystem::UpdateIntersections::<T>)
+                    .run_if(|state: Res<DefaultPluginState<T>>| state.update_raycast),
+            )
+                .chain()
+                .in_base_set(CoreSet::First),
+        );
 
         #[cfg(feature = "debug")]
-        app.add_system_to_stage(
-            CoreStage::First,
+        app.add_system(
             update_debug_cursor::<T>
-                .label(RaycastSystem::UpdateDebugCursor::<T>)
-                .with_run_criteria(|state: Res<DefaultPluginState<T>>| {
-                    bool_criteria(state.update_debug_cursor)
-                })
+                .in_base_set(CoreSet::First)
+                .in_set(RaycastSystem::UpdateDebugCursor::<T>)
+                .run_if(|state: Res<DefaultPluginState<T>>| state.update_debug_cursor)
                 .after(RaycastSystem::UpdateIntersections::<T>),
         );
     }
@@ -81,22 +65,14 @@ impl<T> Default for DefaultRaycastingPlugin<T> {
     }
 }
 
-fn bool_criteria(flag: bool) -> ShouldRun {
-    if flag {
-        ShouldRun::Yes
-    } else {
-        ShouldRun::No
-    }
-}
-
-#[derive(SystemLabel)]
+#[derive(SystemSet)]
 pub enum RaycastSystem<T> {
     BuildRays,
     UpdateRaycast,
     UpdateIntersections,
     #[cfg(feature = "debug")]
     UpdateDebugCursor,
-    #[system_label(ignore_fields)]
+    #[system_set(ignore_fields)]
     _Phantom(PhantomData<fn() -> T>),
 }
 impl<T> PartialEq for RaycastSystem<T> {
@@ -431,9 +407,9 @@ pub fn update_raycast<T: 'static>(
                     |(visibility, comp_visibility, bound_vol, transform, entity)| {
                         let should_raycast =
                             if let RaycastMethod::Screenspace(_) = pick_source.cast_method {
-                                visibility.is_visible && comp_visibility.is_visible()
+                                visibility == Visibility::Inherited && comp_visibility.is_visible()
                             } else {
-                                visibility.is_visible
+                                visibility == Visibility::Inherited
                             };
                         if should_raycast {
                             if let Some(aabb) = bound_vol {
@@ -494,17 +470,19 @@ pub fn update_raycast<T: 'static>(
                     }
                 };
 
-            mesh_query.par_for_each(32, pick_mesh);
+            mesh_query.par_iter().for_each(pick_mesh);
             #[cfg(feature = "2d")]
-            mesh2d_query.par_for_each(32, |(mesh_handle, simplified_mesh, transform, entity)| {
-                pick_mesh((
-                    &mesh_handle.0,
-                    simplified_mesh,
-                    Some(&NoBackfaceCulling),
-                    transform,
-                    entity,
-                ))
-            });
+            mesh2d_query.par_iter().for_each(
+                |(mesh_handle, simplified_mesh, transform, entity)| {
+                    pick_mesh((
+                        &mesh_handle.0,
+                        simplified_mesh,
+                        Some(&NoBackfaceCulling),
+                        transform,
+                        entity,
+                    ))
+                },
+            );
 
             let picks = Arc::try_unwrap(picks).unwrap().into_inner().unwrap();
             pick_source.intersections = picks.into_values().map(|(e, i)| (e, i)).collect();

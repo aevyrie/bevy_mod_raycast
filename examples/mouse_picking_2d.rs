@@ -7,9 +7,10 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugin(DefaultRaycastingPlugin::<MyRaycastSet>::default())
-        .add_system_to_stage(
-            CoreStage::First,
-            update_raycast_with_cursor.before(RaycastSystem::BuildRays::<MyRaycastSet>),
+        .add_system(
+            update_raycast_with_cursor
+                .in_base_set(CoreSet::First)
+                .before(RaycastSystem::BuildRays::<MyRaycastSet>),
         )
         .add_system(intersection)
         .add_startup_system(setup)
