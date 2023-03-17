@@ -354,7 +354,6 @@ pub fn update_raycast<T: 'static>(
     mut pick_source_query: Query<&mut RaycastSource<T>>,
     culling_query: Query<
         (
-            &Visibility,
             &ComputedVisibility,
             Option<&bevy::render::primitives::Aabb>,
             &GlobalTransform,
@@ -403,35 +402,32 @@ pub fn update_raycast<T: 'static>(
             // to build a short list of entities that are in the path of the ray.
             let culled_list: Vec<Entity> = culling_query
                 .iter()
-                .filter_map(
-                    |(visibility, comp_visibility, bound_vol, transform, entity)| {
-                        let should_raycast =
-                            if let RaycastMethod::Screenspace(_) = pick_source.cast_method {
-                                visibility == Visibility::Inherited && comp_visibility.is_visible()
-                            } else {
-                                visibility == Visibility::Inherited
-                            };
-                        if should_raycast {
-                            if let Some(aabb) = bound_vol {
-                                if let Some([_, far]) =
-                                    ray.intersects_aabb(aabb, &transform.compute_matrix())
-                                {
-                                    if far >= 0.0 {
-                                        Some(entity)
-                                    } else {
-                                        None
-                                    }
-                                } else {
-                                    None
-                                }
-                            } else {
+                .filter_map(|(comp_visibility, bound_vol, transform, entity)| {
+                    let should_raycast =
+                        if let RaycastMethod::Screenspace(_) = pick_source.cast_method {
+                            comp_visibility.is_visible()
+                        } else {
+                            comp_visibility.is_visible_in_hierarchy()
+                        };
+                    if !should_raycast {
+                        return None;
+                    }
+                    if let Some(aabb) = bound_vol {
+                        if let Some([_, far]) =
+                            ray.intersects_aabb(aabb, &transform.compute_matrix())
+                        {
+                            if far >= 0.0 {
                                 Some(entity)
+                            } else {
+                                None
                             }
                         } else {
                             None
                         }
-                    },
-                )
+                    } else {
+                        Some(entity)
+                    }
+                })
                 .collect();
             drop(ray_cull_guard);
 
