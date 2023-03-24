@@ -40,6 +40,7 @@ fn main() {
 /// This is a unit struct we will use to mark our generic `RaycastMesh`s and `RaycastSource` as part
 /// of the same group, or "RaycastSet". For more complex use cases, you might use this to associate
 /// some meshes with one ray casting source, and other meshes with a different ray casting source."
+#[derive(Clone, Reflect)]
 struct MyRaycastSet;
 
 // Update our `RaycastSource` with the current cursor position every frame.

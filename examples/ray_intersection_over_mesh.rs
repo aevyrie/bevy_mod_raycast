@@ -86,7 +86,7 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
 struct PathStatus;
 
 // Marker struct for the ground, used to get cursor position
-#[derive(Component)]
+#[derive(Component, Reflect, Clone)]
 struct Ground;
 
 // Marker struct for the path origin, shown by a cyan sphere

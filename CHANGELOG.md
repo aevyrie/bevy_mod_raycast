@@ -1,4 +1,9 @@
-# 0.5.0
+# 0.8.0
+
+- Implement `Reflect` for `RaycastMesh`, `RaycastSource`, and `RaycastMethod`.
+- Fix raycasting for non-indexed meshes.
+
+# 0.7.0
 
 - All internal debug related code is now behind feature flags to enable running with
   `default_features = false`. 
