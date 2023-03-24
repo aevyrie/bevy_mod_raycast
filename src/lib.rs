@@ -32,9 +32,10 @@ pub use crate::{primitives::*, raycast::*};
 pub use debug::*;
 
 pub struct DefaultRaycastingPlugin<T>(pub PhantomData<fn() -> T>);
-impl<T: 'static + Send + Sync> Plugin for DefaultRaycastingPlugin<T> {
+impl<T: 'static + Send + Sync + Reflect + Clone> Plugin for DefaultRaycastingPlugin<T> {
     fn build(&self, app: &mut App) {
         app.init_resource::<DefaultPluginState<T>>()
+            .register_type::<RaycastMesh<T>>()
             .add_system_set_to_stage(
                 CoreStage::First,
                 SystemSet::new()
@@ -174,12 +175,15 @@ impl<T> DefaultPluginState<T> {
 /// # Requirements
 ///
 /// The marked entity must also have a [Mesh] component.
-#[derive(Component, Debug)]
-pub struct RaycastMesh<T> {
-    _marker: PhantomData<fn() -> T>,
+#[derive(Component, Debug, Clone)]
+pub struct RaycastMesh<T: Reflect> {
+    _marker: PhantomData<T>,
 }
 
-impl<T> Default for RaycastMesh<T> {
+bevy::reflect::impl_reflect_value!(RaycastMesh<T: Reflect + Clone>);
+bevy::reflect::impl_from_reflect_value!(RaycastMesh<T: Reflect + Clone>);
+
+impl<T: Reflect> Default for RaycastMesh<T> {
     fn default() -> Self {
         RaycastMesh {
             _marker: PhantomData,
@@ -189,16 +193,19 @@ impl<T> Default for RaycastMesh<T> {
 
 /// The `RaycastSource` component is used to generate rays with the specified `cast_method`. A `ray`
 /// is generated when the RaycastSource is initialized, either by waiting for update_raycast system
-/// to process the ray, or by using a `with_ray` function.
-#[derive(Component)]
-pub struct RaycastSource<T> {
+/// to process the ray, or by using a `with_ray` function.`
+#[derive(Component, Clone)]
+pub struct RaycastSource<T: Reflect + Clone> {
     pub cast_method: RaycastMethod,
     pub ray: Option<Ray3d>,
     intersections: Vec<(Entity, IntersectionData)>,
     _marker: PhantomData<fn() -> T>,
 }
 
-impl<T> Default for RaycastSource<T> {
+bevy::reflect::impl_reflect_value!(RaycastSource<T: Reflect + Clone>);
+bevy::reflect::impl_from_reflect_value!(RaycastSource<T: Reflect + Clone>);
+
+impl<T: Reflect + Clone> Default for RaycastSource<T> {
     fn default() -> Self {
         RaycastSource {
             cast_method: RaycastMethod::Screenspace(Vec2::ZERO),
@@ -209,7 +216,7 @@ impl<T> Default for RaycastSource<T> {
     }
 }
 
-impl<T> RaycastSource<T> {
+impl<T: Reflect + Clone> RaycastSource<T> {
     /// Instantiates a [RaycastSource]. It will not be initialized until the update_raycast system
     /// runs, or one of the `with_ray` functions is run.
     pub fn new() -> RaycastSource<T> {
@@ -301,6 +308,7 @@ impl<T> RaycastSource<T> {
 }
 
 /// Specifies the method used to generate rays.
+#[derive(Clone, Debug, Reflect)]
 pub enum RaycastMethod {
     /// Specify screen coordinates relative to the camera component associated with this entity.
     ///
@@ -319,7 +327,7 @@ pub enum RaycastMethod {
     Transform,
 }
 
-pub fn build_rays<T: 'static>(
+pub fn build_rays<T: Reflect + Clone + 'static>(
     mut pick_source_query: Query<(
         &mut RaycastSource<T>,
         Option<&GlobalTransform>,
@@ -371,7 +379,7 @@ pub fn build_rays<T: 'static>(
 /// Iterates through all entities with the [RaycastMesh] component, checking for
 /// intersections. If these entities have bounding volumes, these will be checked first, greatly
 /// accelerating the process.
-pub fn update_raycast<T: 'static>(
+pub fn update_raycast<T: Reflect + Clone + 'static>(
     // Resources
     meshes: Res<Assets<Mesh>>,
     // Queries
@@ -511,7 +519,7 @@ pub fn update_raycast<T: 'static>(
         }
     }
 }
-pub fn update_intersections<T: 'static>(
+pub fn update_intersections<T: Reflect + Clone + 'static>(
     mut commands: Commands,
     mut intersections: Query<&mut Intersection<T>>,
     sources: Query<&RaycastSource<T>>,
