@@ -53,7 +53,7 @@ fn setup(
     ));
     commands.spawn((
         PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::Icosphere::default())),
+            mesh: meshes.add(Mesh::try_from(shape::Icosphere::default()).unwrap()),
             material: materials.add(Color::rgb(1.0, 1.0, 1.0).into()),
             transform: Transform::from_translation(Vec3::new(0.0, 0.0, -5.0)),
             ..Default::default()
@@ -81,8 +81,8 @@ fn intersection(query: Query<&Intersection<MyRaycastSet>>) {
 fn rotator(time: Res<Time>, mut query: Query<&mut Transform, With<RaycastSource<MyRaycastSet>>>) {
     for mut transform in &mut query {
         *transform = Transform::from_rotation(
-            Quat::from_rotation_x(time.elapsed_seconds().sin() as f32 * 0.2)
-                * Quat::from_rotation_y((time.elapsed_seconds() * 1.5).sin() as f32 * 0.1),
+            Quat::from_rotation_x(time.elapsed_seconds().sin() * 0.2)
+                * Quat::from_rotation_y((time.elapsed_seconds() * 1.5).sin() * 0.1),
         );
     }
 }

@@ -2,6 +2,7 @@
 
 - Implement `Reflect` for `RaycastMesh`, `RaycastSource`, and `RaycastMethod`.
 - Fix raycasting for non-indexed meshes.
+- Update to bevy 0.10.
 
 # 0.7.0
 
