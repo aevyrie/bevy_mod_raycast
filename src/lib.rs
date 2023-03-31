@@ -1,5 +1,6 @@
 #![allow(clippy::type_complexity)]
 
+mod bvh;
 #[cfg(feature = "debug")]
 mod debug;
 mod primitives;
