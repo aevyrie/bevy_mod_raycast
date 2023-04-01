@@ -21,7 +21,7 @@ pub fn ray_triangle_intersection(
     raycast_moller_trumbore(ray, triangle, backface_culling)
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, PartialEq, Clone, Copy)]
 pub struct RayHit {
     distance: f32,
     uv_coords: (f32, f32),
@@ -29,13 +29,30 @@ pub struct RayHit {
 
 impl RayHit {
     /// Get a reference to the intersection's uv coords.
-    pub fn uv_coords(&self) -> &(f32, f32) {
-        &self.uv_coords
+    pub fn uv_coords(&self) -> (f32, f32) {
+        self.uv_coords
     }
 
     /// Get a reference to the intersection's distance.
-    pub fn distance(&self) -> &f32 {
-        &self.distance
+    pub fn distance(&self) -> f32 {
+        self.distance
+    }
+}
+
+impl PartialOrd for RayHit {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.distance.partial_cmp(&other.distance)
+    }
+}
+
+impl Eq for RayHit {}
+
+impl Ord for RayHit {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match self.partial_cmp(other) {
+            Some(ord) => ord,
+            None => std::cmp::Ordering::Equal,
+        }
     }
 }
 

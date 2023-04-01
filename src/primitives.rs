@@ -265,13 +265,15 @@ pub mod rays {
         pub fn intersects_aabb(&self, aabb: &Aabb, model_to_world: &Mat4) -> Option<[f32; 2]> {
             // Transform the ray to model space
             let world_to_model = model_to_world.inverse();
-            let ray_dir: Vec3A = world_to_model.transform_vector3(self.direction()).into();
-            let ray_origin: Vec3A = world_to_model.transform_point3(self.origin()).into();
-            // Check if the ray intersects the mesh's AABB. It's useful to work in model space because
-            // we can do an AABB intersection test, instead of an OBB intersection test.
+            let direction = world_to_model.transform_vector3(self.direction());
+            let origin = world_to_model.transform_point3(self.origin());
+            Ray3d::new(origin, direction).intersects_local_aabb(aabb)
+        }
 
-            let t_0: Vec3A = (aabb.min() - ray_origin) / ray_dir;
-            let t_1: Vec3A = (aabb.max() - ray_origin) / ray_dir;
+        /// Checks if the ray intersects an AABB in the same coordinate space
+        pub fn intersects_local_aabb(&self, aabb: &Aabb) -> Option<[f32; 2]> {
+            let t_0: Vec3A = (aabb.min() - self.origin) / self.direction;
+            let t_1: Vec3A = (aabb.max() - self.origin) / self.direction;
             let t_min: Vec3A = t_0.min(t_1);
             let t_max: Vec3A = t_0.max(t_1);
 
@@ -334,6 +336,63 @@ pub struct Triangle {
     pub v0: Vec3A,
     pub v1: Vec3A,
     pub v2: Vec3A,
+}
+impl Triangle {
+    pub fn intersects_aabb(&self, aabb: bevy::render::primitives::Aabb) -> bool {
+        let tri = self;
+        let h = aabb.half_extents;
+
+        let v = [
+            tri.v0 - aabb.center,
+            tri.v1 - aabb.center,
+            tri.v2 - aabb.center,
+        ];
+
+        // Category 1 (3 tests): triangle AABB vs AABB
+        if v[0].x.max(v[1].x).max(v[2].x) < -h.x || v[0].x.min(v[1].x).min(v[2].x) > h.x {
+            return false;
+        }
+        if v[0].y.max(v[1].y).max(v[2].y) < -h.y || v[0].y.min(v[1].y).min(v[2].y) > h.y {
+            return false;
+        }
+        if v[0].z.max(v[1].z).max(v[2].z) < -h.z || v[0].z.min(v[1].z).min(v[2].z) > h.z {
+            return false;
+        }
+
+        // Triangle edges
+        let f = [tri.v1 - tri.v0, tri.v2 - tri.v1, tri.v0 - tri.v2];
+
+        // Category 2 (1 test): triangle plane vs AABB
+        let plane_norm = f[0].cross(f[1]);
+        let plane_dist = plane_norm.dot(v[0]).abs();
+        let r = h.x * plane_norm.x.abs() + h.y * plane_norm.y.abs() + h.z * plane_norm.z.abs();
+        if plane_dist > r {
+            return false;
+        }
+
+        // AABB normals
+        let e = [Vec3A::X, Vec3A::Y, Vec3A::Z];
+
+        // Category 3 (9 tests): projected triangle radius vs projected AABB radius
+        fn axis_test_failed(h: Vec3A, v: [Vec3A; 3], e: Vec3A, f: Vec3A) -> bool {
+            let a = e.cross(f);
+            let p0 = v[0].dot(a);
+            let p1 = v[1].dot(a);
+            let p2 = v[2].dot(a);
+            let r = h.x * a.x.abs() + h.y * a.y.abs() + h.z * a.z.abs();
+            p0.max(p1).max(p2) < -r || p0.min(p1).min(p2) > r
+        }
+        // Run every combination of the axis test:
+        for i in 0..3 {
+            for j in 0..3 {
+                if axis_test_failed(h, v, e[i], f[j]) {
+                    return false;
+                }
+            }
+        }
+
+        true
+    }
 }
 impl From<(Vec3A, Vec3A, Vec3A)> for Triangle {
     fn from(vertices: (Vec3A, Vec3A, Vec3A)) -> Self {

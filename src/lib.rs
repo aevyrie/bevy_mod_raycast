@@ -1,8 +1,8 @@
 #![allow(clippy::type_complexity)]
 
-mod bvh;
 #[cfg(feature = "debug")]
 mod debug;
+pub mod octree;
 mod primitives;
 mod raycast;
 
@@ -727,7 +727,7 @@ fn triangle_intersection(
     {
         // Run the raycast on the ray and triangle
         if let Some(ray_hit) = ray_triangle_intersection(&ray, &tri_vertices, backface_culling) {
-            let distance = *ray_hit.distance();
+            let distance = ray_hit.distance();
             if distance > 0.0 && distance < max_distance {
                 let position = ray.position(distance);
                 let normal = if let Some(normals) = tri_normals {
