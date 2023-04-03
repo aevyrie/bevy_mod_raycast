@@ -1,4 +1,10 @@
-use bevy::{math::Vec3A, render::primitives::Aabb};
+use std::fmt::{Debug, Display};
+
+use bevy::{
+    math::Vec3A,
+    reflect::{FromReflect, Reflect},
+    render::primitives::Aabb,
+};
 
 /// The node address of each child cam be computed contextually to significantly reduce the size of
 /// the type.
@@ -23,35 +29,72 @@ use bevy::{math::Vec3A, render::primitives::Aabb};
 /// To compute the next address, take the octree cell, and push it onto the `NodeAddr`.
 ///
 /// Note that this takes 3 bits. `000 == 0`, `111 == 7`.
-#[derive(Clone, Copy, Debug, Default)]
-pub struct Node {
+#[derive(Clone, Copy, Default, Reflect, FromReflect)]
+pub struct NodeMask {
     pub(super) children: u16,
 }
 
-impl Node {
-    /// An empty node that will become a dead end in the tree.
-    pub const EMPTY: u16 = 0b00;
-
-    /// A node that contains more child nodes.
-    pub const NODE: u16 = 0b01;
-
-    /// A leaf node that contains only triangles.
-    pub const LEAF: u16 = 0b10;
-
+impl NodeMask {
     /// The number of nodes held inside a parent node.
-    pub const N_CHILD_NODES: u8 = 8;
+    pub const SLOTS: u8 = 8;
 
     pub fn children(&self) -> u16 {
         self.children
     }
+
+    /// Pushes a child's node data into this mask.
+    pub fn push_child(&mut self, child: NodeKind) {
+        self.children <<= 2; // Make room for new child node entry
+        self.children |= child as u16;
+    }
 }
 
-#[derive(Clone, Debug, Default)]
+impl Debug for NodeMask {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "NodeMask {{ {self} }}")
+    }
+}
+
+impl Display for NodeMask {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mask = format!("{:016b}", self.children);
+        let mask_with_spaces = mask
+            .chars()
+            .enumerate()
+            .flat_map(|(i, c)| {
+                if i != 0 && i % 2 == 0 {
+                    Some(' ')
+                } else {
+                    None
+                }
+                .into_iter()
+                .chain(std::iter::once(c))
+            })
+            .collect::<String>();
+
+        write!(f, "{mask_with_spaces}")
+    }
+}
+
+pub enum NodeKind {
+    /// An empty node that will become a dead end in the tree.
+    Empty = 0,
+    /// A node that contains more child nodes.
+    Node = 1,
+    /// A leaf node that contains only triangles.
+    Leaf = 2,
+}
+
+#[derive(Clone, Debug, Default, Reflect, FromReflect)]
 pub struct Leaf {
     pub(super) triangles: Vec<TriangleIndex>,
 }
 
 impl Leaf {
+    pub fn new(triangles: Vec<TriangleIndex>) -> Self {
+        Self { triangles }
+    }
+
     pub fn triangles(&self) -> &[u32] {
         self.triangles.as_ref()
     }
@@ -103,16 +146,20 @@ pub type TriangleIndex = u32;
 /// 000 000 000 000 000 000 000 1 000 000 000 0 -> depth-3 node
 /// ```
 ///
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Clone, Copy, Hash, PartialEq, Eq, Reflect, FromReflect)]
 pub struct NodeAddr {
     pub(super) address: u32,
 }
 
 impl NodeAddr {
+    pub fn new(address: u32) -> Self {
+        Self { address }
+    }
+
     pub const MAX_NODE_DEPTH: usize = 10;
 
     pub fn new_root() -> Self {
-        Self { address: 1u32 }
+        Self { address: 0b10 }
     }
 
     /// Push the 3 bits representing a child of this address onto this address, to produce the full
@@ -127,6 +174,20 @@ impl NodeAddr {
         new.address <<= 4; // shift address left by four bits, the right four bits are now zeros
         new.address |= bits; // add the bits to the end of the address by using the OR operator
         new
+    }
+
+    /// Converts this address to point to a leaf.
+    pub fn to_leaf(self) -> Self {
+        Self {
+            address: self.address | 0b1,
+        }
+    }
+
+    /// Converts this address to point to a node.
+    pub fn to_node(self) -> Self {
+        Self {
+            address: self.address & 0b1_111_111_111_111_111_111_111_111_111_111_0,
+        }
     }
 
     pub fn is_leaf(&self) -> bool {
@@ -154,8 +215,63 @@ impl NodeAddr {
 
     /// The number of octree levels deep this address points to.
     pub fn depth(&self) -> usize {
-        let lead = self.address.leading_zeros() as usize;
-        let address_bits = 32 - 2 - lead;
+        let lead = self.address.leading_zeros();
+        let address_bits = (32 - 2u32).saturating_sub(lead) as usize;
         address_bits / 3
+    }
+}
+
+impl Debug for NodeAddr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "NodeAddr {{ {self} }}")
+    }
+}
+
+impl Display for NodeAddr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let addr = format!("{:032b}", self.address);
+        let mut start_bit_found = None;
+        let addr_with_spaces = addr
+            .chars()
+            .enumerate()
+            .flat_map(|(i, c)| {
+                if start_bit_found.is_none() && c == '1' {
+                    start_bit_found = Some(i + 1);
+                    if i == 0 {
+                        None
+                    } else {
+                        Some(' ')
+                    }
+                } else if let Some(k) = start_bit_found {
+                    let n = i - k;
+                    if n % 3 == 0 {
+                        Some(' ')
+                    } else {
+                        None
+                    }
+                } else if i != 0 && i % 3 == 0 {
+                    Some(' ')
+                } else {
+                    None
+                }
+                .into_iter()
+                .chain(std::iter::once(c))
+            })
+            .collect::<String>();
+
+        write!(f, "{addr_with_spaces}")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::NodeAddr;
+
+    #[test]
+    fn depth() {
+        let d3 = NodeAddr::new(0b_000_000_000_000_000_000_000_1_000_000_000_0).depth();
+        assert_eq!(d3, 3);
+        let d10 = NodeAddr::new(0b_1_000_000_000_000_000_000_000_000_000_000_1).depth();
+        assert_eq!(d10, 10);
     }
 }

@@ -2,76 +2,84 @@ use std::{collections::HashMap, hash::BuildHasherDefault};
 
 use bevy::{
     math::Vec3A,
-    prelude::{GlobalTransform, Mesh, Vec3},
-    render::{
-        mesh::{Indices, VertexAttributeValues},
-        primitives::Aabb,
-    },
+    prelude::{info, GlobalTransform, Mesh},
+    reflect::Reflect,
+    render::primitives::Aabb,
+    utils::Instant,
 };
 use nohash_hasher::NoHashHasher;
 
-use crate::{ray_triangle_intersection, IntersectionData, Ray3d, RayHit, Triangle};
+use crate::{ray_triangle_intersection, IntersectionData, Ray3d};
 
-use node::*;
+pub mod mesh_accessor;
 pub mod node;
 
+use mesh_accessor::*;
+use node::*;
+
+#[derive(Debug, Clone, Reflect)]
 pub struct MeshOctree {
-    nodes: HashMap<NodeAddr, Node, BuildHasherDefault<NoHashHasher<u32>>>,
+    aabb: Aabb,
+    nodes: HashMap<NodeAddr, NodeMask, BuildHasherDefault<NoHashHasher<u32>>>,
     leaves: HashMap<NodeAddr, Leaf, BuildHasherDefault<NoHashHasher<u32>>>,
 }
 
 impl MeshOctree {
-    pub const MIN_TRIS_PER_LEAF: usize = 8;
+    /// A node containing `<= LEAF_TRI_CUTOFF` triangles will become a leaf node.
+    pub const LEAF_TRI_CUTOFF: usize = 8;
 
-    pub fn from_mesh(mesh: &Mesh, aabb: Aabb) -> Self {
-        let mut nodes = HashMap::with_hasher(BuildHasherDefault::default());
-        let mut leaves = HashMap::with_hasher(BuildHasherDefault::default());
+    /// Build an octree from this mesh. This can take a significant amount time depending on mesh
+    /// complexity, and should not be run on the main thread.
+    pub fn build(mesh: &Mesh) -> Result<Self, OctreeError> {
         let mesh = MeshAccessor::from_mesh(mesh);
-        let mut op_stack = Vec::new();
-
-        let root_tris = (
-            NodeAddr::new_root(),
-            mesh.iter_triangles().collect::<Vec<_>>(),
-        );
-        op_stack.push(root_tris);
-
-        while let Some((parent_addr, parent_tris)) = op_stack.pop() {
-            let mut parent_node = Node::default();
-            (0..Node::N_CHILD_NODES)
-                .map(|i| triangle_node_intersections(i, parent_addr, &parent_tris, &mesh, &aabb))
-                .for_each(|(child_addr, child_tris)| {
-                    evaluate_child_node(
-                        child_addr,
-                        child_tris,
-                        &mut parent_node,
-                        &mut leaves,
-                        &mut op_stack,
-                    );
-                });
-
-            nodes.insert(parent_addr, parent_node);
-        }
-
-        Self { nodes, leaves }
+        Self::from_mesh_accessor(&mesh)
     }
 
+    pub fn from_mesh_accessor(mesh: &MeshAccessor) -> Result<Self, OctreeError> {
+        let start = Instant::now();
+        let mut octree_builder = OctreeBuildData::from_mesh(mesh);
+        let aabb = octree_builder.aabb;
+
+        while let Some(stack_entry) = octree_builder.pop_stack() {
+            let mut this_node = NodeMask::default();
+            (0..NodeMask::SLOTS)
+                .rev() // Needed because we build up the mask by pushing onto the right side
+                .map(|i| stack_entry.build_child_stack_entry(i, &mesh, &aabb))
+                .map(|child_entry: NodeStackEntry| octree_builder.consume_child_data(child_entry))
+                .for_each(|child| this_node.push_child(child));
+
+            octree_builder.insert_node(stack_entry.address, this_node);
+        }
+
+        let elapsed = start.elapsed().as_secs_f32();
+        info!("{elapsed:#?}");
+
+        Ok(octree_builder.into_octree())
+    }
+
+    /// Cast a ray into the [`MeshOctree`] acceleration structure, returning [`IntersectionData`] if
+    /// the ray intersects with a triangle in the mesh.
     pub fn cast_ray(
         &self,
         ray: Ray3d,
         mesh: &Mesh,
-        mesh_aabb: Aabb,
         mesh_transform: &GlobalTransform,
     ) -> Option<IntersectionData> {
         let world_to_mesh = mesh_transform.compute_matrix().inverse();
 
-        let mesh_space_ray = Ray3d::new(
+        // Convert ray into mesh space
+        let ray = Ray3d::new(
             world_to_mesh.transform_point3(ray.origin.into()),
             world_to_mesh.transform_vector3(ray.direction.into()),
         );
 
         let mesh = MeshAccessor::from_mesh(mesh);
+        self.cast_ray_local(ray, mesh)
+    }
+
+    fn cast_ray_local(&self, ray: Ray3d, mesh: MeshAccessor) -> Option<IntersectionData> {
         let root_address = NodeAddr::new_root();
-        let node_order = Self::node_intersect_order(mesh_space_ray);
+        let node_order = Self::node_intersect_order(ray);
         let mut op_stack: Vec<NodeAddr> = Vec::with_capacity(16);
         op_stack.push(root_address);
 
@@ -81,7 +89,7 @@ impl MeshOctree {
                     return Some(value);
                 }
             } else {
-                for address in self.expand_child_nodes(node_addr, &node_order, mesh_aabb, ray) {
+                for address in self.expand_child_nodes(node_addr, &node_order, ray) {
                     op_stack.push(address);
                 }
             }
@@ -90,17 +98,19 @@ impl MeshOctree {
         None
     }
 
+    /// Raycast against the leaves in this ray. This does not do a ray-box intersection test against
+    /// the node. The function should be called when it is already known that the ray intersects the
+    /// node.
     #[inline]
     fn leaf_raycast(
         &self,
-        current_node_addr: NodeAddr,
+        leaf_addr: NodeAddr,
         mesh: &MeshAccessor,
         ray: Ray3d,
     ) -> Option<IntersectionData> {
-        let current_leaf = self
-            .leaves
-            .get(&current_node_addr)
-            .expect("Malformed mesh octree, leaf address does not exist.");
+        let current_leaf = self.leaves.get(&leaf_addr).expect(&format!(
+            "Malformed mesh octree, leaf address {leaf_addr} does not exist.\n{self:#?}"
+        ));
         let mut hits = Vec::new();
         for &triangle_index in current_leaf.triangles() {
             let triangle = mesh
@@ -136,7 +146,6 @@ impl MeshOctree {
         &'a self,
         node_addr: NodeAddr,
         node_order: &'a [u8; 8],
-        mesh_aabb: Aabb,
         ray: Ray3d,
     ) -> impl Iterator<Item = NodeAddr> + 'a {
         let current_node = self
@@ -150,14 +159,14 @@ impl MeshOctree {
                 let shifted = current_node.children() >> i * 2; // Shift child bits to rightmost spot
                 let child_state = shifted & 0b11; // Mask all but these two child bits
                 match child_state {
-                    Node::EMPTY => None,
-                    Node::NODE => Some(node_addr.push_bits(*i, false)),
-                    Node::LEAF => Some(node_addr.push_bits(*i, true)),
+                    x if x == NodeKind::Empty as u16 => None,
+                    x if x == NodeKind::Node as u16 => Some(node_addr.push_bits(*i, false)),
+                    x if x == NodeKind::Leaf as u16 => Some(node_addr.push_bits(*i, true)),
                     _ => unreachable!("Malformed octree node"),
                 }
             })
             .filter_map(move |child_addr| {
-                let child_aabb = child_addr.compute_aabb(&mesh_aabb);
+                let child_aabb = child_addr.compute_aabb(&self.aabb);
                 ray.intersects_local_aabb(&child_aabb).map(|_| child_addr)
             })
             .rev() // Reverse the order - see method docs.
@@ -194,178 +203,152 @@ impl MeshOctree {
     }
 }
 
-/// Evaluate this child node to determine if it is empty, a leaf, or another node.
-///
-/// A leaf will push its triangles into the leaf hashmap.
-/// A node will push itself onto the stack to be further evaluated.
-#[inline]
-fn evaluate_child_node(
-    child_addr: NodeAddr,
-    triangles: Vec<TriangleIndex>,
-    parent_node: &mut Node,
-    leaves: &mut HashMap<NodeAddr, Leaf, BuildHasherDefault<NoHashHasher<u32>>>,
-    op_stack: &mut Vec<(NodeAddr, Vec<u32>)>,
-) {
-    let parent_bits = &mut parent_node.children;
-    *parent_bits <<= 2; // Make room for new child node entry
+pub struct OctreeBuildData {
+    aabb: Aabb,
+    nodes: HashMap<NodeAddr, NodeMask, BuildHasherDefault<NoHashHasher<u32>>>,
+    leaves: HashMap<NodeAddr, Leaf, BuildHasherDefault<NoHashHasher<u32>>>,
+    node_stack: Vec<NodeStackEntry>,
+}
 
-    if triangles.len() == 0 {
-        *parent_bits |= Node::EMPTY;
-    } else if triangles.len() <= MeshOctree::MIN_TRIS_PER_LEAF
-        || child_addr.depth() >= NodeAddr::MAX_NODE_DEPTH
-    {
-        leaves.insert(child_addr, Leaf { triangles });
-        *parent_bits |= Node::LEAF;
-    } else {
-        op_stack.push((child_addr, triangles));
-        *parent_bits |= Node::NODE;
+impl OctreeBuildData {
+    fn insert_leaf(&mut self, node: NodeStackEntry) {
+        self.leaves
+            .insert(node.address.to_leaf(), Leaf::new(node.triangles));
+    }
+
+    fn insert_node(&mut self, address: NodeAddr, node: NodeMask) {
+        self.nodes.insert(address.to_node(), node);
+    }
+
+    fn push_stack(&mut self, node: NodeStackEntry) {
+        self.node_stack.push(node);
+    }
+
+    fn pop_stack(&mut self) -> Option<NodeStackEntry> {
+        self.node_stack.pop()
+    }
+
+    /// Evaluate this child to determine if it is empty, a leaf, or a node.
+    ///
+    /// A leaf will push its triangles into the leaf hashmap.
+    /// A node will push itself onto the stack to be further evaluated.
+    ///
+    /// Returns the type of node of the `child_node`.
+    #[inline]
+    fn consume_child_data(&mut self, child: NodeStackEntry) -> NodeKind {
+        let triangle_cutoff_reached = child.triangles.len() <= MeshOctree::LEAF_TRI_CUTOFF;
+        let octree_depth_limit_reached = child.address.depth() >= NodeAddr::MAX_NODE_DEPTH;
+
+        if child.triangles.len() == 0 {
+            NodeKind::Empty
+        } else if triangle_cutoff_reached || octree_depth_limit_reached {
+            self.insert_leaf(child);
+            NodeKind::Leaf
+        } else {
+            self.push_stack(child);
+            NodeKind::Node
+        }
+    }
+
+    pub fn from_mesh(mesh: &MeshAccessor) -> Self {
+        let root_node = NodeAddr::new_root();
+        let root_tris = mesh.iter_triangles().collect::<Vec<_>>();
+        Self {
+            aabb: mesh.generate_aabb(),
+            nodes: HashMap::with_hasher(BuildHasherDefault::default()),
+            leaves: HashMap::with_hasher(BuildHasherDefault::default()),
+            node_stack: vec![NodeStackEntry::new(root_node, root_tris)],
+        }
+    }
+
+    pub fn into_octree(self) -> MeshOctree {
+        MeshOctree {
+            aabb: self.aabb,
+            nodes: self.nodes,
+            leaves: self.leaves,
+        }
     }
 }
 
-/// Get a list of the parent triangles that intersect with this node
-#[inline]
-fn triangle_node_intersections(
-    octree_node: u8,
-    parent_addr: NodeAddr,
-    parent_tris: &[TriangleIndex],
-    mesh: &MeshAccessor,
-    mesh_aabb: &Aabb,
-) -> (NodeAddr, Vec<TriangleIndex>) {
-    let child_addr = parent_addr.push_bits(octree_node, false);
-    let child_tris = parent_tris
-        .iter()
-        .copied()
-        .filter(|tri| {
-            mesh.get_triangle(*tri).iter().any(|triangle| {
+/// An entry in the [`OctreeBuildData`]'s stack. Data is popped on and off the stack in the process
+/// of building the octree instead of using a recursive algorithm.
+pub struct NodeStackEntry {
+    pub(crate) address: NodeAddr,
+    pub(crate) triangles: Vec<TriangleIndex>,
+}
+
+impl NodeStackEntry {
+    pub fn new(address: NodeAddr, triangles: Vec<TriangleIndex>) -> Self {
+        Self { address, triangles }
+    }
+
+    pub fn triangles(&self) -> impl Iterator<Item = TriangleIndex> + '_ {
+        self.triangles.iter().copied()
+    }
+
+    /// Sets the address tp point to a leaf.
+    pub fn to_leaf(self) -> Self {
+        Self {
+            address: self.address.to_leaf(),
+            triangles: self.triangles,
+        }
+    }
+
+    /// Sets the address tp point to a node.
+    pub fn to_node(self) -> Self {
+        Self {
+            address: self.address.to_node(),
+            triangles: self.triangles,
+        }
+    }
+
+    /// Get a list of the triangles that intersect this node's AABB.
+    #[inline]
+    pub fn build_child_stack_entry(
+        &self,
+        octree_node: u8,
+        mesh: &MeshAccessor,
+        mesh_aabb: &Aabb,
+    ) -> NodeStackEntry {
+        let child_addr = self.address.push_bits(octree_node, false);
+        let child_tris = self
+            .triangles()
+            .filter(|tri_index| {
+                let Some(triangle) = mesh.get_triangle(*tri_index) else {
+                return false
+            };
                 let aabb = child_addr.compute_aabb(mesh_aabb);
                 triangle.intersects_aabb(aabb)
             })
-        })
-        .collect();
-    (child_addr, child_tris)
+            .collect();
+        NodeStackEntry::new(child_addr, child_tris)
+    }
 }
 
-/// Makes it easier to get triangle data out of a mesh
-pub struct MeshAccessor<'a> {
-    pub(super) verts: &'a [[f32; 3]],
-    pub(super) normals: Option<&'a [[f32; 3]]>,
-    pub(super) indices: Option<&'a Indices>,
+#[derive(Debug, Clone, Copy)]
+pub enum OctreeError {
+    InvalidAabb,
+    MeshLargerThanAabb,
 }
 
-impl<'a> MeshAccessor<'a> {
-    pub fn from_mesh(mesh: &'a Mesh) -> Self {
-        let verts: &'a [[f32; 3]] = match mesh.attribute(Mesh::ATTRIBUTE_POSITION) {
-            None => panic!("Mesh does not contain vertex positions"),
-            Some(vertex_values) => match &vertex_values {
-                bevy::render::mesh::VertexAttributeValues::Float32x3(positions) => positions,
-                _ => panic!("Unexpected types in {:?}", Mesh::ATTRIBUTE_POSITION),
-            },
-        };
+#[cfg(test)]
+mod tests {
+    use bevy::prelude::Vec3;
 
-        let normals: Option<&[[f32; 3]]> =
-            mesh.attribute(Mesh::ATTRIBUTE_NORMAL)
-                .and_then(|normals| match &normals {
-                    VertexAttributeValues::Float32x3(normals) => Some(normals.as_slice()),
-                    _ => None,
-                });
+    use crate::Ray3d;
 
-        Self {
-            verts,
-            normals,
-            indices: mesh.indices(),
-        }
-    }
+    use super::{
+        mesh_accessor::{self},
+        MeshOctree,
+    };
 
-    pub fn iter_triangles(&self) -> impl Iterator<Item = TriangleIndex> + '_ {
-        // If the triangle exists, we pass on the index.
-        self.verts // num triangles will always be <= the number of verts
-            .iter()
-            .enumerate()
-            .map(|(i, _v)| i as u32)
-            .map_while(move |i| self.get_triangle(i).map(|_| i))
-    }
+    #[test]
+    fn intersection() {
+        let mesh = mesh_accessor::test_util::build_vert_only_xz_quad();
+        let octree = dbg!(MeshOctree::from_mesh_accessor(&mesh).unwrap());
 
-    // Get the triangle vertices at the given `index`.
-    pub fn get_triangle(&self, index: TriangleIndex) -> Option<Triangle> {
-        let index = index as usize;
-        let data = match self.indices {
-            Some(indices) => match indices {
-                Indices::U16(indices) => {
-                    if indices.len() <= index * 3 + 2 {
-                        return None;
-                    }
-                    [
-                        self.verts[indices[index * 3] as usize],
-                        self.verts[indices[index * 3 + 1] as usize],
-                        self.verts[indices[index * 3 + 2] as usize],
-                    ]
-                }
-                Indices::U32(indices) => {
-                    if indices.len() <= index * 3 + 2 {
-                        return None;
-                    }
-                    [
-                        self.verts[indices[index * 3] as usize],
-                        self.verts[indices[index * 3 + 1] as usize],
-                        self.verts[indices[index * 3 + 2] as usize],
-                    ]
-                }
-            },
-            None => [
-                self.verts[index * 3],
-                self.verts[index * 3 + 1],
-                self.verts[index * 3 + 2],
-            ],
-        };
-        Some(Triangle {
-            v0: data[0].into(),
-            v1: data[1].into(),
-            v2: data[2].into(),
-        })
-    }
-
-    // Get the triangle vertices at the given `index`.
-    pub fn triangle_normals(&self, index: TriangleIndex) -> Option<[[f32; 3]; 3]> {
-        let index = index as usize;
-        let Some(normals) = self.normals else {
-            return None
-        };
-
-        let triangle_normals = match self.indices {
-            Some(indices) => match indices {
-                Indices::U16(indices) => [
-                    normals[indices[index * 3] as usize],
-                    normals[indices[index * 3 + 1] as usize],
-                    normals[indices[index * 3 + 2] as usize],
-                ],
-                Indices::U32(indices) => [
-                    normals[indices[index * 3] as usize],
-                    normals[indices[index * 3 + 1] as usize],
-                    normals[indices[index * 3 + 2] as usize],
-                ],
-            },
-            None => [
-                normals[index * 3],
-                normals[index * 3 + 1],
-                normals[index * 3 + 2],
-            ],
-        };
-
-        Some(triangle_normals)
-    }
-
-    pub fn intersection_normal(&self, index: TriangleIndex, hit: RayHit) -> Vec3 {
-        if let Some(normals) = self.triangle_normals(index) {
-            let u = hit.uv_coords().0;
-            let v = hit.uv_coords().1;
-            let w = 1.0 - u - v;
-            Vec3::from(normals[1]) * u + Vec3::from(normals[2]) * v + Vec3::from(normals[0]) * w
-        } else {
-            let triangle = self.get_triangle(index).unwrap();
-            (triangle.v1 - triangle.v0)
-                .cross(triangle.v2 - triangle.v0)
-                .normalize()
-                .into()
-        }
+        let ray = Ray3d::new(Vec3::Y, -Vec3::Y);
+        let intersection = octree.cast_ray_local(ray, mesh).unwrap();
+        assert_eq!(intersection.distance(), 1.0)
     }
 }
