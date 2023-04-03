@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use bevy::{math::Vec3A, prelude::*};
+use bevy::{math::Vec3A, prelude::*, render::primitives::Aabb};
 
 pub use rays::*;
 
@@ -338,7 +338,7 @@ pub struct Triangle {
     pub v2: Vec3A,
 }
 impl Triangle {
-    pub fn intersects_aabb(&self, aabb: bevy::render::primitives::Aabb) -> bool {
+    pub fn intersects_aabb(&self, aabb: Aabb) -> bool {
         let tri = self;
         let h = aabb.half_extents;
 

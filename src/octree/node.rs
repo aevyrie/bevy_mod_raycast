@@ -95,7 +95,7 @@ impl Leaf {
         Self { triangles }
     }
 
-    pub fn triangles(&self) -> &[u32] {
+    pub fn triangles(&self) -> &[TriangleIndex] {
         self.triangles.as_ref()
     }
 }
@@ -203,12 +203,17 @@ impl NodeAddr {
             if addr == 1 {
                 break; // When all bits are popped off the front, the address will just be 1
             }
-            let (x, y, z) = (addr & 0b100, addr & 0b010, addr & 0b001);
+            let z = (addr & 1) as f32;
+            addr >>= 1;
+            let y = (addr & 1) as f32;
+            addr >>= 1;
+            let x = (addr & 1) as f32;
+            addr >>= 1;
+
             // Create an offset multiplier from -1 to 1
-            let offset = Vec3A::new(x as f32, y as f32, z as f32) * 2.0 - 1.0;
+            let offset = Vec3A::new(x, y, z) * 2.0 - 1.0;
             aabb.half_extents /= 2.0;
             aabb.center += aabb.half_extents * offset;
-            addr >>= 3; // Push the last XYZ triplet off
         }
         aabb
     }

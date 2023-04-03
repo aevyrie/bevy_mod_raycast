@@ -44,7 +44,7 @@ impl MeshOctree {
             let mut this_node = NodeMask::default();
             (0..NodeMask::SLOTS)
                 .rev() // Needed because we build up the mask by pushing onto the right side
-                .map(|i| stack_entry.build_child_stack_entry(i, &mesh, &aabb))
+                .map(|i| stack_entry.build_child_from_intersecting_tris(i, &mesh, &aabb))
                 .map(|child_entry: NodeStackEntry| octree_builder.consume_child_data(child_entry))
                 .for_each(|child| this_node.push_child(child));
 
@@ -80,7 +80,7 @@ impl MeshOctree {
     fn cast_ray_local(&self, ray: Ray3d, mesh: MeshAccessor) -> Option<IntersectionData> {
         let root_address = NodeAddr::new_root();
         let node_order = Self::node_intersect_order(ray);
-        let mut op_stack: Vec<NodeAddr> = Vec::with_capacity(16);
+        let mut op_stack: Vec<NodeAddr> = Vec::with_capacity(8);
         op_stack.push(root_address);
 
         while let Some(node_addr) = op_stack.pop() {
@@ -98,9 +98,8 @@ impl MeshOctree {
         None
     }
 
-    /// Raycast against the leaves in this ray. This does not do a ray-box intersection test against
-    /// the node. The function should be called when it is already known that the ray intersects the
-    /// node.
+    /// Raycast against the triangles in this leaf. This does **not** do a ray-box intersection test
+    /// against the leaf's AABB.
     #[inline]
     fn leaf_raycast(
         &self,
@@ -113,9 +112,9 @@ impl MeshOctree {
         ));
         let mut hits = Vec::new();
         for &triangle_index in current_leaf.triangles() {
-            let triangle = mesh
-                .get_triangle(triangle_index)
-                .expect("Malformed mesh indices, triangle address does not exist.");
+            let triangle = mesh.get_triangle(triangle_index).expect(&format!(
+                "Malformed mesh indices, triangle index {triangle_index} does not exist."
+            ));
             if let Some(hit) = ray_triangle_intersection(&ray, &triangle, crate::Backfaces::Cull) {
                 if hit.distance() <= 0.0 {
                     hits.push(IntersectionData::new(
@@ -156,7 +155,8 @@ impl MeshOctree {
         node_order
             .iter()
             .filter_map(move |i| {
-                let shifted = current_node.children() >> i * 2; // Shift child bits to rightmost spot
+                dbg!(i);
+                let shifted = current_node.children() >> i * 2; // Shift children to rightmost spot
                 let child_state = shifted & 0b11; // Mask all but these two child bits
                 match child_state {
                     x if x == NodeKind::Empty as u16 => None,
@@ -304,7 +304,7 @@ impl NodeStackEntry {
 
     /// Get a list of the triangles that intersect this node's AABB.
     #[inline]
-    pub fn build_child_stack_entry(
+    pub fn build_child_from_intersecting_tris(
         &self,
         octree_node: u8,
         mesh: &MeshAccessor,
@@ -315,8 +315,8 @@ impl NodeStackEntry {
             .triangles()
             .filter(|tri_index| {
                 let Some(triangle) = mesh.get_triangle(*tri_index) else {
-                return false
-            };
+                    return false
+                };
                 let aabb = child_addr.compute_aabb(mesh_aabb);
                 triangle.intersects_aabb(aabb)
             })
@@ -347,7 +347,7 @@ mod tests {
         let mesh = mesh_accessor::test_util::build_vert_only_xz_quad();
         let octree = dbg!(MeshOctree::from_mesh_accessor(&mesh).unwrap());
 
-        let ray = Ray3d::new(Vec3::Y, -Vec3::Y);
+        let ray = Ray3d::new(-Vec3::Y, Vec3::Y);
         let intersection = octree.cast_ray_local(ray, mesh).unwrap();
         assert_eq!(intersection.distance(), 1.0)
     }
