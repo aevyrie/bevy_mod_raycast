@@ -588,27 +588,13 @@ pub fn ray_intersection_over_mesh(
     }
 }
 
-pub trait IntoUsize: Copy {
-    fn into_usize(self) -> usize;
-}
-impl IntoUsize for u16 {
-    fn into_usize(self) -> usize {
-        self as usize
-    }
-}
-impl IntoUsize for u32 {
-    fn into_usize(self) -> usize {
-        self as usize
-    }
-}
-
 /// Checks if a ray intersects a mesh, and returns the nearest intersection if one exists.
 pub fn ray_mesh_intersection(
     mesh_to_world: &Mat4,
     vertex_positions: &[[f32; 3]],
     vertex_normals: Option<&[[f32; 3]]>,
     pick_ray: &Ray3d,
-    indices: Option<&Vec<impl IntoUsize>>,
+    indices: Option<&Vec<impl Into<u32> + Copy>>,
     backface_culling: Backfaces,
 ) -> Option<IntersectionData> {
     // The ray cast can hit the same mesh many times, so we need to track which hit is
@@ -623,6 +609,46 @@ pub fn ray_mesh_intersection(
         world_to_mesh.transform_vector3(pick_ray.direction()),
     );
 
+    let mut calculate_intersections_for_triangle = |i0: u32, i1: u32, i2: u32| {
+        let tri_vertex_positions = [
+            Vec3A::from(vertex_positions[i0 as usize]),
+            Vec3A::from(vertex_positions[i1 as usize]),
+            Vec3A::from(vertex_positions[i2 as usize]),
+        ];
+        let tri_normals = vertex_normals.map(|normals| {
+            [
+                Vec3A::from(normals[i0 as usize]),
+                Vec3A::from(normals[i1 as usize]),
+                Vec3A::from(normals[i2 as usize]),
+            ]
+        });
+        let intersection = triangle_intersection(
+            tri_vertex_positions,
+            tri_normals,
+            min_pick_distance,
+            mesh_space_ray,
+            backface_culling,
+        );
+        if let Some(i) = intersection {
+            pick_intersection = Some(IntersectionData::new(
+                mesh_to_world.transform_point3(i.position()),
+                mesh_to_world.transform_vector3(i.normal()),
+                mesh_to_world
+                    .transform_vector3(mesh_space_ray.direction() * i.distance())
+                    .length(),
+                i.triangle().map(|tri| {
+                    Triangle::new(
+                        mesh_to_world.transform_point3a(tri.v0),
+                        mesh_to_world.transform_point3a(tri.v1),
+                        mesh_to_world.transform_point3a(tri.v2),
+                        Some(UVec3::new(i0, i1, i2)),
+                    )
+                }),
+            ));
+            min_pick_distance = i.distance();
+        }
+    };
+
     if let Some(indices) = indices {
         // Make sure this chunk has 3 vertices to avoid a panic.
         if indices.len() % 3 != 0 {
@@ -633,81 +659,11 @@ pub fn ray_mesh_intersection(
         // positions for each triangle, so we'll take indices in chunks of three, where each
         // chunk of three indices are references to the three vertices of a triangle.
         for index in indices.chunks(3) {
-            let tri_vertex_positions = [
-                Vec3A::from(vertex_positions[index[0].into_usize()]),
-                Vec3A::from(vertex_positions[index[1].into_usize()]),
-                Vec3A::from(vertex_positions[index[2].into_usize()]),
-            ];
-            let tri_normals = vertex_normals.map(|normals| {
-                [
-                    Vec3A::from(normals[index[0].into_usize()]),
-                    Vec3A::from(normals[index[1].into_usize()]),
-                    Vec3A::from(normals[index[2].into_usize()]),
-                ]
-            });
-            let intersection = triangle_intersection(
-                tri_vertex_positions,
-                tri_normals,
-                min_pick_distance,
-                mesh_space_ray,
-                backface_culling,
-            );
-            if let Some(i) = intersection {
-                pick_intersection = Some(IntersectionData::new(
-                    mesh_to_world.transform_point3(i.position()),
-                    mesh_to_world.transform_vector3(i.normal()),
-                    mesh_to_world
-                        .transform_vector3(mesh_space_ray.direction() * i.distance())
-                        .length(),
-                    i.triangle().map(|tri| {
-                        Triangle::from([
-                            mesh_to_world.transform_point3a(tri.v0),
-                            mesh_to_world.transform_point3a(tri.v1),
-                            mesh_to_world.transform_point3a(tri.v2),
-                        ])
-                    }),
-                ));
-                min_pick_distance = i.distance();
-            }
+            calculate_intersections_for_triangle(index[0].into(), index[1].into(), index[2].into());
         }
     } else {
-        for i in (0..vertex_positions.len()).step_by(3) {
-            let tri_vertex_positions = [
-                Vec3A::from(vertex_positions[i]),
-                Vec3A::from(vertex_positions[i + 1]),
-                Vec3A::from(vertex_positions[i + 2]),
-            ];
-            let tri_normals = vertex_normals.map(|normals| {
-                [
-                    Vec3A::from(normals[i]),
-                    Vec3A::from(normals[i + 1]),
-                    Vec3A::from(normals[i + 2]),
-                ]
-            });
-            let intersection = triangle_intersection(
-                tri_vertex_positions,
-                tri_normals,
-                min_pick_distance,
-                mesh_space_ray,
-                backface_culling,
-            );
-            if let Some(i) = intersection {
-                pick_intersection = Some(IntersectionData::new(
-                    mesh_to_world.transform_point3(i.position()),
-                    mesh_to_world.transform_vector3(i.normal()),
-                    mesh_to_world
-                        .transform_vector3(mesh_space_ray.direction() * i.distance())
-                        .length(),
-                    i.triangle().map(|tri| {
-                        Triangle::from([
-                            mesh_to_world.transform_point3a(tri.v0),
-                            mesh_to_world.transform_point3a(tri.v1),
-                            mesh_to_world.transform_point3a(tri.v2),
-                        ])
-                    }),
-                ));
-                min_pick_distance = i.distance();
-            }
+        for i in (0..(vertex_positions.len()) as u32).step_by(3) {
+            calculate_intersections_for_triangle(i, i + 1, i + 2);
         }
     }
     pick_intersection
@@ -770,7 +726,7 @@ impl TriangleTrait for [Vec3A; 3] {
     }
 
     fn to_triangle(self) -> Triangle {
-        Triangle::from(self)
+        Triangle::new(self.v0(), self.v1(), self.v2(), None)
     }
 }
 impl TriangleTrait for Triangle {

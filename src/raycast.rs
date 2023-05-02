@@ -93,7 +93,7 @@ pub fn raycast_moller_trumbore(
 
 #[cfg(test)]
 mod tests {
-    use bevy::math::Vec3;
+    use bevy::math::{UVec3, Vec3};
 
     use super::*;
 
@@ -101,10 +101,11 @@ mod tests {
     const V0: [f32; 3] = [1.0, -1.0, 2.0];
     const V1: [f32; 3] = [1.0, 2.0, -1.0];
     const V2: [f32; 3] = [1.0, -1.0, -1.0];
+    const INDICES: UVec3 = UVec3::new(0, 1, 2);
 
     #[test]
     fn raycast_triangle_mt() {
-        let triangle = Triangle::from([V0.into(), V1.into(), V2.into()]);
+        let triangle = Triangle::new(V0.into(), V1.into(), V2.into(), Some(INDICES));
         let ray = Ray3d::new(Vec3::ZERO, Vec3::X);
         let result = ray_triangle_intersection(&ray, &triangle, Backfaces::Include);
         assert!(result.unwrap().distance - 1.0 <= f32::EPSILON);
@@ -112,7 +113,7 @@ mod tests {
 
     #[test]
     fn raycast_triangle_mt_culling() {
-        let triangle = Triangle::from([V2.into(), V1.into(), V0.into()]);
+        let triangle = Triangle::new(V2.into(), V1.into(), V0.into(), Some(INDICES));
         let ray = Ray3d::new(Vec3::ZERO, Vec3::X);
         let result = ray_triangle_intersection(&ray, &triangle, Backfaces::Cull);
         assert!(result.is_none());

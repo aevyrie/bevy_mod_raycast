@@ -10,7 +10,7 @@ pub enum Primitive3d {
     Plane { point: Vec3, normal: Vec3 },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct IntersectionData {
     position: Vec3,
     normal: Vec3,
@@ -334,31 +334,16 @@ pub struct Triangle {
     pub v0: Vec3A,
     pub v1: Vec3A,
     pub v2: Vec3A,
+    pub indices: Option<UVec3>,
 }
-impl From<(Vec3A, Vec3A, Vec3A)> for Triangle {
-    fn from(vertices: (Vec3A, Vec3A, Vec3A)) -> Self {
-        Triangle {
-            v0: vertices.0,
-            v1: vertices.1,
-            v2: vertices.2,
-        }
-    }
-}
-impl From<Vec<Vec3A>> for Triangle {
-    fn from(vertices: Vec<Vec3A>) -> Self {
-        Triangle {
-            v0: *vertices.get(0).unwrap(),
-            v1: *vertices.get(1).unwrap(),
-            v2: *vertices.get(2).unwrap(),
-        }
-    }
-}
-impl From<[Vec3A; 3]> for Triangle {
-    fn from(vertices: [Vec3A; 3]) -> Self {
-        Triangle {
-            v0: vertices[0],
-            v1: vertices[1],
-            v2: vertices[2],
+
+impl Triangle {
+    pub fn new(v0: Vec3A, v1: Vec3A, v2: Vec3A, indices: Option<UVec3>) -> Self {
+        Self {
+            v0,
+            v1,
+            v2,
+            indices,
         }
     }
 }
