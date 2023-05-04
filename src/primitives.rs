@@ -244,7 +244,10 @@ pub mod rays {
         ) -> Option<Self> {
             let view = camera_transform.compute_matrix();
 
-            let (viewport_min, viewport_max) = camera.logical_viewport_rect()?;
+            let Rect {
+                min: viewport_min,
+                max: viewport_max,
+            } = camera.logical_viewport_rect()?;
             let screen_size = camera.logical_target_size()?;
             let viewport_size = viewport_max - viewport_min;
             let adj_cursor_pos =

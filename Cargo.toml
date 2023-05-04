@@ -11,13 +11,13 @@ categories = ["game-engines", "rendering"]
 resolver = "2"
 
 [dependencies]
-bevy = { version = "0.10", default-features = false, features = [
+bevy = { version = "0.11.0-dev", default-features = false, features = [
     "bevy_render",
     "bevy_asset",
 ] }
 
 [dev-dependencies]
-bevy = { version = "0.10", default-features = false, features = [
+bevy = { version = "0.11.0-dev", default-features = false, features = [
     "bevy_pbr",
     "bevy_winit",
     "bevy_ui",

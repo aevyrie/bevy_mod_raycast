@@ -23,15 +23,14 @@ fn main() {
             ..default()
         }))
         .add_plugin(DefaultRaycastingPlugin::<Ground>::default())
-        .add_startup_system(setup)
-        .add_startup_system(setup_ui)
-        .add_system(
-            update_raycast_with_cursor
-                .before(RaycastSystem::BuildRays::<Ground>)
-                .in_base_set(CoreSet::First),
+        .add_systems(Startup, setup)
+        .add_systems(Startup, setup_ui)
+        .add_systems(
+            First,
+            update_raycast_with_cursor.before(RaycastSystem::BuildRays::<Ground>),
         )
-        .add_system(check_path)
-        .add_system(move_origin)
+        .add_systems(Update, check_path)
+        .add_systems(Update, move_origin)
         .run();
 }
 

@@ -34,6 +34,7 @@ pub struct DefaultRaycastingPlugin<T>(pub PhantomData<fn() -> T>);
 impl<T: 'static + Send + Sync + Reflect + Clone> Plugin for DefaultRaycastingPlugin<T> {
     fn build(&self, app: &mut App) {
         app.init_resource::<DefaultPluginState<T>>().add_systems(
+            First,
             (
                 build_rays::<T>
                     .in_set(RaycastSystem::BuildRays::<T>)
@@ -45,17 +46,16 @@ impl<T: 'static + Send + Sync + Reflect + Clone> Plugin for DefaultRaycastingPlu
                     .in_set(RaycastSystem::UpdateIntersections::<T>)
                     .run_if(|state: Res<DefaultPluginState<T>>| state.update_raycast),
             )
-                .chain()
-                .in_base_set(CoreSet::First),
+                .chain(),
         );
 
         app.register_type::<RaycastMesh<T>>()
             .register_type::<RaycastSource<T>>();
 
         #[cfg(feature = "debug")]
-        app.add_system(
+        app.add_systems(
+            First,
             update_debug_cursor::<T>
-                .in_base_set(CoreSet::First)
                 .in_set(RaycastSystem::UpdateDebugCursor::<T>)
                 .run_if(|state: Res<DefaultPluginState<T>>| state.update_debug_cursor)
                 .after(RaycastSystem::UpdateIntersections::<T>),
@@ -75,7 +75,6 @@ pub enum RaycastSystem<T> {
     UpdateIntersections,
     #[cfg(feature = "debug")]
     UpdateDebugCursor,
-    #[system_set(ignore_fields)]
     _Phantom(PhantomData<fn() -> T>),
 }
 impl<T> PartialEq for RaycastSystem<T> {

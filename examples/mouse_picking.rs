@@ -28,12 +28,11 @@ fn main() {
         // start of the frame. For example, we want to be sure this system runs before we construct
         // any rays, hence the ".before(...)". You can use these provided RaycastSystem labels to
         // order your systems with the ones provided by the raycasting plugin.
-        .add_system(
-            update_raycast_with_cursor
-                .in_base_set(CoreSet::First)
-                .before(RaycastSystem::BuildRays::<MyRaycastSet>),
+        .add_systems(
+            First,
+            update_raycast_with_cursor.before(RaycastSystem::BuildRays::<MyRaycastSet>),
         )
-        .add_startup_system(setup)
+        .add_systems(Startup, setup)
         .run();
 }
 

@@ -29,16 +29,15 @@ fn main() {
         // You will need to pay attention to what order you add systems! Putting them in the wrong
         // order can result in multiple frames of latency. Ray casting should probably happen after
         // the positions of your meshes have been updated in the UPDATE stage.
-        .add_system(
-            update_raycast_with_cursor
-                .before(RaycastSystem::BuildRays::<MyRaycastSet>)
-                .in_base_set(CoreSet::First),
+        .add_systems(
+            First,
+            update_raycast_with_cursor.before(RaycastSystem::BuildRays::<MyRaycastSet>),
         )
-        .add_startup_system(setup_scene)
-        .add_startup_system(setup_ui)
-        .add_system(update_fps)
-        .add_system(make_scene_pickable)
-        .add_system(manage_aabb.in_base_set(CoreSet::First))
+        .add_systems(Startup, setup_scene)
+        .add_systems(Startup, setup_ui)
+        .add_systems(Update, update_fps)
+        .add_systems(Update, make_scene_pickable)
+        .add_systems(First, manage_aabb)
         .run();
 }
 

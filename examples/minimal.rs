@@ -13,9 +13,9 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugin(DefaultRaycastingPlugin::<MyRaycastSet>::default())
-        .add_startup_system(setup)
-        .add_system(rotator)
-        .add_system(intersection)
+        .add_systems(Startup, setup)
+        .add_systems(Update, rotator)
+        .add_systems(Update, intersection)
         .run();
 }
 
