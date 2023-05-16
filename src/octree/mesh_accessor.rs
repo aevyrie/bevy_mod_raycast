@@ -1,5 +1,6 @@
+use crate::{primitives::Triangle, raycast::RayHit};
+
 use super::node::TriangleIndex;
-use crate::{RayHit, Triangle};
 use bevy::{
     self,
     prelude::{Mesh, Vec3},
@@ -16,9 +17,9 @@ pub struct MeshAccessor<'a> {
     pub(super) indices: Option<&'a Indices>,
 }
 
-impl<'a> MeshAccessor<'a> {
-    pub fn from_mesh(mesh: &'a Mesh) -> Self {
-        let verts: &'a [[f32; 3]] = match mesh.attribute(Mesh::ATTRIBUTE_POSITION) {
+impl<'a> From<&'a Mesh> for MeshAccessor<'a> {
+    fn from(mesh: &'a Mesh) -> Self {
+        let verts: &[[f32; 3]] = match mesh.attribute(Mesh::ATTRIBUTE_POSITION) {
             None => panic!("Mesh does not contain vertex positions"),
             Some(vertex_values) => match &vertex_values {
                 bevy::render::mesh::VertexAttributeValues::Float32x3(positions) => positions,
@@ -39,7 +40,9 @@ impl<'a> MeshAccessor<'a> {
             indices: mesh.indices(),
         }
     }
+}
 
+impl<'a> MeshAccessor<'a> {
     pub fn iter_triangles(&self) -> impl Iterator<Item = TriangleIndex> + '_ {
         // If the triangle exists, we pass on the index.
         self.verts // num triangles will always be <= the number of verts

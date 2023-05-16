@@ -1,9 +1,6 @@
 use bevy::{prelude::*, window::PresentMode};
 
-use bevy_mod_raycast::{
-    DefaultPluginState, DefaultRaycastingPlugin, RaycastMesh, RaycastMethod, RaycastSource,
-    RaycastSystem,
-};
+use bevy_mod_raycast::{octree::MeshOctree, raycast::Backfaces, DefaultRaycastingPlugin};
 
 // This example will show you how to use your mouse cursor as a ray casting source, cast into the
 // scene, intersect a mesh, and mark the intersection with the built in debug cursor. If you are
@@ -28,11 +25,7 @@ fn main() {
         // start of the frame. For example, we want to be sure this system runs before we construct
         // any rays, hence the ".before(...)". You can use these provided RaycastSystem labels to
         // order your systems with the ones provided by the raycasting plugin.
-        .add_system(
-            update_raycast_with_cursor
-                .in_base_set(CoreSet::First)
-                .before(RaycastSystem::BuildRays::<MyRaycastSet>),
-        )
+        .add_system(update_raycast_with_cursor.in_base_set(CoreSet::First))
         .add_startup_system(setup)
         .run();
 }
@@ -45,8 +38,10 @@ struct MyRaycastSet;
 
 // Update our `RaycastSource` with the current cursor position every frame.
 fn update_raycast_with_cursor(
+    meshes: Res<Assets<Mesh>>,
     mut cursor: EventReader<CursorMoved>,
-    mut query: Query<&mut RaycastSource<MyRaycastSet>>,
+    camera: Query<(&Camera, &GlobalTransform)>,
+    mesh_query: Query<(&Handle<Mesh>, &GlobalTransform, &MeshOctree)>,
 ) {
     // Grab the most recent cursor event if it exists:
     let cursor_position = match cursor.iter().last() {
@@ -54,8 +49,17 @@ fn update_raycast_with_cursor(
         None => return,
     };
 
-    for mut pick_source in &mut query {
-        pick_source.cast_method = RaycastMethod::Screenspace(cursor_position);
+    let (camera, camera_transform) = camera.single();
+    let ray = camera
+        .viewport_to_world(camera_transform, cursor_position)
+        .unwrap();
+
+    for (mesh_handle, transform, octree) in &mesh_query {
+        let mesh = meshes.get(mesh_handle).unwrap();
+        let hit = octree.cast_ray(ray, mesh, transform, Backfaces::Cull);
+        if let Some(hit) = hit {
+            dbg!(hit);
+        }
     }
 }
 
@@ -65,25 +69,23 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    // Overwrite the default plugin state with one that enables the debug cursor. This line can be
-    // removed if the debug cursor isn't needed as the state is set to default values when the
-    // default plugin is added.
-    commands.insert_resource(DefaultPluginState::<MyRaycastSet>::default().with_debug_cursor());
-    commands
-        .spawn(Camera3dBundle {
-            transform: Transform::from_xyz(-2.0, 2.0, 2.0).looking_at(Vec3::ZERO, Vec3::Y),
-            ..Default::default()
-        })
-        .insert(RaycastSource::<MyRaycastSet>::new()); // Designate the camera as our source
-    commands
-        .spawn(PbrBundle {
-            mesh: meshes.add(Mesh::try_from(shape::Icosphere::default()).unwrap()),
-            material: materials.add(Color::rgb(1.0, 1.0, 1.0).into()),
-            ..Default::default()
-        })
-        .insert(RaycastMesh::<MyRaycastSet>::default()); // Make this mesh ray cast-able
+    commands.spawn(Camera3dBundle {
+        transform: Transform::from_xyz(4.0, 0.0, 0.0).looking_at(Vec3::ZERO, Vec3::Y),
+        ..Default::default()
+    });
+    commands.spawn(PbrBundle {
+        mesh: meshes.add(
+            Mesh::try_from(shape::Icosphere {
+                radius: 1.0,
+                subdivisions: 40,
+            })
+            .unwrap(),
+        ),
+        material: materials.add(Color::rgb(1.0, 1.0, 1.0).into()),
+        ..Default::default()
+    });
     commands.spawn(PointLightBundle {
-        transform: Transform::from_translation(Vec3::new(4.0, 8.0, 4.0)),
+        transform: Transform::from_translation(Vec3::new(4.0, 4.0, 4.0)),
         ..Default::default()
     });
 }

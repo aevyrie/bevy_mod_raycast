@@ -1,43 +1,34 @@
 use std::{collections::HashMap, hash::BuildHasherDefault};
 
-use bevy::{
-    math::Vec3A,
-    prelude::{info, GlobalTransform, Mesh},
-    reflect::Reflect,
-    render::primitives::Aabb,
-    utils::Instant,
-};
+use bevy::{math::Vec3A, prelude::*, reflect::Reflect, render::primitives::Aabb, utils::Instant};
 use nohash_hasher::NoHashHasher;
 
-use crate::{ray_triangle_intersection, IntersectionData, Ray3d};
+use crate::raycast::ray_triangle_intersection;
+use crate::{
+    primitives::{IntersectionData, Ray3d},
+    raycast::Backfaces,
+};
 
 pub mod mesh_accessor;
 pub mod node;
+pub mod plugin;
 
 use mesh_accessor::*;
 use node::*;
 
-#[derive(Debug, Clone, Reflect)]
+#[derive(Debug, Clone, Reflect, Component)]
 pub struct MeshOctree {
     aabb: Aabb,
     nodes: HashMap<NodeAddr, NodeMask, BuildHasherDefault<NoHashHasher<u32>>>,
     leaves: HashMap<NodeAddr, Leaf, BuildHasherDefault<NoHashHasher<u32>>>,
 }
 
-impl MeshOctree {
-    /// A node containing `<= LEAF_TRI_CUTOFF` triangles will become a leaf node.
-    pub const LEAF_TRI_CUTOFF: usize = 8;
+impl TryFrom<&MeshAccessor<'_>> for MeshOctree {
+    type Error = OctreeError;
 
-    /// Build an octree from this mesh. This can take a significant amount time depending on mesh
-    /// complexity, and should not be run on the main thread.
-    pub fn build(mesh: &Mesh) -> Result<Self, OctreeError> {
-        let mesh = MeshAccessor::from_mesh(mesh);
-        Self::from_mesh_accessor(&mesh)
-    }
-
-    pub fn from_mesh_accessor(mesh: &MeshAccessor) -> Result<Self, OctreeError> {
+    fn try_from(mesh: &MeshAccessor<'_>) -> Result<Self, Self::Error> {
         let start = Instant::now();
-        let mut octree_builder = OctreeBuildData::from_mesh(mesh);
+        let mut octree_builder = OctreeBuilder::from(mesh);
         let aabb = octree_builder.aabb;
 
         while let Some(stack_entry) = octree_builder.pop_stack() {
@@ -51,19 +42,32 @@ impl MeshOctree {
             octree_builder.insert_node(stack_entry.address, this_node);
         }
 
-        let elapsed = start.elapsed().as_secs_f32();
-        info!("{elapsed:#?}");
+        let elapsed = start.elapsed();
+        info!("Built octree in {elapsed:#?}");
 
-        Ok(octree_builder.into_octree())
+        Ok(octree_builder.into())
+    }
+}
+
+impl MeshOctree {
+    /// A node containing `<= LEAF_TRI_CUTOFF` triangles will become a leaf node.
+    pub const LEAF_TRI_CUTOFF: usize = 8;
+
+    /// Build an octree from this mesh. This can take a significant amount time depending on mesh
+    /// complexity, and should not be run on the main thread.
+    pub fn build(mesh: &Mesh) -> Result<Self, OctreeError> {
+        let mesh = MeshAccessor::from(mesh);
+        Self::try_from(&mesh)
     }
 
     /// Cast a ray into the [`MeshOctree`] acceleration structure, returning [`IntersectionData`] if
     /// the ray intersects with a triangle in the mesh.
     pub fn cast_ray(
         &self,
-        ray: Ray3d,
+        ray: Ray,
         mesh: &Mesh,
         mesh_transform: &GlobalTransform,
+        backface: Backfaces,
     ) -> Option<IntersectionData> {
         let world_to_mesh = mesh_transform.compute_matrix().inverse();
 
@@ -73,11 +77,16 @@ impl MeshOctree {
             world_to_mesh.transform_vector3(ray.direction.into()),
         );
 
-        let mesh = MeshAccessor::from_mesh(mesh);
-        self.cast_ray_local(ray, mesh)
+        let mesh = MeshAccessor::from(mesh);
+        self.cast_ray_local(ray, mesh, backface)
     }
 
-    fn cast_ray_local(&self, ray: Ray3d, mesh: MeshAccessor) -> Option<IntersectionData> {
+    fn cast_ray_local(
+        &self,
+        ray: Ray3d,
+        mesh: MeshAccessor,
+        backface: Backfaces,
+    ) -> Option<IntersectionData> {
         let root_address = NodeAddr::new_root();
         let node_order = Self::node_intersect_order(ray);
         let mut op_stack: Vec<NodeAddr> = Vec::with_capacity(8);
@@ -85,7 +94,7 @@ impl MeshOctree {
 
         while let Some(node_addr) = op_stack.pop() {
             if node_addr.is_leaf() {
-                if let Some(value) = self.leaf_raycast(node_addr, &mesh, ray) {
+                if let Some(value) = self.leaf_raycast(node_addr, &mesh, ray, backface) {
                     return Some(value);
                 }
             } else {
@@ -106,6 +115,7 @@ impl MeshOctree {
         leaf_addr: NodeAddr,
         mesh: &MeshAccessor,
         ray: Ray3d,
+        backface: Backfaces,
     ) -> Option<IntersectionData> {
         let current_leaf = self.leaves.get(&leaf_addr).expect(&format!(
             "Malformed mesh octree, leaf address {leaf_addr} does not exist.\n{self:#?}"
@@ -115,8 +125,8 @@ impl MeshOctree {
             let triangle = mesh.get_triangle(triangle_index).expect(&format!(
                 "Malformed mesh indices, triangle index {triangle_index} does not exist."
             ));
-            if let Some(hit) = ray_triangle_intersection(&ray, &triangle, crate::Backfaces::Cull) {
-                if hit.distance() <= 0.0 {
+            if let Some(hit) = ray_triangle_intersection(&ray, &triangle, backface) {
+                if hit.distance() >= 0.0 {
                     hits.push(IntersectionData::new(
                         ray.position(hit.distance()),
                         mesh.intersection_normal(triangle_index, hit),
@@ -155,7 +165,6 @@ impl MeshOctree {
         node_order
             .iter()
             .filter_map(move |i| {
-                dbg!(i);
                 let shifted = current_node.children() >> i * 2; // Shift children to rightmost spot
                 let child_state = shifted & 0b11; // Mask all but these two child bits
                 match child_state {
@@ -203,14 +212,24 @@ impl MeshOctree {
     }
 }
 
-pub struct OctreeBuildData {
+impl From<OctreeBuilder> for MeshOctree {
+    fn from(builder: OctreeBuilder) -> Self {
+        MeshOctree {
+            aabb: builder.aabb,
+            nodes: builder.nodes,
+            leaves: builder.leaves,
+        }
+    }
+}
+
+pub struct OctreeBuilder {
     aabb: Aabb,
     nodes: HashMap<NodeAddr, NodeMask, BuildHasherDefault<NoHashHasher<u32>>>,
     leaves: HashMap<NodeAddr, Leaf, BuildHasherDefault<NoHashHasher<u32>>>,
     node_stack: Vec<NodeStackEntry>,
 }
 
-impl OctreeBuildData {
+impl OctreeBuilder {
     fn insert_leaf(&mut self, node: NodeStackEntry) {
         self.leaves
             .insert(node.address.to_leaf(), Leaf::new(node.triangles));
@@ -249,8 +268,10 @@ impl OctreeBuildData {
             NodeKind::Node
         }
     }
+}
 
-    pub fn from_mesh(mesh: &MeshAccessor) -> Self {
+impl From<&MeshAccessor<'_>> for OctreeBuilder {
+    fn from(mesh: &MeshAccessor) -> Self {
         let root_node = NodeAddr::new_root();
         let root_tris = mesh.iter_triangles().collect::<Vec<_>>();
         Self {
@@ -258,14 +279,6 @@ impl OctreeBuildData {
             nodes: HashMap::with_hasher(BuildHasherDefault::default()),
             leaves: HashMap::with_hasher(BuildHasherDefault::default()),
             node_stack: vec![NodeStackEntry::new(root_node, root_tris)],
-        }
-    }
-
-    pub fn into_octree(self) -> MeshOctree {
-        MeshOctree {
-            aabb: self.aabb,
-            nodes: self.nodes,
-            leaves: self.leaves,
         }
     }
 }
@@ -335,7 +348,7 @@ pub enum OctreeError {
 mod tests {
     use bevy::prelude::Vec3;
 
-    use crate::Ray3d;
+    use crate::{primitives::Ray3d, raycast::Backfaces};
 
     use super::{
         mesh_accessor::{self},
@@ -345,10 +358,11 @@ mod tests {
     #[test]
     fn intersection() {
         let mesh = mesh_accessor::test_util::build_vert_only_xz_quad();
-        let octree = dbg!(MeshOctree::from_mesh_accessor(&mesh).unwrap());
-
+        let octree = MeshOctree::try_from(&mesh).unwrap();
         let ray = Ray3d::new(-Vec3::Y, Vec3::Y);
-        let intersection = octree.cast_ray_local(ray, mesh).unwrap();
+        let intersection = octree
+            .cast_ray_local(ray, mesh, Backfaces::Include)
+            .unwrap();
         assert_eq!(intersection.distance(), 1.0)
     }
 }
