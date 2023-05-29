@@ -4,17 +4,11 @@ use bevy::math::Vec3A;
 
 use crate::{primitives::*, TriangleTrait};
 
-#[derive(Copy, Clone)]
-#[allow(dead_code)]
+#[derive(Copy, Clone, Default)]
 pub enum Backfaces {
+    #[default]
     Cull,
     Include,
-}
-
-impl Default for Backfaces {
-    fn default() -> Self {
-        Backfaces::Cull
-    }
 }
 
 /// Takes a ray and triangle and computes the intersection and normal

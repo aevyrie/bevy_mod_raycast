@@ -12,10 +12,10 @@ use bevy_mod_raycast::{
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
-            window: WindowDescriptor {
+            primary_window: Some(Window {
                 present_mode: PresentMode::AutoNoVsync, // Reduces input lag.
                 ..default()
-            },
+            }),
             ..default()
         }))
         // The DefaultRaycastingPlugin bundles all the functionality you might need into a single
@@ -28,9 +28,10 @@ fn main() {
         // start of the frame. For example, we want to be sure this system runs before we construct
         // any rays, hence the ".before(...)". You can use these provided RaycastSystem labels to
         // order your systems with the ones provided by the raycasting plugin.
-        .add_system_to_stage(
-            CoreStage::First,
-            update_raycast_with_cursor.before(RaycastSystem::BuildRays::<MyRaycastSet>),
+        .add_system(
+            update_raycast_with_cursor
+                .in_base_set(CoreSet::First)
+                .before(RaycastSystem::BuildRays::<MyRaycastSet>),
         )
         .add_startup_system(setup)
         .run();
@@ -39,6 +40,7 @@ fn main() {
 /// This is a unit struct we will use to mark our generic `RaycastMesh`s and `RaycastSource` as part
 /// of the same group, or "RaycastSet". For more complex use cases, you might use this to associate
 /// some meshes with one ray casting source, and other meshes with a different ray casting source."
+#[derive(Clone, Reflect)]
 struct MyRaycastSet;
 
 // Update our `RaycastSource` with the current cursor position every frame.
@@ -75,7 +77,7 @@ fn setup(
         .insert(RaycastSource::<MyRaycastSet>::new()); // Designate the camera as our source
     commands
         .spawn(PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::Icosphere::default())),
+            mesh: meshes.add(Mesh::try_from(shape::Icosphere::default()).unwrap()),
             material: materials.add(Color::rgb(1.0, 1.0, 1.0).into()),
             ..Default::default()
         })
