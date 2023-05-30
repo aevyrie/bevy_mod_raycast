@@ -23,7 +23,7 @@ use bevy::{
         mesh::{Indices, Mesh, VertexAttributeValues},
         render_resource::PrimitiveTopology,
     },
-    utils::FloatOrd,
+    utils::{FloatOrd, HashMap},
 };
 
 pub use crate::{primitives::*, raycast::*};
@@ -155,6 +155,7 @@ impl<T> DefaultPluginState<T> {
 /// The marked entity must also have a [Mesh] component.
 #[derive(Component, Debug, Clone)]
 pub struct RaycastMesh<T: Reflect> {
+    intersection: Option<IntersectionData>,
     _marker: PhantomData<T>,
 }
 
@@ -164,6 +165,7 @@ bevy::reflect::impl_from_reflect_value!(RaycastMesh<T: Reflect + Clone>);
 impl<T: Reflect> Default for RaycastMesh<T> {
     fn default() -> Self {
         RaycastMesh {
+            intersection: None,
             _marker: PhantomData,
         }
     }
@@ -496,32 +498,20 @@ pub fn update_raycast<T: Reflect + Clone + 'static>(
     }
 }
 pub fn update_intersections<T: Reflect + Clone + 'static>(
-    mut commands: Commands,
-    mut intersections: Query<&mut Intersection<T>>,
+    mut meshes: Query<(Entity, &mut RaycastMesh<T>)>,
     sources: Query<&RaycastSource<T>>,
 ) {
-    let mut intersect_iter = intersections.iter_mut();
-    for (_, new_intersection) in sources
+    let entity_intersection: HashMap<Entity, &IntersectionData> = sources
         .iter()
         .filter_map(|source| source.get_nearest_intersection())
-    {
-        match intersect_iter.next() {
-            Some(mut intersection) => {
-                // If there is an existing intersection, reuse it.
-                intersection.data = Some(new_intersection.to_owned());
-            }
-            None => {
-                // If there are no intersections left in the world, spawn one.
-                commands
-                    .spawn_empty()
-                    .insert(Intersection::<T>::new(new_intersection.to_owned()));
-            }
+        .collect();
+
+    for (entity, mut mesh) in meshes.iter_mut() {
+        if let Some(&&intersection) = entity_intersection.get(&entity) {
+            mesh.intersection = Some(intersection);
+        } else {
+            mesh.intersection = None;
         }
-    }
-    // Reset and despawn any remaining intersection. We need to be able to reset, because commands
-    // take a full stage to update.
-    for mut unused_intersect in intersect_iter {
-        unused_intersect.data = None;
     }
 }
 
