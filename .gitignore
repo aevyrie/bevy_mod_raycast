@@ -7,3 +7,5 @@ Cargo.lock
 *.iml
 .idea/
 trace*.json
+.DS_Store
+
