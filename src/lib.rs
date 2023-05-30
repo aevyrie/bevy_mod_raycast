@@ -23,7 +23,7 @@ use bevy::{
         mesh::{Indices, Mesh, VertexAttributeValues},
         render_resource::PrimitiveTopology,
     },
-    utils::FloatOrd,
+    utils::{FloatOrd, HashMap},
 };
 
 pub use crate::{primitives::*, raycast::*};
@@ -497,31 +497,29 @@ pub fn update_raycast<T: Reflect + Clone + 'static>(
 }
 pub fn update_intersections<T: Reflect + Clone + 'static>(
     mut commands: Commands,
-    mut intersections: Query<&mut Intersection<T>>,
+    mut query: Query<(Entity, &mut Intersection<T>)>,
     sources: Query<&RaycastSource<T>>,
 ) {
-    let mut intersect_iter = intersections.iter_mut();
-    for (_, new_intersection) in sources
+    let mut entities: HashMap<Entity, Mut<Intersection<T>>> = query.iter_mut().collect();
+
+    for (e, i) in sources
         .iter()
         .filter_map(|source| source.get_nearest_intersection())
     {
-        match intersect_iter.next() {
-            Some(mut intersection) => {
-                // If there is an existing intersection, reuse it.
-                intersection.data = Some(new_intersection.to_owned());
-            }
-            None => {
-                // If there are no intersections left in the world, spawn one.
-                commands
-                    .spawn_empty()
-                    .insert(Intersection::<T>::new(new_intersection.to_owned()));
-            }
+        if let Some(intersection) = entities.get_mut(&e) {
+            // Intersection changed
+            intersection.data = Some(i.to_owned());
+        } else {
+            // Intersection added
+            commands
+                .entity(e)
+                .insert(Intersection::<T>::new(i.to_owned()));
         }
     }
-    // Reset and despawn any remaining intersection. We need to be able to reset, because commands
-    // take a full stage to update.
-    for mut unused_intersect in intersect_iter {
-        unused_intersect.data = None;
+
+    for (e, _) in entities {
+        // Intersection removed
+        commands.entity(e).remove::<Intersection<T>>();
     }
 }
 
