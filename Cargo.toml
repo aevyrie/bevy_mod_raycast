@@ -28,6 +28,7 @@ bevy = { version = "0.10", default-features = false, features = [
     "x11",
 ] }
 criterion = "0.4"
+bevy_prototype_debug_lines = { version = "0.10.1", features = ["3d"] }
 
 [features]
 default = ["2d", "debug"]
