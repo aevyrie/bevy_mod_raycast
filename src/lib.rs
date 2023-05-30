@@ -509,6 +509,7 @@ pub fn update_intersections<T: Reflect + Clone + 'static>(
         if let Some(intersection) = entities.get_mut(&e) {
             // Intersection changed
             intersection.data = Some(i.to_owned());
+            entities.remove(&e);
         } else {
             // Intersection added
             commands
