@@ -1,6 +1,6 @@
 use bevy::{prelude::*, sprite::MaterialMesh2dBundle};
 use bevy_mod_raycast::{
-    DefaultRaycastingPlugin, Intersection, RaycastMesh, RaycastMethod, RaycastSource, RaycastSystem,
+    DefaultRaycastingPlugin, RaycastMesh, RaycastMethod, RaycastSource, RaycastSystem,
 };
 
 fn main() {
@@ -37,8 +37,8 @@ fn update_raycast_with_cursor(
 }
 
 /// Report intersections
-fn intersection(query: Query<&Intersection<MyRaycastSet>>) {
-    for intersection in &query {
+fn intersection(query: Query<&RaycastMesh<MyRaycastSet>>) {
+    for intersection in query.iter().map(|mesh| mesh.intersection).flatten() {
         info!(
             "Distance {:?}, Position {:?}",
             intersection.distance(),

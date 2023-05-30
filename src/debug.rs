@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use bevy::prelude::*;
 
-use crate::Intersection;
+use crate::RaycastMesh;
 
 #[derive(Component)]
 pub struct DebugCursor<T> {
@@ -30,33 +30,33 @@ impl<T> Default for DebugCursorMesh<T> {
 
 /// Updates the 3d cursor to be in the pointed world coordinates
 #[allow(clippy::too_many_arguments)]
-pub fn update_debug_cursor<T: 'static>(
+pub fn update_debug_cursor<T: Reflect + Clone + 'static>(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    mut cursors: Query<(&Intersection<T>, &mut Transform), With<DebugCursor<T>>>,
-    intersection_without_cursor: Query<(Entity, &Intersection<T>), Without<DebugCursor<T>>>,
+    mut cursors: Query<(&RaycastMesh<T>, &mut Transform), With<DebugCursor<T>>>,
+    // intersection_without_cursor: Query<(Entity, &Intersection<T>), Without<DebugCursor<T>>>,
 ) {
-    // Set the cursor translation to the top pick's world coordinates
-    for (intersection, mut transform) in &mut cursors {
-        if let Some(new_matrix) = intersection.normal_ray() {
-            *transform = Transform::from_matrix(new_matrix.to_transform());
-        } else {
-            *transform = Transform::from_translation(Vec3::NAN);
-        }
-    }
-    // Spawn a new debug cursor for intersections without one
-    for (entity, intersection) in &intersection_without_cursor {
-        if let Some(new_matrix) = intersection.normal_ray() {
-            spawn_cursor::<T>(
-                &mut commands,
-                entity,
-                Transform::from_matrix(new_matrix.to_transform()),
-                &mut meshes,
-                &mut materials,
-            );
-        }
-    }
+    // // Set the cursor translation to the top pick's world coordinates
+    // for (intersection, mut transform) in &mut cursors {
+    //     if let Some(new_matrix) = intersection.normal_ray() {
+    //         *transform = Transform::from_matrix(new_matrix.to_transform());
+    //     } else {
+    //         *transform = Transform::from_translation(Vec3::NAN);
+    //     }
+    // }
+    // // Spawn a new debug cursor for intersections without one
+    // for (entity, intersection) in &intersection_without_cursor {
+    //     if let Some(new_matrix) = intersection.normal_ray() {
+    //         spawn_cursor::<T>(
+    //             &mut commands,
+    //             entity,
+    //             Transform::from_matrix(new_matrix.to_transform()),
+    //             &mut meshes,
+    //             &mut materials,
+    //         );
+    //     }
+    // }
 }
 
 fn spawn_cursor<T: 'static>(

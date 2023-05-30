@@ -1,5 +1,3 @@
-use std::marker::PhantomData;
-
 use bevy::{math::Vec3A, prelude::*};
 
 pub use rays::*;
@@ -61,76 +59,6 @@ impl IntersectionData {
     #[must_use]
     pub fn triangle(&self) -> Option<Triangle> {
         self.triangle
-    }
-}
-
-/// Holds the topmost intersection for the raycasting set `T`.
-///
-/// ### Example
-///
-/// Lets say you've created a raycasting set `T`. If you have a [`crate::RaycastSource<T>`], a
-/// [`crate::RaycastMesh<T>`], and an intersection occurs, the `RaycastMesh` will have an
-/// `Intersection` component added to it, with the intersection data.
-#[derive(Component)]
-pub struct Intersection<T> {
-    pub(crate) data: Option<IntersectionData>,
-    _phantom: PhantomData<fn(T) -> T>,
-}
-impl<T> std::fmt::Debug for Intersection<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match &self.data {
-            Some(data) => f
-                .debug_struct("Intersection")
-                .field("position", &data.position)
-                .field("normal", &data.normal)
-                .field("distance", &data.distance)
-                .field("triangle", &data.triangle)
-                .finish(),
-            None => write!(f, "None"),
-        }
-    }
-}
-impl<T> Clone for Intersection<T> {
-    fn clone(&self) -> Self {
-        Self {
-            data: self.data.clone(),
-            _phantom: PhantomData,
-        }
-    }
-}
-impl<T> Intersection<T> {
-    pub fn new(data: IntersectionData) -> Self {
-        Intersection {
-            data: Some(data),
-            _phantom: PhantomData,
-        }
-    }
-    /// Position vector describing the intersection position.
-    pub fn position(&self) -> Option<&Vec3> {
-        if let Some(data) = &self.data {
-            Some(&data.position)
-        } else {
-            None
-        }
-    }
-    /// Unit vector describing the normal of the intersected triangle.
-    pub fn normal(&self) -> Option<Vec3> {
-        self.data().map(|data| data.normal)
-    }
-    pub fn normal_ray(&self) -> Option<Ray3d> {
-        self.data()
-            .map(|data| Ray3d::new(data.position, data.normal))
-    }
-    /// Distance from the picking source to the entity.
-    pub fn distance(&self) -> Option<f32> {
-        self.data().map(|data| data.distance)
-    }
-    /// Triangle that was intersected with in World coordinates
-    pub fn world_triangle(&self) -> Option<Triangle> {
-        self.data().and_then(|data| data.triangle)
-    }
-    fn data(&self) -> Option<&IntersectionData> {
-        self.data.as_ref()
     }
 }
 

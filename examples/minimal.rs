@@ -1,7 +1,5 @@
 use bevy::prelude::*;
-use bevy_mod_raycast::{
-    DefaultPluginState, DefaultRaycastingPlugin, Intersection, RaycastMesh, RaycastSource,
-};
+use bevy_mod_raycast::{DefaultPluginState, DefaultRaycastingPlugin, RaycastMesh, RaycastSource};
 
 // This example casts a ray from the camera using its transform, intersects a mesh, displays
 // the debug cursor at the intersection, and reports the intersection.
@@ -67,8 +65,8 @@ fn setup(
 }
 
 /// Report intersections
-fn intersection(query: Query<&Intersection<MyRaycastSet>>) {
-    for intersection in &query {
+fn intersection(query: Query<&RaycastMesh<MyRaycastSet>>) {
+    for intersection in query.iter().map(|mesh| mesh.intersection).flatten() {
         info!(
             "Distance {:?}, Position {:?}",
             intersection.distance(),

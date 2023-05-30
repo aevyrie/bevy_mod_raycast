@@ -155,7 +155,7 @@ impl<T> DefaultPluginState<T> {
 /// The marked entity must also have a [Mesh] component.
 #[derive(Component, Debug, Clone)]
 pub struct RaycastMesh<T: Reflect> {
-    intersection: Option<IntersectionData>,
+    pub intersection: Option<IntersectionData>,
     _marker: PhantomData<T>,
 }
 
