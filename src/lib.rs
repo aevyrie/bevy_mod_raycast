@@ -155,7 +155,7 @@ impl<T> DefaultPluginState<T> {
 /// The marked entity must also have a [Mesh] component.
 #[derive(Component, Debug, Clone)]
 pub struct RaycastMesh<T: Reflect> {
-    pub intersection: Option<IntersectionData>,
+    pub intersection: Option<Intersection>,
     _marker: PhantomData<T>,
 }
 
@@ -178,7 +178,7 @@ impl<T: Reflect> Default for RaycastMesh<T> {
 pub struct RaycastSource<T: Reflect + Clone> {
     pub cast_method: RaycastMethod,
     pub ray: Option<Ray3d>,
-    intersections: Vec<(Entity, IntersectionData)>,
+    intersections: Vec<(Entity, Intersection)>,
     _marker: PhantomData<fn() -> T>,
 }
 
@@ -252,7 +252,7 @@ impl<T: Reflect + Clone> RaycastSource<T> {
         }
     }
     /// Get a reference to the ray cast source's intersections, if one exists.
-    pub fn get_intersections(&self) -> Option<&[(Entity, IntersectionData)]> {
+    pub fn get_intersections(&self) -> Option<&[(Entity, Intersection)]> {
         if self.intersections.is_empty() {
             None
         } else {
@@ -261,11 +261,11 @@ impl<T: Reflect + Clone> RaycastSource<T> {
     }
     /// Get a reference to the ray cast source's intersections. Returns an empty list if there are
     /// no intersections.
-    pub fn intersections(&self) -> &[(Entity, IntersectionData)] {
+    pub fn intersections(&self) -> &[(Entity, Intersection)] {
         &self.intersections
     }
     /// Get a reference to the nearest intersection point, if there is one.
-    pub fn get_nearest_intersection(&self) -> Option<(Entity, &IntersectionData)> {
+    pub fn get_nearest_intersection(&self) -> Option<(Entity, &Intersection)> {
         if self.intersections.is_empty() {
             None
         } else {
@@ -273,7 +273,7 @@ impl<T: Reflect + Clone> RaycastSource<T> {
         }
     }
     /// Run an intersection check between this [`RaycastSource`] and a 3D primitive [`Primitive3d`].
-    pub fn intersect_primitive(&self, shape: Primitive3d) -> Option<IntersectionData> {
+    pub fn intersect_primitive(&self, shape: Primitive3d) -> Option<Intersection> {
         Some(self.ray?.intersects_primitive(shape)?.into())
     }
     /// Get a copy of the ray cast source's ray.
@@ -282,7 +282,7 @@ impl<T: Reflect + Clone> RaycastSource<T> {
     }
 
     /// Get a mutable reference to the ray cast source's intersections.
-    pub fn intersections_mut(&mut self) -> &mut Vec<(Entity, IntersectionData)> {
+    pub fn intersections_mut(&mut self) -> &mut Vec<(Entity, Intersection)> {
         &mut self.intersections
     }
 }
@@ -501,7 +501,7 @@ pub fn update_intersections<T: Reflect + Clone + 'static>(
     mut meshes: Query<(Entity, &mut RaycastMesh<T>)>,
     sources: Query<&RaycastSource<T>>,
 ) {
-    let entity_intersection: HashMap<Entity, &IntersectionData> = sources
+    let entity_intersection: HashMap<Entity, &Intersection> = sources
         .iter()
         .filter_map(|source| source.get_nearest_intersection())
         .collect();
@@ -521,7 +521,7 @@ pub fn ray_intersection_over_mesh(
     mesh_to_world: &Mat4,
     ray: &Ray3d,
     backface_culling: Backfaces,
-) -> Option<IntersectionData> {
+) -> Option<Intersection> {
     if mesh.primitive_topology() != PrimitiveTopology::TriangleList {
         error!(
             "Invalid intersection check: `TriangleList` is the only supported `PrimitiveTopology`"
@@ -600,7 +600,7 @@ pub fn ray_mesh_intersection(
     pick_ray: &Ray3d,
     indices: Option<&Vec<impl IntoUsize>>,
     backface_culling: Backfaces,
-) -> Option<IntersectionData> {
+) -> Option<Intersection> {
     // The ray cast can hit the same mesh many times, so we need to track which hit is
     // closest to the camera, and record that.
     let mut min_pick_distance = f32::MAX;
@@ -643,7 +643,7 @@ pub fn ray_mesh_intersection(
                 backface_culling,
             );
             if let Some(i) = intersection {
-                pick_intersection = Some(IntersectionData::new(
+                pick_intersection = Some(Intersection::new(
                     mesh_to_world.transform_point3(i.position()),
                     mesh_to_world.transform_vector3(i.normal()),
                     mesh_to_world
@@ -682,7 +682,7 @@ pub fn ray_mesh_intersection(
                 backface_culling,
             );
             if let Some(i) = intersection {
-                pick_intersection = Some(IntersectionData::new(
+                pick_intersection = Some(Intersection::new(
                     mesh_to_world.transform_point3(i.position()),
                     mesh_to_world.transform_vector3(i.normal()),
                     mesh_to_world
@@ -709,7 +709,7 @@ fn triangle_intersection(
     max_distance: f32,
     ray: Ray3d,
     backface_culling: Backfaces,
-) -> Option<IntersectionData> {
+) -> Option<Intersection> {
     if tri_vertices
         .iter()
         .any(|&vertex| (vertex - ray.origin).length_squared() < max_distance.powi(2))
@@ -729,7 +729,7 @@ fn triangle_intersection(
                         .cross(tri_vertices.v2() - tri_vertices.v0())
                         .normalize()
                 };
-                let intersection = IntersectionData::new(
+                let intersection = Intersection::new(
                     position,
                     normal.into(),
                     distance,

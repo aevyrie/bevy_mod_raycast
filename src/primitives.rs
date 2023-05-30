@@ -9,14 +9,14 @@ pub enum Primitive3d {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct IntersectionData {
+pub struct Intersection {
     position: Vec3,
     normal: Vec3,
     distance: f32,
     triangle: Option<Triangle>,
 }
 
-impl From<rays::PrimitiveIntersection> for IntersectionData {
+impl From<rays::PrimitiveIntersection> for Intersection {
     fn from(data: rays::PrimitiveIntersection) -> Self {
         Self {
             position: data.position(),
@@ -27,7 +27,7 @@ impl From<rays::PrimitiveIntersection> for IntersectionData {
     }
 }
 
-impl IntersectionData {
+impl Intersection {
     pub fn new(position: Vec3, normal: Vec3, distance: f32, triangle: Option<Triangle>) -> Self {
         Self {
             position,
