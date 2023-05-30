@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use std::marker::PhantomData;
 
 use bevy::prelude::*;
