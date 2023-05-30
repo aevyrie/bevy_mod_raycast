@@ -500,8 +500,11 @@ pub fn update_intersections<T: Reflect + Clone + 'static>(
     mut query: Query<(Entity, &mut Intersection<T>)>,
     sources: Query<&RaycastSource<T>>,
 ) {
+    // Collect all entities which currently have an intersection component
     let mut entities: HashMap<Entity, Mut<Intersection<T>>> = query.iter_mut().collect();
 
+    // Iterate over entities which should have an intersection component
+    // and test which currently have one.
     for (e, i) in sources
         .iter()
         .filter_map(|source| source.get_nearest_intersection())
@@ -518,6 +521,7 @@ pub fn update_intersections<T: Reflect + Clone + 'static>(
         }
     }
 
+    // The remaining entities in the map no longer have an intersection
     for (e, _) in entities {
         // Intersection removed
         commands.entity(e).remove::<Intersection<T>>();
