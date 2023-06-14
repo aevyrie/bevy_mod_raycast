@@ -251,8 +251,23 @@ pub mod rays {
                 cursor_pos_screen - Vec2::new(viewport_min.x, screen_size.y - viewport_max.y);
 
             let projection = camera.projection_matrix();
-            let far_ndc = projection.project_point3(Vec3::NEG_Z).z;
-            let near_ndc = projection.project_point3(Vec3::Z).z;
+
+            // extract the min/max Z values from the projection matrix so we can
+            // use them for calculate `far_ndc` and `near_ndc`.  If the
+            // projection matrix doesn't have a z_axis.z (happens for
+            // perspective projections), we'll default to (-1, 1).
+            let (z_min, z_max) = if projection.z_axis.z != 0.0 {
+                let z_mid = projection.w_axis.z;
+                let z_step = projection.z_axis.z;
+                let z_min = -z_mid / z_step;
+                let z_max = (1.0 - z_mid) / z_step;
+                (z_min, z_max)
+            } else {
+                (-1.0, 1.0)
+            };
+
+            let far_ndc = projection.project_point3(Vec3::new(0.0, 0.0, z_min)).z;
+            let near_ndc = projection.project_point3(Vec3::new(0.0, 0.0, z_max)).z;
             let cursor_ndc = (adj_cursor_pos / viewport_size) * 2.0 - Vec2::ONE;
             let ndc_to_world: Mat4 = view * projection.inverse();
             let near = ndc_to_world.project_point3(cursor_ndc.extend(near_ndc));
