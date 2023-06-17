@@ -218,14 +218,7 @@ pub mod rays {
         pub fn to_aligned_transform(self, up: Vec3) -> Mat4 {
             let position = self.origin();
             let normal = self.direction();
-            let axis = up.cross(normal).normalize();
-            let angle = up.dot(normal).acos();
-            let epsilon = f32::EPSILON;
-            let new_rotation = if angle.abs() > epsilon {
-                Quat::from_axis_angle(axis, angle)
-            } else {
-                Quat::default()
-            };
+            let new_rotation = Quat::from_rotation_arc(up, normal);
             Mat4::from_rotation_translation(new_rotation, position)
         }
 
