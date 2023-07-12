@@ -179,7 +179,7 @@ pub mod rays {
     }
 
     /// A 3D ray, with an origin and direction. The direction is guaranteed to be normalized.
-    #[derive(Debug, PartialEq, Copy, Clone, Default)]
+    #[derive(Reflect, Debug, PartialEq, Copy, Clone, Default)]
     pub struct Ray3d {
         pub(crate) origin: Vec3A,
         pub(crate) direction: Vec3A,
@@ -237,11 +237,11 @@ pub mod rays {
         ) -> Option<Self> {
             let view = camera_transform.compute_matrix();
 
-            let (viewport_min, viewport_max) = camera.logical_viewport_rect()?;
+            let viewport = camera.logical_viewport_rect()?;
             let screen_size = camera.logical_target_size()?;
-            let viewport_size = viewport_max - viewport_min;
+            let viewport_size = viewport.max - viewport.min;
             let adj_cursor_pos =
-                cursor_pos_screen - Vec2::new(viewport_min.x, screen_size.y - viewport_max.y);
+                cursor_pos_screen - Vec2::new(viewport.min.x, screen_size.y - viewport.max.y);
 
             let projection = camera.projection_matrix();
             let far_ndc = projection.project_point3(Vec3::NEG_Z).z;
