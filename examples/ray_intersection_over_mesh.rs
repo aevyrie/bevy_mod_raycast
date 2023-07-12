@@ -1,6 +1,6 @@
 use std::f32::consts::FRAC_PI_2;
 
-use bevy::{prelude::*, window::PresentMode};
+use bevy::{core_pipeline::tonemapping::Tonemapping, prelude::*, window::PresentMode};
 
 use bevy_mod_raycast::{
     ray_intersection_over_mesh, Backfaces, DefaultPluginState, DefaultRaycastingPlugin, Ray3d,
@@ -15,23 +15,22 @@ use bevy_mod_raycast::{
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                present_mode: PresentMode::AutoNoVsync, // Reduces input latency
+        .add_plugins((
+            DefaultPlugins.set(WindowPlugin {
+                primary_window: Some(Window {
+                    present_mode: PresentMode::AutoNoVsync, // Reduces input latency
+                    ..default()
+                }),
                 ..default()
             }),
-            ..default()
-        }))
-        .add_plugin(DefaultRaycastingPlugin::<Ground>::default())
-        .add_startup_system(setup)
-        .add_startup_system(setup_ui)
-        .add_system(
-            update_raycast_with_cursor
-                .before(RaycastSystem::BuildRays::<Ground>)
-                .in_base_set(CoreSet::First),
+            DefaultRaycastingPlugin::<Ground>::default(),
+        ))
+        .add_systems(Startup, (setup, setup_ui))
+        .add_systems(
+            First,
+            update_raycast_with_cursor.before(RaycastSystem::BuildRays::<Ground>),
         )
-        .add_system(check_path)
-        .add_system(move_origin)
+        .add_systems(Update, (check_path, move_origin))
         .run();
 }
 
@@ -116,6 +115,7 @@ fn setup(
     commands
         .spawn(Camera3dBundle {
             transform: Transform::from_xyz(-5.0, 10.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
+            tonemapping: Tonemapping::ReinhardLuminance,
             ..Default::default()
         })
         .insert(RaycastSource::<Ground>::new());

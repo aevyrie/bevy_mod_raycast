@@ -1,19 +1,20 @@
-use bevy::{prelude::*, sprite::MaterialMesh2dBundle};
+use bevy::{core_pipeline::tonemapping::Tonemapping, prelude::*, sprite::MaterialMesh2dBundle};
 use bevy_mod_raycast::{
     DefaultRaycastingPlugin, Intersection, RaycastMesh, RaycastMethod, RaycastSource, RaycastSystem,
 };
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
-        .add_plugin(DefaultRaycastingPlugin::<MyRaycastSet>::default())
-        .add_system(
-            update_raycast_with_cursor
-                .in_base_set(CoreSet::First)
-                .before(RaycastSystem::BuildRays::<MyRaycastSet>),
+        .add_plugins((
+            DefaultPlugins,
+            DefaultRaycastingPlugin::<MyRaycastSet>::default(),
+        ))
+        .add_systems(
+            First,
+            update_raycast_with_cursor.before(RaycastSystem::BuildRays::<MyRaycastSet>),
         )
-        .add_system(intersection)
-        .add_startup_system(setup)
+        .add_systems(Startup, setup)
+        .add_systems(Update, intersection)
         .run();
 }
 
@@ -53,7 +54,10 @@ fn setup(
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     commands
-        .spawn(Camera2dBundle::default())
+        .spawn(Camera2dBundle {
+            tonemapping: Tonemapping::ReinhardLuminance,
+            ..default()
+        })
         .insert(RaycastSource::<MyRaycastSet>::new()); // Designate the camera as our source;
     commands
         .spawn(MaterialMesh2dBundle {
