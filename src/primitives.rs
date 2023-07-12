@@ -139,7 +139,7 @@ impl<T> Intersection<T> {
 pub mod rays {
     use super::Primitive3d;
     use bevy::{
-        math::Vec3A,
+        math::{Ray, Vec3A},
         prelude::*,
         render::{camera::Camera, primitives::Aabb},
     };
@@ -235,23 +235,9 @@ pub mod rays {
             camera: &Camera,
             camera_transform: &GlobalTransform,
         ) -> Option<Self> {
-            let view = camera_transform.compute_matrix();
-
-            let viewport = camera.logical_viewport_rect()?;
-            let screen_size = camera.logical_target_size()?;
-            let viewport_size = viewport.max - viewport.min;
-            let adj_cursor_pos =
-                cursor_pos_screen - Vec2::new(viewport.min.x, screen_size.y - viewport.max.y);
-
-            let projection = camera.projection_matrix();
-            let far_ndc = projection.project_point3(Vec3::NEG_Z).z;
-            let near_ndc = projection.project_point3(Vec3::Z).z;
-            let cursor_ndc = (adj_cursor_pos / viewport_size) * 2.0 - Vec2::ONE;
-            let ndc_to_world: Mat4 = view * projection.inverse();
-            let near = ndc_to_world.project_point3(cursor_ndc.extend(near_ndc));
-            let far = ndc_to_world.project_point3(cursor_ndc.extend(far_ndc));
-            let ray_direction = far - near;
-            Some(Ray3d::new(near, ray_direction))
+            camera
+                .viewport_to_world(camera_transform, cursor_pos_screen)
+                .map(Ray3d::from)
         }
 
         /// Checks if the ray intersects with an AABB of a mesh.
@@ -318,6 +304,12 @@ pub mod rays {
                     }
                 }
             }
+        }
+    }
+
+    impl From<Ray> for Ray3d {
+        fn from(ray: Ray) -> Self {
+            Ray3d::new(ray.origin, ray.direction)
         }
     }
 }
