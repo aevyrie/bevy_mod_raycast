@@ -244,12 +244,10 @@ pub mod rays {
                 cursor_pos_screen - Vec2::new(viewport_min.x, screen_size.y - viewport_max.y);
 
             let projection = camera.projection_matrix();
-            let far_ndc = projection.project_point3(Vec3::NEG_Z).z;
-            let near_ndc = projection.project_point3(Vec3::Z).z;
             let cursor_ndc = (adj_cursor_pos / viewport_size) * 2.0 - Vec2::ONE;
             let ndc_to_world: Mat4 = view * projection.inverse();
-            let near = ndc_to_world.project_point3(cursor_ndc.extend(near_ndc));
-            let far = ndc_to_world.project_point3(cursor_ndc.extend(far_ndc));
+            let near = ndc_to_world.project_point3(cursor_ndc.extend(1.));
+            let far = ndc_to_world.project_point3(cursor_ndc.extend(f32::EPSILON));
             let ray_direction = far - near;
             Some(Ray3d::new(near, ray_direction))
         }
