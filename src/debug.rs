@@ -37,7 +37,6 @@ pub fn update_debug_cursor<T: Reflect + Clone + 'static>(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut cursors: Query<(&RaycastMesh<T>, &mut Transform), With<DebugCursor<T>>>,
-    // intersection_without_cursor: Query<(Entity, &Intersection<T>), Without<DebugCursor<T>>>,
 ) {
     // // Set the cursor translation to the top pick's world coordinates
     // for (intersection, mut transform) in &mut cursors {
@@ -59,6 +58,16 @@ pub fn update_debug_cursor<T: Reflect + Clone + 'static>(
     //         );
     //     }
     // }
+}
+
+pub fn print_intersections<T: Reflect>(query: Query<&RaycastMesh<T>>) {
+    for intersection in query.iter().flat_map(|mesh| mesh.intersection.iter()) {
+        info!(
+            "Distance {:?}, Position {:?}",
+            intersection.distance(),
+            intersection.position()
+        );
+    }
 }
 
 fn spawn_cursor<T: 'static>(

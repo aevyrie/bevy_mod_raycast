@@ -1,5 +1,7 @@
 use bevy::prelude::*;
-use bevy_mod_raycast::{DefaultPluginState, DefaultRaycastingPlugin, RaycastMesh, RaycastSource};
+use bevy_mod_raycast::{
+    print_intersections, DefaultPluginState, DefaultRaycastingPlugin, RaycastMesh, RaycastSource,
+};
 
 // This example casts a ray from the camera using its transform, intersects a mesh, displays
 // the debug cursor at the intersection, and reports the intersection.
@@ -13,7 +15,7 @@ fn main() {
         .add_plugin(DefaultRaycastingPlugin::<MyRaycastSet>::default())
         .add_startup_system(setup)
         .add_system(rotator)
-        .add_system(intersection)
+        .add_system(print_intersections::<MyRaycastSet>)
         .run();
 }
 
@@ -62,17 +64,6 @@ fn setup(
         transform: Transform::from_translation(Vec3::new(4.0, 8.0, 4.0)),
         ..Default::default()
     });
-}
-
-/// Report intersections
-fn intersection(query: Query<&RaycastMesh<MyRaycastSet>>) {
-    for intersection in query.iter().map(|mesh| mesh.intersection).flatten() {
-        info!(
-            "Distance {:?}, Position {:?}",
-            intersection.distance(),
-            intersection.position()
-        );
-    }
 }
 
 /// Rotate the camera up and down to show that the raycast intersection is updated every frame.

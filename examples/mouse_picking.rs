@@ -1,11 +1,9 @@
 use bevy::{prelude::*, window::PresentMode};
 
 use bevy_mod_raycast::{
-    DefaultPluginState, DefaultRaycastingPlugin, RaycastMesh, RaycastMethod, RaycastSource,
-    RaycastSystem,
+    print_intersections, DefaultPluginState, DefaultRaycastingPlugin, RaycastMesh, RaycastMethod,
+    RaycastSource, RaycastSystem,
 };
-
-use bevy_prototype_debug_lines::{DebugLines, DebugLinesPlugin};
 
 // This example will show you how to use your mouse cursor as a ray casting source, cast into the
 // scene, intersect a mesh, and mark the intersection with the built in debug cursor. If you are
@@ -20,7 +18,6 @@ fn main() {
             }),
             ..default()
         }))
-        .add_plugin(DebugLinesPlugin::with_depth_test(true))
         // The DefaultRaycastingPlugin bundles all the functionality you might need into a single
         // plugin. This includes building rays, casting them, and placing a debug cursor at the
         // intersection. For more advanced uses, you can compose the systems in this plugin however
@@ -37,7 +34,7 @@ fn main() {
                 .before(RaycastSystem::BuildRays::<MyRaycastSet>),
         )
         .add_startup_system(setup)
-        .add_system(report_intersection)
+        .add_system(print_intersections::<MyRaycastSet>)
         .run();
 }
 
@@ -90,23 +87,4 @@ fn setup(
         transform: Transform::from_translation(Vec3::new(4.0, 8.0, 4.0)),
         ..Default::default()
     });
-}
-
-fn report_intersection(
-    query: Query<&RaycastMesh<MyRaycastSet>>,
-    mut debug_lines: ResMut<DebugLines>,
-) {
-    for intersection in query.iter().map(|mesh| mesh.intersection).flatten() {
-        info!(
-            "Distance {:?}, Position {:?}",
-            intersection.distance(),
-            intersection.position()
-        );
-        debug_lines.line_colored(
-            intersection.position(),
-            intersection.position() + intersection.normal(),
-            0.0,
-            Color::GREEN,
-        );
-    }
 }
