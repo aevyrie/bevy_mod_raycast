@@ -19,6 +19,7 @@ use bevy::sprite::Mesh2dHandle;
 use bevy::{
     math::Vec3A,
     prelude::*,
+    reflect::TypePath,
     render::{
         camera::Camera,
         mesh::{Indices, Mesh, VertexAttributeValues},
@@ -32,9 +33,10 @@ pub use crate::{primitives::*, raycast::*};
 pub use debug::*;
 
 pub struct DefaultRaycastingPlugin<T>(pub PhantomData<fn() -> T>);
-impl<T: 'static + Send + Sync + Reflect + Clone> Plugin for DefaultRaycastingPlugin<T> {
+impl<T: TypePath + Send + Sync> Plugin for DefaultRaycastingPlugin<T> {
     fn build(&self, app: &mut App) {
         app.init_resource::<DefaultPluginState<T>>().add_systems(
+            First,
             (
                 build_rays::<T>
                     .in_set(RaycastSystem::BuildRays::<T>)
@@ -46,17 +48,16 @@ impl<T: 'static + Send + Sync + Reflect + Clone> Plugin for DefaultRaycastingPlu
                     .in_set(RaycastSystem::UpdateIntersections::<T>)
                     .run_if(|state: Res<DefaultPluginState<T>>| state.update_raycast),
             )
-                .chain()
-                .in_base_set(CoreSet::First),
+                .chain(),
         );
 
         app.register_type::<RaycastMesh<T>>()
             .register_type::<RaycastSource<T>>();
 
         #[cfg(feature = "debug")]
-        app.add_system(
+        app.add_systems(
+            First,
             update_debug_cursor::<T>
-                .in_base_set(CoreSet::First)
                 .in_set(RaycastSystem::UpdateDebugCursor::<T>)
                 .run_if(|state: Res<DefaultPluginState<T>>| state.update_debug_cursor)
                 .after(RaycastSystem::UpdateIntersections::<T>),
@@ -76,7 +77,6 @@ pub enum RaycastSystem<T> {
     UpdateIntersections,
     #[cfg(feature = "debug")]
     UpdateDebugCursor,
-    #[system_set(ignore_fields)]
     _Phantom(PhantomData<fn() -> T>),
 }
 impl<T> PartialEq for RaycastSystem<T> {
@@ -154,16 +154,16 @@ impl<T> DefaultPluginState<T> {
 /// # Requirements
 ///
 /// The marked entity must also have a [Mesh] component.
-#[derive(Component, Debug, Clone)]
-pub struct RaycastMesh<T: Reflect> {
+#[derive(Component, Debug, Clone, Reflect)]
+#[reflect(Component)]
+pub struct RaycastMesh<T: TypePath> {
+    #[reflect(ignore)]
     pub intersection: ArrayVec<IntersectionData, 1>,
+    #[reflect(ignore)]
     _marker: PhantomData<T>,
 }
 
-bevy::reflect::impl_reflect_value!(RaycastMesh<T: Reflect + Clone>);
-bevy::reflect::impl_from_reflect_value!(RaycastMesh<T: Reflect + Clone>);
-
-impl<T: Reflect> Default for RaycastMesh<T> {
+impl<T: TypePath> Default for RaycastMesh<T> {
     fn default() -> Self {
         RaycastMesh {
             intersection: ArrayVec::new(),
@@ -175,29 +175,30 @@ impl<T: Reflect> Default for RaycastMesh<T> {
 /// The `RaycastSource` component is used to generate rays with the specified `cast_method`. A `ray`
 /// is generated when the RaycastSource is initialized, either by waiting for update_raycast system
 /// to process the ray, or by using a `with_ray` function.`
-#[derive(Component, Clone)]
-pub struct RaycastSource<T: Reflect + Clone> {
+#[derive(Component, Clone, Reflect)]
+#[reflect(Component)]
+pub struct RaycastSource<T: TypePath> {
     pub cast_method: RaycastMethod,
+    #[reflect(skip_serializing)]
     pub ray: Option<Ray3d>,
+    #[reflect(ignore)]
     intersections: Vec<(Entity, IntersectionData)>,
+    #[reflect(ignore)]
     _marker: PhantomData<fn() -> T>,
 }
 
-bevy::reflect::impl_reflect_value!(RaycastSource<T: Reflect + Clone>);
-bevy::reflect::impl_from_reflect_value!(RaycastSource<T: Reflect + Clone>);
-
-impl<T: Reflect + Clone> Default for RaycastSource<T> {
+impl<T: TypePath> Default for RaycastSource<T> {
     fn default() -> Self {
         RaycastSource {
             cast_method: RaycastMethod::Screenspace(Vec2::ZERO),
             ray: None,
             intersections: Vec::new(),
-            _marker: PhantomData::default(),
+            _marker: PhantomData,
         }
     }
 }
 
-impl<T: Reflect + Clone> RaycastSource<T> {
+impl<T: TypePath> RaycastSource<T> {
     /// Instantiates a [RaycastSource]. It will not be initialized until the update_raycast system
     /// runs, or one of the `with_ray` functions is run.
     pub fn new() -> RaycastSource<T> {
@@ -308,7 +309,7 @@ pub enum RaycastMethod {
     Transform,
 }
 
-pub fn build_rays<T: Reflect + Clone + 'static>(
+pub fn build_rays<T: TypePath>(
     mut pick_source_query: Query<(
         &mut RaycastSource<T>,
         Option<&GlobalTransform>,
@@ -360,7 +361,7 @@ pub fn build_rays<T: Reflect + Clone + 'static>(
 /// Iterates through all entities with the [RaycastMesh] component, checking for
 /// intersections. If these entities have bounding volumes, these will be checked first, greatly
 /// accelerating the process.
-pub fn update_raycast<T: Reflect + Clone + 'static>(
+pub fn update_raycast<T: TypePath + Send + Sync + 'static>(
     // Resources
     meshes: Res<Assets<Mesh>>,
     // Queries
@@ -498,10 +499,9 @@ pub fn update_raycast<T: Reflect + Clone + 'static>(
         }
     }
 }
-
-pub fn update_intersections<T: Reflect + Clone + 'static>(
-    mut meshes: Query<&mut RaycastMesh<T>>,
+pub fn update_intersections<T: TypePath + Send + Sync>(
     sources: Query<&RaycastSource<T>>,
+    mut meshes: Query<&mut RaycastMesh<T>>,
     mut previous_intersections: Local<Vec<Entity>>,
 ) {
     // Clear any entities with intersections last frame

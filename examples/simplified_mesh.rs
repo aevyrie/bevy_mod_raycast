@@ -1,5 +1,6 @@
 use bevy::{
-    diagnostic::{Diagnostics, FrameTimeDiagnosticsPlugin},
+    core_pipeline::tonemapping::Tonemapping,
+    diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
     prelude::*,
     window::PresentMode,
 };
@@ -14,27 +15,26 @@ use bevy_mod_raycast::{
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                present_mode: PresentMode::AutoNoVsync, // Reduces input lag.
-                ..Default::default()
+        .add_plugins((
+            DefaultPlugins.set(WindowPlugin {
+                primary_window: Some(Window {
+                    present_mode: PresentMode::AutoNoVsync, // Reduces input lag.
+                    ..Default::default()
+                }),
+                ..default()
             }),
-            ..default()
-        }))
-        .add_plugin(FrameTimeDiagnosticsPlugin::default())
-        .add_plugin(DefaultRaycastingPlugin::<MyRaycastSet>::default())
+            FrameTimeDiagnosticsPlugin,
+            DefaultRaycastingPlugin::<MyRaycastSet>::default(),
+        ))
         // You will need to pay attention to what order you add systems! Putting them in the wrong
         // order can result in multiple frames of latency. Ray casting should probably happen after
         // the positions of your meshes have been updated in the UPDATE stage.
-        .add_system(
-            update_raycast_with_cursor_position
-                .before(RaycastSystem::BuildRays::<MyRaycastSet>)
-                .in_base_set(CoreSet::First),
+        .add_systems(
+            First,
+            update_raycast_with_cursor_position.before(RaycastSystem::BuildRays::<MyRaycastSet>),
         )
-        .add_startup_system(setup_scene)
-        .add_startup_system(setup_ui)
-        .add_system(update_fps)
-        .add_system(manage_simplified_mesh)
+        .add_systems(Startup, (setup_scene, setup_ui))
+        .add_systems(Update, (update_fps, manage_simplified_mesh))
         .run();
 }
 
@@ -65,7 +65,10 @@ fn setup_scene(
 ) {
     commands.insert_resource(DefaultPluginState::<MyRaycastSet>::default().with_debug_cursor());
     commands
-        .spawn(Camera3dBundle::default())
+        .spawn(Camera3dBundle {
+            tonemapping: Tonemapping::ReinhardLuminance,
+            ..default()
+        })
         .insert(RaycastSource::<MyRaycastSet>::new()); // Designate the camera as our source
     commands.spawn((
         PbrBundle {
@@ -191,7 +194,7 @@ fn manage_simplified_mesh(
     }
 }
 
-fn update_fps(diagnostics: Res<Diagnostics>, mut query: Query<&mut Text, With<FpsText>>) {
+fn update_fps(diagnostics: Res<DiagnosticsStore>, mut query: Query<&mut Text, With<FpsText>>) {
     for mut text in &mut query {
         if let Some(fps) = diagnostics.get(FrameTimeDiagnosticsPlugin::FPS) {
             if let Some(average) = fps.average() {

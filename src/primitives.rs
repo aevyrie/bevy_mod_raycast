@@ -8,7 +8,7 @@ pub enum Primitive3d {
     Plane { point: Vec3, normal: Vec3 },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Reflect)]
 pub struct IntersectionData {
     position: Vec3,
     normal: Vec3,
@@ -67,7 +67,7 @@ impl IntersectionData {
 pub mod rays {
     use super::Primitive3d;
     use bevy::{
-        math::Vec3A,
+        math::{Ray, Vec3A},
         prelude::*,
         render::{camera::Camera, primitives::Aabb},
     };
@@ -107,7 +107,7 @@ pub mod rays {
     }
 
     /// A 3D ray, with an origin and direction. The direction is guaranteed to be normalized.
-    #[derive(Debug, PartialEq, Copy, Clone, Default)]
+    #[derive(Reflect, Debug, PartialEq, Copy, Clone, Default)]
     pub struct Ray3d {
         pub(crate) origin: Vec3A,
         pub(crate) direction: Vec3A,
@@ -146,14 +146,7 @@ pub mod rays {
         pub fn to_aligned_transform(self, up: Vec3) -> Mat4 {
             let position = self.origin();
             let normal = self.direction();
-            let axis = up.cross(normal).normalize();
-            let angle = up.dot(normal).acos();
-            let epsilon = f32::EPSILON;
-            let new_rotation = if angle.abs() > epsilon {
-                Quat::from_axis_angle(axis, angle)
-            } else {
-                Quat::default()
-            };
+            let new_rotation = Quat::from_rotation_arc(up, normal);
             Mat4::from_rotation_translation(new_rotation, position)
         }
 
@@ -170,23 +163,9 @@ pub mod rays {
             camera: &Camera,
             camera_transform: &GlobalTransform,
         ) -> Option<Self> {
-            let view = camera_transform.compute_matrix();
-
-            let (viewport_min, viewport_max) = camera.logical_viewport_rect()?;
-            let screen_size = camera.logical_target_size()?;
-            let viewport_size = viewport_max - viewport_min;
-            let adj_cursor_pos =
-                cursor_pos_screen - Vec2::new(viewport_min.x, screen_size.y - viewport_max.y);
-
-            let projection = camera.projection_matrix();
-            let far_ndc = projection.project_point3(Vec3::NEG_Z).z;
-            let near_ndc = projection.project_point3(Vec3::Z).z;
-            let cursor_ndc = (adj_cursor_pos / viewport_size) * 2.0 - Vec2::ONE;
-            let ndc_to_world: Mat4 = view * projection.inverse();
-            let near = ndc_to_world.project_point3(cursor_ndc.extend(near_ndc));
-            let far = ndc_to_world.project_point3(cursor_ndc.extend(far_ndc));
-            let ray_direction = far - near;
-            Some(Ray3d::new(near, ray_direction))
+            camera
+                .viewport_to_world(camera_transform, cursor_pos_screen)
+                .map(Ray3d::from)
         }
 
         /// Checks if the ray intersects with an AABB of a mesh.
@@ -255,9 +234,15 @@ pub mod rays {
             }
         }
     }
+
+    impl From<Ray> for Ray3d {
+        fn from(ray: Ray) -> Self {
+            Ray3d::new(ray.origin, ray.direction)
+        }
+    }
 }
 
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Copy, Clone, Reflect)]
 pub struct Triangle {
     pub v0: Vec3A,
     pub v1: Vec3A,

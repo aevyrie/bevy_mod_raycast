@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{core_pipeline::tonemapping::Tonemapping, prelude::*};
 use bevy_mod_raycast::{
     print_intersections, DefaultPluginState, DefaultRaycastingPlugin, RaycastMesh, RaycastSource,
 };
@@ -11,11 +11,12 @@ use bevy_mod_raycast::{
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
-        .add_plugin(DefaultRaycastingPlugin::<MyRaycastSet>::default())
-        .add_startup_system(setup)
-        .add_system(rotator)
-        .add_system(print_intersections::<MyRaycastSet>)
+        .add_plugins((
+            DefaultPlugins,
+            DefaultRaycastingPlugin::<MyRaycastSet>::default(),
+        ))
+        .add_systems(Startup, setup)
+        .add_systems(Update, (rotator, print_intersections::<MyRaycastSet>))
         .run();
 }
 
@@ -40,6 +41,7 @@ fn setup(
                 scale: 0.01,
                 ..default()
             }),
+            tonemapping: Tonemapping::ReinhardLuminance,
             ..default()
         },
         // Designate the camera as our ray casting source. Using `new_transform_empty()` means that

@@ -2,7 +2,7 @@
 
 use std::marker::PhantomData;
 
-use bevy::prelude::*;
+use bevy::{prelude::*, reflect::TypePath};
 
 use crate::RaycastMesh;
 
@@ -13,7 +13,7 @@ pub struct DebugCursor<T> {
 impl<T> Default for DebugCursor<T> {
     fn default() -> Self {
         DebugCursor {
-            _phantom: PhantomData::default(),
+            _phantom: PhantomData,
         }
     }
 }
@@ -25,14 +25,14 @@ pub struct DebugCursorMesh<T> {
 impl<T> Default for DebugCursorMesh<T> {
     fn default() -> Self {
         DebugCursorMesh {
-            _phantom: PhantomData::default(),
+            _phantom: PhantomData,
         }
     }
 }
 
 /// Updates the 3d cursor to be in the pointed world coordinates
 #[allow(clippy::too_many_arguments)]
-pub fn update_debug_cursor<T: Reflect + Clone + 'static>(
+pub fn update_debug_cursor<T: TypePath + Send + Sync>(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -60,7 +60,7 @@ pub fn update_debug_cursor<T: Reflect + Clone + 'static>(
     // }
 }
 
-pub fn print_intersections<T: Reflect>(query: Query<&RaycastMesh<T>>) {
+pub fn print_intersections<T: TypePath + Send + Sync>(query: Query<&RaycastMesh<T>>) {
     for intersection in query.iter().flat_map(|mesh| mesh.intersection.iter()) {
         info!(
             "Distance {:?}, Position {:?}",
