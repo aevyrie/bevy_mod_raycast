@@ -39,7 +39,12 @@ pub fn update_debug_cursor<T: TypePath + Send + Sync>(
 ) {
     for (_, intersection) in meshes.iter().flat_map(|m| m.intersections()) {
         gizmos.ray(intersection.position(), intersection.normal(), Color::GREEN);
-        gizmos.sphere(intersection.position(), Quat::IDENTITY, 0.1, Color::GREEN);
+        gizmos.circle(
+            intersection.position(),
+            intersection.normal(),
+            0.1,
+            Color::GREEN,
+        );
     }
 }
 
