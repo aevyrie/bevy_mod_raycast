@@ -11,7 +11,7 @@ pub struct DebugCursor<T> {
 impl<T> Default for DebugCursor<T> {
     fn default() -> Self {
         DebugCursor {
-            _phantom: PhantomData::default(),
+            _phantom: PhantomData,
         }
     }
 }
@@ -23,7 +23,7 @@ pub struct DebugCursorMesh<T> {
 impl<T> Default for DebugCursorMesh<T> {
     fn default() -> Self {
         DebugCursorMesh {
-            _phantom: PhantomData::default(),
+            _phantom: PhantomData,
         }
     }
 }
