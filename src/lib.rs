@@ -1,7 +1,7 @@
 #![allow(clippy::type_complexity)]
 
 #[cfg(feature = "debug")]
-mod debug;
+pub mod debug;
 mod primitives;
 mod raycast;
 
@@ -13,6 +13,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use arrayvec::ArrayVec;
 #[cfg(feature = "2d")]
 use bevy::sprite::Mesh2dHandle;
 use bevy::{
@@ -32,7 +33,7 @@ pub use crate::{primitives::*, raycast::*};
 pub use debug::*;
 
 pub struct DefaultRaycastingPlugin<T>(pub PhantomData<fn() -> T>);
-impl<T: 'static + TypePath + Send + Sync + Clone> Plugin for DefaultRaycastingPlugin<T> {
+impl<T: TypePath + Send + Sync> Plugin for DefaultRaycastingPlugin<T> {
     fn build(&self, app: &mut App) {
         app.init_resource::<DefaultPluginState<T>>().add_systems(
             First,
@@ -154,14 +155,18 @@ impl<T> DefaultPluginState<T> {
 ///
 /// The marked entity must also have a [Mesh] component.
 #[derive(Component, Debug, Clone, Reflect)]
-pub struct RaycastMesh<T> {
+#[reflect(Component)]
+pub struct RaycastMesh<T: TypePath> {
+    #[reflect(ignore)]
+    pub intersection: ArrayVec<IntersectionData, 1>,
     #[reflect(ignore)]
     _marker: PhantomData<T>,
 }
 
-impl<T> Default for RaycastMesh<T> {
+impl<T: TypePath> Default for RaycastMesh<T> {
     fn default() -> Self {
         RaycastMesh {
+            intersection: ArrayVec::new(),
             _marker: PhantomData,
         }
     }
@@ -171,7 +176,8 @@ impl<T> Default for RaycastMesh<T> {
 /// is generated when the RaycastSource is initialized, either by waiting for update_raycast system
 /// to process the ray, or by using a `with_ray` function.`
 #[derive(Component, Clone, Reflect)]
-pub struct RaycastSource<T: Clone> {
+#[reflect(Component)]
+pub struct RaycastSource<T: TypePath> {
     pub cast_method: RaycastMethod,
     #[reflect(skip_serializing)]
     pub ray: Option<Ray3d>,
@@ -181,7 +187,7 @@ pub struct RaycastSource<T: Clone> {
     _marker: PhantomData<fn() -> T>,
 }
 
-impl<T: Clone> Default for RaycastSource<T> {
+impl<T: TypePath> Default for RaycastSource<T> {
     fn default() -> Self {
         RaycastSource {
             cast_method: RaycastMethod::Screenspace(Vec2::ZERO),
@@ -192,7 +198,7 @@ impl<T: Clone> Default for RaycastSource<T> {
     }
 }
 
-impl<T: Clone> RaycastSource<T> {
+impl<T: TypePath> RaycastSource<T> {
     /// Instantiates a [RaycastSource]. It will not be initialized until the update_raycast system
     /// runs, or one of the `with_ray` functions is run.
     pub fn new() -> RaycastSource<T> {
@@ -303,7 +309,7 @@ pub enum RaycastMethod {
     Transform,
 }
 
-pub fn build_rays<T: TypePath + Clone + 'static>(
+pub fn build_rays<T: TypePath>(
     mut pick_source_query: Query<(
         &mut RaycastSource<T>,
         Option<&GlobalTransform>,
@@ -355,7 +361,7 @@ pub fn build_rays<T: TypePath + Clone + 'static>(
 /// Iterates through all entities with the [RaycastMesh] component, checking for
 /// intersections. If these entities have bounding volumes, these will be checked first, greatly
 /// accelerating the process.
-pub fn update_raycast<T: TypePath + Send + Sync + Clone + 'static>(
+pub fn update_raycast<T: TypePath + Send + Sync + 'static>(
     // Resources
     meshes: Res<Assets<Mesh>>,
     // Queries
@@ -369,17 +375,7 @@ pub fn update_raycast<T: TypePath + Send + Sync + Clone + 'static>(
         ),
         With<RaycastMesh<T>>,
     >,
-    #[cfg(feature = "debug")] mesh_query: Query<
-        (
-            &Handle<Mesh>,
-            Option<&SimplifiedMesh>,
-            Option<&NoBackfaceCulling>,
-            &GlobalTransform,
-            Entity,
-        ),
-        (With<RaycastMesh<T>>, Without<DebugCursorMesh<T>>),
-    >,
-    #[cfg(not(feature = "debug"))] mesh_query: Query<
+    mesh_query: Query<
         (
             &Handle<Mesh>,
             Option<&SimplifiedMesh>,
@@ -493,33 +489,27 @@ pub fn update_raycast<T: TypePath + Send + Sync + Clone + 'static>(
         }
     }
 }
-pub fn update_intersections<T: TypePath + Send + Sync + Clone + 'static>(
-    mut commands: Commands,
-    mut intersections: Query<&mut Intersection<T>>,
+pub fn update_intersections<T: TypePath + Send + Sync>(
     sources: Query<&RaycastSource<T>>,
+    mut meshes: Query<&mut RaycastMesh<T>>,
+    mut previous_intersections: Local<Vec<Entity>>,
 ) {
-    let mut intersect_iter = intersections.iter_mut();
-    for (_, new_intersection) in sources
-        .iter()
-        .filter_map(|source| source.get_nearest_intersection())
-    {
-        match intersect_iter.next() {
-            Some(mut intersection) => {
-                // If there is an existing intersection, reuse it.
-                intersection.data = Some(new_intersection.to_owned());
-            }
-            None => {
-                // If there are no intersections left in the world, spawn one.
-                commands
-                    .spawn_empty()
-                    .insert(Intersection::<T>::new(new_intersection.to_owned()));
-            }
+    // Clear any entities with intersections last frame
+    for entity in previous_intersections.drain(..) {
+        if let Ok(mesh) = meshes.get_mut(entity).as_mut() {
+            mesh.intersection.clear();
         }
     }
-    // Reset and despawn any remaining intersection. We need to be able to reset, because commands
-    // take a full stage to update.
-    for mut unused_intersect in intersect_iter {
-        unused_intersect.data = None;
+
+    for (entity, intersection) in sources
+        .iter()
+        .filter_map(|source| source.get_intersections())
+        .flatten()
+    {
+        if let Ok(mut mesh) = meshes.get_mut(*entity) {
+            mesh.intersection.push(intersection.to_owned());
+            previous_intersections.push(*entity);
+        }
     }
 }
 

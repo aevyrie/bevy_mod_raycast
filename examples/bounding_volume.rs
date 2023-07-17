@@ -26,7 +26,7 @@ fn main() {
                 }),
                 ..default()
             }),
-            FrameTimeDiagnosticsPlugin::default(),
+            FrameTimeDiagnosticsPlugin,
             DefaultRaycastingPlugin::<MyRaycastSet>::default(),
         ))
         // You will need to pay attention to what order you add systems! Putting them in the wrong

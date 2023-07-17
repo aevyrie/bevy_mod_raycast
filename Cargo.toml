@@ -15,6 +15,7 @@ bevy = { version = "0.11", default-features = false, features = [
     "bevy_render",
     "bevy_asset",
 ] }
+arrayvec = "0.7"
 
 [dev-dependencies]
 bevy = { version = "0.11", default-features = false, features = [
@@ -32,7 +33,7 @@ criterion = "0.4"
 [features]
 default = ["2d", "debug"]
 2d = ["bevy/bevy_sprite"]
-debug = ["bevy/bevy_pbr"]
+debug = ["bevy/bevy_gizmos"]
 
 [[bench]]
 name = "ray_mesh_intersection"

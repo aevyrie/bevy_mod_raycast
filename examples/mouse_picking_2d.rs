@@ -1,6 +1,7 @@
 use bevy::{core_pipeline::tonemapping::Tonemapping, prelude::*, sprite::MaterialMesh2dBundle};
 use bevy_mod_raycast::{
-    DefaultRaycastingPlugin, Intersection, RaycastMesh, RaycastMethod, RaycastSource, RaycastSystem,
+    print_intersections, DefaultRaycastingPlugin, RaycastMesh, RaycastMethod, RaycastSource,
+    RaycastSystem,
 };
 
 fn main() {
@@ -14,7 +15,7 @@ fn main() {
             update_raycast_with_cursor.before(RaycastSystem::BuildRays::<MyRaycastSet>),
         )
         .add_systems(Startup, setup)
-        .add_systems(Update, intersection)
+        .add_systems(Update, print_intersections::<MyRaycastSet>)
         .run();
 }
 
@@ -27,24 +28,9 @@ fn update_raycast_with_cursor(
     mut query: Query<&mut RaycastSource<MyRaycastSet>>,
 ) {
     // Grab the most recent cursor event if it exists:
-    let cursor_position = match cursor.iter().last() {
-        Some(cursor_moved) => cursor_moved.position,
-        None => return,
-    };
-
+    let Some(cursor_moved) = cursor.iter().last() else { return };
     for mut pick_source in &mut query {
-        pick_source.cast_method = RaycastMethod::Screenspace(cursor_position);
-    }
-}
-
-/// Report intersections
-fn intersection(query: Query<&Intersection<MyRaycastSet>>) {
-    for intersection in &query {
-        info!(
-            "Distance {:?}, Position {:?}",
-            intersection.distance(),
-            intersection.position()
-        );
+        pick_source.cast_method = RaycastMethod::Screenspace(cursor_moved.position);
     }
 }
 

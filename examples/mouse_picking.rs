@@ -1,8 +1,8 @@
 use bevy::{core_pipeline::tonemapping::Tonemapping, prelude::*, window::PresentMode};
 
 use bevy_mod_raycast::{
-    DefaultPluginState, DefaultRaycastingPlugin, RaycastMesh, RaycastMethod, RaycastSource,
-    RaycastSystem,
+    print_intersections, DefaultPluginState, DefaultRaycastingPlugin, RaycastMesh, RaycastMethod,
+    RaycastSource, RaycastSystem,
 };
 
 // This example will show you how to use your mouse cursor as a ray casting source, cast into the
@@ -32,7 +32,7 @@ fn main() {
             First,
             update_raycast_with_cursor.before(RaycastSystem::BuildRays::<MyRaycastSet>),
         )
-        .add_systems(Startup, setup)
+        .add_systems(Startup, (setup, print_intersections::<MyRaycastSet>))
         .run();
 }
 
@@ -48,13 +48,9 @@ fn update_raycast_with_cursor(
     mut query: Query<&mut RaycastSource<MyRaycastSet>>,
 ) {
     // Grab the most recent cursor event if it exists:
-    let cursor_position = match cursor.iter().last() {
-        Some(cursor_moved) => cursor_moved.position,
-        None => return,
-    };
-
+    let Some(cursor_moved) = cursor.iter().last() else { return };
     for mut pick_source in &mut query {
-        pick_source.cast_method = RaycastMethod::Screenspace(cursor_position);
+        pick_source.cast_method = RaycastMethod::Screenspace(cursor_moved.position);
     }
 }
 
