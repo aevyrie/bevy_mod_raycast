@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 
 use bevy::{prelude::*, reflect::TypePath};
 
-use crate::RaycastMesh;
+use crate::{RaycastMesh, RaycastSource};
 
 #[derive(Component)]
 pub struct DebugCursor<T> {
@@ -34,30 +34,13 @@ impl<T> Default for DebugCursorMesh<T> {
 #[allow(clippy::too_many_arguments)]
 pub fn update_debug_cursor<T: TypePath + Send + Sync>(
     mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-    mut cursors: Query<(&RaycastMesh<T>, &mut Transform), With<DebugCursor<T>>>,
+    mut meshes: Query<&RaycastSource<T>>,
+    mut gizmos: Gizmos,
 ) {
-    // // Set the cursor translation to the top pick's world coordinates
-    // for (intersection, mut transform) in &mut cursors {
-    //     if let Some(new_matrix) = intersection.normal_ray() {
-    //         *transform = Transform::from_matrix(new_matrix.to_transform());
-    //     } else {
-    //         *transform = Transform::from_translation(Vec3::NAN);
-    //     }
-    // }
-    // // Spawn a new debug cursor for intersections without one
-    // for (entity, intersection) in &intersection_without_cursor {
-    //     if let Some(new_matrix) = intersection.normal_ray() {
-    //         spawn_cursor::<T>(
-    //             &mut commands,
-    //             entity,
-    //             Transform::from_matrix(new_matrix.to_transform()),
-    //             &mut meshes,
-    //             &mut materials,
-    //         );
-    //     }
-    // }
+    for (_, intersection) in meshes.iter().flat_map(|m| m.intersections()) {
+        gizmos.ray(intersection.position(), intersection.normal(), Color::GREEN);
+        gizmos.sphere(intersection.position(), Quat::IDENTITY, 0.1, Color::GREEN);
+    }
 }
 
 pub fn print_intersections<T: TypePath + Send + Sync>(query: Query<&RaycastMesh<T>>) {
