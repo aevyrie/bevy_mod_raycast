@@ -139,7 +139,7 @@ impl<T> Intersection<T> {
 pub mod rays {
     use super::Primitive3d;
     use bevy::{
-        math::Vec3A,
+        math::{Ray, Vec3A},
         prelude::*,
         render::{camera::Camera, primitives::Aabb},
     };
@@ -179,7 +179,7 @@ pub mod rays {
     }
 
     /// A 3D ray, with an origin and direction. The direction is guaranteed to be normalized.
-    #[derive(Debug, PartialEq, Copy, Clone, Default)]
+    #[derive(Reflect, Debug, PartialEq, Copy, Clone, Default)]
     pub struct Ray3d {
         pub(crate) origin: Vec3A,
         pub(crate) direction: Vec3A,
@@ -235,21 +235,9 @@ pub mod rays {
             camera: &Camera,
             camera_transform: &GlobalTransform,
         ) -> Option<Self> {
-            let view = camera_transform.compute_matrix();
-
-            let (viewport_min, viewport_max) = camera.logical_viewport_rect()?;
-            let screen_size = camera.logical_target_size()?;
-            let viewport_size = viewport_max - viewport_min;
-            let adj_cursor_pos =
-                cursor_pos_screen - Vec2::new(viewport_min.x, screen_size.y - viewport_max.y);
-
-            let projection = camera.projection_matrix();
-            let cursor_ndc = (adj_cursor_pos / viewport_size) * 2.0 - Vec2::ONE;
-            let ndc_to_world: Mat4 = view * projection.inverse();
-            let near = ndc_to_world.project_point3(cursor_ndc.extend(1.));
-            let far = ndc_to_world.project_point3(cursor_ndc.extend(f32::EPSILON));
-            let ray_direction = far - near;
-            Some(Ray3d::new(near, ray_direction))
+            camera
+                .viewport_to_world(camera_transform, cursor_pos_screen)
+                .map(Ray3d::from)
         }
 
         /// Checks if the ray intersects with an AABB of a mesh.
@@ -316,6 +304,12 @@ pub mod rays {
                     }
                 }
             }
+        }
+    }
+
+    impl From<Ray> for Ray3d {
+        fn from(ray: Ray) -> Self {
+            Ray3d::new(ray.origin, ray.direction)
         }
     }
 }

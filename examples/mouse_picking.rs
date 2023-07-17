@@ -1,4 +1,4 @@
-use bevy::{prelude::*, window::PresentMode};
+use bevy::{core_pipeline::tonemapping::Tonemapping, prelude::*, window::PresentMode};
 
 use bevy_mod_raycast::{
     DefaultPluginState, DefaultRaycastingPlugin, RaycastMesh, RaycastMethod, RaycastSource,
@@ -22,18 +22,17 @@ fn main() {
         // plugin. This includes building rays, casting them, and placing a debug cursor at the
         // intersection. For more advanced uses, you can compose the systems in this plugin however
         // you need. For example, you might exclude the debug cursor system.
-        .add_plugin(DefaultRaycastingPlugin::<MyRaycastSet>::default())
+        .add_plugins(DefaultRaycastingPlugin::<MyRaycastSet>::default())
         // You will need to pay attention to what order you add systems! Putting them in the wrong
         // order can result in multiple frames of latency. Ray casting should probably happen near
         // start of the frame. For example, we want to be sure this system runs before we construct
         // any rays, hence the ".before(...)". You can use these provided RaycastSystem labels to
         // order your systems with the ones provided by the raycasting plugin.
-        .add_system(
-            update_raycast_with_cursor
-                .in_base_set(CoreSet::First)
-                .before(RaycastSystem::BuildRays::<MyRaycastSet>),
+        .add_systems(
+            First,
+            update_raycast_with_cursor.before(RaycastSystem::BuildRays::<MyRaycastSet>),
         )
-        .add_startup_system(setup)
+        .add_systems(Startup, setup)
         .run();
 }
 
@@ -72,6 +71,7 @@ fn setup(
     commands
         .spawn(Camera3dBundle {
             transform: Transform::from_xyz(-2.0, 2.0, 2.0).looking_at(Vec3::ZERO, Vec3::Y),
+            tonemapping: Tonemapping::ReinhardLuminance,
             ..Default::default()
         })
         .insert(RaycastSource::<MyRaycastSet>::new()); // Designate the camera as our source
