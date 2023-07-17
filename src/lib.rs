@@ -189,7 +189,7 @@ impl<T: Reflect + Clone> Default for RaycastSource<T> {
             cast_method: RaycastMethod::Screenspace(Vec2::ZERO),
             ray: None,
             intersections: Vec::new(),
-            _marker: PhantomData::default(),
+            _marker: PhantomData,
         }
     }
 }
