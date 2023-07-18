@@ -1,5 +1,8 @@
 use bevy::prelude::*;
-use bevy_mod_raycast::{DefaultPluginState, DefaultRaycastingPlugin, RaycastMesh, RaycastSource};
+use bevy_mod_raycast::{
+    DefaultPluginState, DefaultRaycastingPlugin, RaycastMesh, RaycastMethod, RaycastSource,
+    RaycastSystem,
+};
 
 fn main() {
     App::new()
@@ -7,6 +10,11 @@ fn main() {
         .add_plugin(DefaultRaycastingPlugin::<MyRaycastSet>::default())
         .insert_resource(DefaultPluginState::<MyRaycastSet>::default().with_debug_cursor())
         .add_startup_system(setup)
+        .add_system(
+            update_raycast_with_cursor
+                .in_base_set(CoreSet::First)
+                .before(RaycastSystem::BuildRays::<MyRaycastSet>),
+        )
         .add_system(move_sphere)
         .add_system(print_intersection)
         .run();
@@ -14,6 +22,22 @@ fn main() {
 
 #[derive(Reflect, Clone)]
 struct MyRaycastSet;
+
+// Update our `RaycastSource` with the current cursor position every frame.
+fn update_raycast_with_cursor(
+    mut cursor: EventReader<CursorMoved>,
+    mut query: Query<&mut RaycastSource<MyRaycastSet>>,
+) {
+    // Grab the most recent cursor event if it exists:
+    let cursor_position = match cursor.iter().last() {
+        Some(cursor_moved) => cursor_moved.position,
+        None => return,
+    };
+
+    for mut pick_source in &mut query {
+        pick_source.cast_method = RaycastMethod::Screenspace(cursor_position);
+    }
+}
 
 // Set up a simple scene with a sphere, camera, and light.
 fn setup(
@@ -25,12 +49,12 @@ fn setup(
         Camera3dBundle {
             projection: Projection::Orthographic(OrthographicProjection {
                 scale: 0.01,
-                near: -10.,
+                near: -20.,
                 ..default()
             }),
             ..default()
         },
-        RaycastSource::<MyRaycastSet>::new_transform_empty(),
+        RaycastSource::<MyRaycastSet>::new(),
     ));
     commands.spawn((
         PbrBundle {
@@ -49,7 +73,7 @@ fn setup(
 
 fn print_intersection(query: Query<&RaycastSource<MyRaycastSet>>) {
     for source in &query {
-        print!("Ray Z: {:?}", source.ray.map(|r| r.origin().z));
+        print!("Ray origin: {:?}", source.ray.map(|r| r.origin()));
         source.intersections().iter().for_each(|i| {
             print!(", Intersection: {:?}", i.1.position().z);
         });
