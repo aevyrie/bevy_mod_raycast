@@ -25,7 +25,7 @@ pub fn update_debug_cursor<T: TypePath + Send + Sync>(
 }
 
 pub fn print_intersections<T: TypePath + Send + Sync>(query: Query<&RaycastMesh<T>>) {
-    for intersection in query.iter().flat_map(|mesh| mesh.intersection.iter()) {
+    for (_, intersection) in query.iter().flat_map(|mesh| mesh.intersections.iter()) {
         info!(
             "Distance {:?}, Position {:?}",
             intersection.distance(),

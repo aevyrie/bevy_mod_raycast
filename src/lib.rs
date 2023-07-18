@@ -158,15 +158,23 @@ impl<T> DefaultPluginState<T> {
 #[reflect(Component)]
 pub struct RaycastMesh<T: TypePath> {
     #[reflect(ignore)]
-    pub intersection: ArrayVec<IntersectionData, 1>,
+    pub intersections: ArrayVec<(Entity, IntersectionData), 1>,
     #[reflect(ignore)]
     _marker: PhantomData<T>,
+}
+
+impl<T: TypePath> RaycastMesh<T> {
+    /// Get a reference to the ray cast source's intersections. Returns an empty list if there are
+    /// no intersections.
+    pub fn intersections(&self) -> &[(Entity, IntersectionData)] {
+        &self.intersections
+    }
 }
 
 impl<T: TypePath> Default for RaycastMesh<T> {
     fn default() -> Self {
         RaycastMesh {
-            intersection: ArrayVec::new(),
+            intersections: ArrayVec::new(),
             _marker: PhantomData,
         }
     }
@@ -182,7 +190,7 @@ pub struct RaycastSource<T: TypePath> {
     #[reflect(skip_serializing)]
     pub ray: Option<Ray3d>,
     #[reflect(ignore)]
-    intersections: Vec<(Entity, IntersectionData)>,
+    intersections: ArrayVec<(Entity, IntersectionData), 4>,
     #[reflect(ignore)]
     _marker: PhantomData<fn() -> T>,
 }
@@ -192,7 +200,7 @@ impl<T: TypePath> Default for RaycastSource<T> {
         RaycastSource {
             cast_method: RaycastMethod::Screenspace(Vec2::ZERO),
             ray: None,
-            intersections: Vec::new(),
+            intersections: ArrayVec::new(),
             _marker: PhantomData,
         }
     }
@@ -284,7 +292,7 @@ impl<T: TypePath> RaycastSource<T> {
     }
 
     /// Get a mutable reference to the ray cast source's intersections.
-    pub fn intersections_mut(&mut self) -> &mut Vec<(Entity, IntersectionData)> {
+    pub fn intersections_mut(&mut self) -> &mut ArrayVec<(Entity, IntersectionData), 4> {
         &mut self.intersections
     }
 }
@@ -490,25 +498,24 @@ pub fn update_raycast<T: TypePath + Send + Sync + 'static>(
     }
 }
 pub fn update_intersections<T: TypePath + Send + Sync>(
-    sources: Query<&RaycastSource<T>>,
+    sources: Query<(Entity, &RaycastSource<T>)>,
     mut meshes: Query<&mut RaycastMesh<T>>,
-    mut previous_intersections: Local<Vec<Entity>>,
+    mut previously_updated_raycast_meshes: Local<Vec<Entity>>,
 ) {
     // Clear any entities with intersections last frame
-    for entity in previous_intersections.drain(..) {
+    for entity in previously_updated_raycast_meshes.drain(..) {
         if let Ok(mesh) = meshes.get_mut(entity).as_mut() {
-            mesh.intersection.clear();
+            mesh.intersections.clear();
         }
     }
 
-    for (entity, intersection) in sources
-        .iter()
-        .filter_map(|source| source.get_intersections())
-        .flatten()
-    {
-        if let Ok(mut mesh) = meshes.get_mut(*entity) {
-            mesh.intersection.push(intersection.to_owned());
-            previous_intersections.push(*entity);
+    for (source_entity, source) in sources.iter() {
+        for (mesh_entity, intersection) in source.intersections().iter() {
+            if let Ok(mut mesh) = meshes.get_mut(*mesh_entity) {
+                mesh.intersections
+                    .push((source_entity, intersection.to_owned()));
+                previously_updated_raycast_meshes.push(*mesh_entity);
+            }
         }
     }
 }
