@@ -29,6 +29,7 @@ impl TryFrom<&MeshAccessor<'_>> for MeshOctree {
     fn try_from(mesh: &MeshAccessor<'_>) -> Result<Self, Self::Error> {
         let start = Instant::now();
         let mut octree_builder = OctreeBuilder::from(mesh);
+        let tris = octree_builder.node_stack[0].triangles.len();
         let aabb = octree_builder.aabb;
 
         while let Some(stack_entry) = octree_builder.pop_stack() {
@@ -43,7 +44,8 @@ impl TryFrom<&MeshAccessor<'_>> for MeshOctree {
         }
 
         let elapsed = start.elapsed();
-        info!("Built octree in {elapsed:#?}");
+        let tri_rate = elapsed.div_f32(tris as f32);
+        info!("Built octree in {elapsed:#?}, {tri_rate:#.2?}/tri");
 
         Ok(octree_builder.into())
     }
@@ -87,6 +89,9 @@ impl MeshOctree {
         mesh: MeshAccessor,
         backface: Backfaces,
     ) -> Option<IntersectionData> {
+        // Early exit if no intersection
+        ray.intersects_local_aabb(&self.aabb)?;
+
         let root_address = NodeAddr::new_root();
         let node_order = Self::node_intersect_order(ray);
         let mut op_stack: Vec<NodeAddr> = Vec::with_capacity(8);
@@ -103,7 +108,6 @@ impl MeshOctree {
                 }
             }
         }
-
         None
     }
 
@@ -174,9 +178,9 @@ impl MeshOctree {
                     _ => unreachable!("Malformed octree node"),
                 }
             })
-            .filter_map(move |child_addr| {
+            .filter(move |child_addr| {
                 let child_aabb = child_addr.compute_aabb(&self.aabb);
-                ray.intersects_local_aabb(&child_aabb).map(|_| child_addr)
+                ray.intersects_local_aabb(&child_aabb).is_some()
             })
             .rev() // Reverse the order - see method docs.
     }
@@ -316,7 +320,6 @@ impl NodeStackEntry {
     }
 
     /// Get a list of the triangles that intersect this node's AABB.
-    #[inline]
     pub fn build_child_from_intersecting_tris(
         &self,
         octree_node: u8,
@@ -324,14 +327,13 @@ impl NodeStackEntry {
         mesh_aabb: &Aabb,
     ) -> NodeStackEntry {
         let child_addr = self.address.push_bits(octree_node, false);
+        let aabb = child_addr.compute_aabb(mesh_aabb);
         let child_tris = self
             .triangles()
             .filter(|tri_index| {
-                let Some(triangle) = mesh.get_triangle(*tri_index) else {
-                    return false
-                };
-                let aabb = child_addr.compute_aabb(mesh_aabb);
-                triangle.intersects_aabb(aabb)
+                mesh.get_triangle(*tri_index)
+                    .map(|triangle| triangle.intersects_aabb(aabb))
+                    .unwrap_or_default()
             })
             .collect();
         NodeStackEntry::new(child_addr, child_tris)

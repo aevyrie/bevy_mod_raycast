@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use bevy::{prelude::*, window::PresentMode};
 
 use bevy_mod_raycast::{octree::MeshOctree, raycast::Backfaces, DefaultRaycastingPlugin};
@@ -54,13 +56,17 @@ fn update_raycast_with_cursor(
         .viewport_to_world(camera_transform, cursor_position)
         .unwrap();
 
-    for (mesh_handle, transform, octree) in &mesh_query {
-        let mesh = meshes.get(mesh_handle).unwrap();
-        let hit = octree.cast_ray(ray, mesh, transform, Backfaces::Cull);
-        if let Some(hit) = hit {
-            dbg!(hit);
+    let start = Instant::now();
+    for _ in 0..1000 {
+        for (mesh_handle, transform, octree) in &mesh_query {
+            let mesh = meshes.get(mesh_handle).unwrap();
+            let hit = octree.cast_ray(ray, mesh, transform, Backfaces::Cull);
+            if let Some(hit) = hit {
+                dbg!(hit);
+            }
         }
     }
+    dbg!(start.elapsed().div_f32(1000.));
 }
 
 // Set up a simple 3D scene
@@ -73,17 +79,23 @@ fn setup(
         transform: Transform::from_xyz(4.0, 0.0, 0.0).looking_at(Vec3::ZERO, Vec3::Y),
         ..Default::default()
     });
-    commands.spawn(PbrBundle {
-        mesh: meshes.add(
-            Mesh::try_from(shape::Icosphere {
-                radius: 1.0,
-                subdivisions: 40,
-            })
-            .unwrap(),
-        ),
-        material: materials.add(Color::rgb(1.0, 1.0, 1.0).into()),
-        ..Default::default()
-    });
+    let sphere = meshes.add(
+        Mesh::try_from(shape::Icosphere {
+            radius: 1.0,
+            subdivisions: 75,
+        })
+        .unwrap(),
+    );
+    let mut spawn_sphere = || {
+        commands.spawn(PbrBundle {
+            mesh: sphere.clone(),
+            material: materials.add(Color::rgb(1.0, 1.0, 1.0).into()),
+            ..Default::default()
+        });
+    };
+    for _ in 0..100 {
+        spawn_sphere();
+    }
     commands.spawn(PointLightBundle {
         transform: Transform::from_translation(Vec3::new(4.0, 4.0, 4.0)),
         ..Default::default()

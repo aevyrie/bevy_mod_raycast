@@ -374,18 +374,19 @@ impl Triangle {
         let e = [Vec3A::X, Vec3A::Y, Vec3A::Z];
 
         // Category 3 (9 tests): projected triangle radius vs projected AABB radius
-        fn axis_test_failed(h: Vec3A, v: [Vec3A; 3], e: Vec3A, f: Vec3A) -> bool {
-            let a = e.cross(f);
+        let axis_test_failed = |e_i: Vec3A, f_j: Vec3A| -> bool {
+            let a = e_i.cross(f_j);
             let p0 = v[0].dot(a);
             let p1 = v[1].dot(a);
             let p2 = v[2].dot(a);
             let r = h.x * a.x.abs() + h.y * a.y.abs() + h.z * a.z.abs();
             p0.max(p1).max(p2) < -r || p0.min(p1).min(p2) > r
-        }
+        };
+
         // Run every combination of the axis test:
         for i in 0..3 {
             for j in 0..3 {
-                if axis_test_failed(h, v, e[i], f[j]) {
+                if axis_test_failed(e[i], f[j]) {
                     return false;
                 }
             }
