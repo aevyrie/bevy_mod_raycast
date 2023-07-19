@@ -15,7 +15,6 @@ fn main() {
                 .in_base_set(CoreSet::First)
                 .before(RaycastSystem::BuildRays::<MyRaycastSet>),
         )
-        .add_system(move_sphere)
         .add_system(print_intersection)
         .run();
 }
@@ -78,12 +77,5 @@ fn print_intersection(query: Query<&RaycastSource<MyRaycastSet>>) {
             print!(", Intersection: {:?}", i.1.position().z);
         });
         println!("");
-    }
-}
-
-fn move_sphere(time: Res<Time>, mut query: Query<&mut Transform, With<RaycastMesh<MyRaycastSet>>>) {
-    for mut transform in &mut query {
-        let s = (time.elapsed_seconds() * 0.5).sin();
-        *transform = Transform::from_xyz(0.0, 0.0, s * 10.0);
     }
 }
