@@ -4,18 +4,14 @@
 pub mod debug;
 mod primitives;
 mod raycast;
+pub mod system_param;
 
 use std::{
-    collections::BTreeMap,
     fmt::Debug,
     hash::{Hash, Hasher},
     marker::PhantomData,
-    sync::{Arc, Mutex},
 };
 
-use arrayvec::ArrayVec;
-#[cfg(feature = "2d")]
-use bevy::sprite::Mesh2dHandle;
 use bevy::{
     math::Vec3A,
     prelude::*,
@@ -25,7 +21,6 @@ use bevy::{
         mesh::{Indices, Mesh, VertexAttributeValues},
         render_resource::PrimitiveTopology,
     },
-    utils::FloatOrd,
 };
 
 pub use crate::{primitives::*, raycast::*};
@@ -44,7 +39,7 @@ impl<T: TypePath + Send + Sync> Plugin for DefaultRaycastingPlugin<T> {
                 update_raycast::<T>
                     .in_set(RaycastSystem::UpdateRaycast::<T>)
                     .run_if(|state: Res<DefaultPluginState<T>>| state.update_raycast),
-                update_intersections::<T>
+                update_target_intersections::<T>
                     .in_set(RaycastSystem::UpdateIntersections::<T>)
                     .run_if(|state: Res<DefaultPluginState<T>>| state.update_raycast),
             )
@@ -158,7 +153,7 @@ impl<T> DefaultPluginState<T> {
 #[reflect(Component)]
 pub struct RaycastMesh<T: TypePath> {
     #[reflect(ignore)]
-    pub intersections: ArrayVec<(Entity, IntersectionData), 1>,
+    pub intersections: Vec<(Entity, IntersectionData)>,
     #[reflect(ignore)]
     _marker: PhantomData<T>,
 }
@@ -174,7 +169,7 @@ impl<T: TypePath> RaycastMesh<T> {
 impl<T: TypePath> Default for RaycastMesh<T> {
     fn default() -> Self {
         RaycastMesh {
-            intersections: ArrayVec::new(),
+            intersections: Vec::new(),
             _marker: PhantomData,
         }
     }
@@ -190,7 +185,7 @@ pub struct RaycastSource<T: TypePath> {
     #[reflect(skip_serializing)]
     pub ray: Option<Ray3d>,
     #[reflect(ignore)]
-    intersections: ArrayVec<(Entity, IntersectionData), 4>,
+    intersections: Vec<(Entity, IntersectionData)>,
     #[reflect(ignore)]
     _marker: PhantomData<fn() -> T>,
 }
@@ -200,7 +195,7 @@ impl<T: TypePath> Default for RaycastSource<T> {
         RaycastSource {
             cast_method: RaycastMethod::Screenspace(Vec2::ZERO),
             ray: None,
-            intersections: ArrayVec::new(),
+            intersections: Vec::new(),
             _marker: PhantomData,
         }
     }
@@ -292,8 +287,13 @@ impl<T: TypePath> RaycastSource<T> {
     }
 
     /// Get a mutable reference to the ray cast source's intersections.
-    pub fn intersections_mut(&mut self) -> &mut ArrayVec<(Entity, IntersectionData), 4> {
+    pub fn intersections_mut(&mut self) -> &mut Vec<(Entity, IntersectionData)> {
         &mut self.intersections
+    }
+
+    /// Returns `true` if this is using [`RaycastMethod::Screenspace`].
+    pub fn is_screenspace(&self) -> bool {
+        matches!(self.cast_method, RaycastMethod::Screenspace(_))
     }
 }
 
@@ -370,134 +370,19 @@ pub fn build_rays<T: TypePath>(
 /// intersections. If these entities have bounding volumes, these will be checked first, greatly
 /// accelerating the process.
 pub fn update_raycast<T: TypePath + Send + Sync + 'static>(
-    // Resources
-    meshes: Res<Assets<Mesh>>,
-    // Queries
+    raycast: system_param::Raycast<T>,
     mut pick_source_query: Query<&mut RaycastSource<T>>,
-    culling_query: Query<
-        (
-            &ComputedVisibility,
-            Option<&bevy::render::primitives::Aabb>,
-            &GlobalTransform,
-            Entity,
-        ),
-        With<RaycastMesh<T>>,
-    >,
-    mesh_query: Query<
-        (
-            &Handle<Mesh>,
-            Option<&SimplifiedMesh>,
-            Option<&NoBackfaceCulling>,
-            &GlobalTransform,
-            Entity,
-        ),
-        With<RaycastMesh<T>>,
-    >,
-    #[cfg(feature = "2d")] mesh2d_query: Query<
-        (
-            &Mesh2dHandle,
-            Option<&SimplifiedMesh>,
-            &GlobalTransform,
-            Entity,
-        ),
-        With<RaycastMesh<T>>,
-    >,
 ) {
     for mut pick_source in &mut pick_source_query {
         if let Some(ray) = pick_source.ray {
             pick_source.intersections.clear();
-            // Create spans for tracing
-            let ray_cull = info_span!("ray culling");
-            let raycast = info_span!("raycast");
-            let ray_cull_guard = ray_cull.enter();
-            // Check all entities to see if the source ray intersects the AABB, use this
-            // to build a short list of entities that are in the path of the ray.
-            let culled_list: Vec<Entity> = culling_query
-                .iter()
-                .filter_map(|(comp_visibility, bound_vol, transform, entity)| {
-                    let should_raycast =
-                        if let RaycastMethod::Screenspace(_) = pick_source.cast_method {
-                            comp_visibility.is_visible()
-                        } else {
-                            comp_visibility.is_visible_in_hierarchy()
-                        };
-                    if !should_raycast {
-                        return None;
-                    }
-                    if let Some(aabb) = bound_vol {
-                        if let Some([_, far]) =
-                            ray.intersects_aabb(aabb, &transform.compute_matrix())
-                        {
-                            if far >= 0.0 {
-                                Some(entity)
-                            } else {
-                                None
-                            }
-                        } else {
-                            None
-                        }
-                    } else {
-                        Some(entity)
-                    }
-                })
-                .collect();
-            drop(ray_cull_guard);
-
-            let picks = Arc::new(Mutex::new(BTreeMap::new()));
-
-            let pick_mesh =
-                |(mesh_handle, simplified_mesh, no_backface_culling, transform, entity): (
-                    &Handle<Mesh>,
-                    Option<&SimplifiedMesh>,
-                    Option<&NoBackfaceCulling>,
-                    &GlobalTransform,
-                    Entity,
-                )| {
-                    if culled_list.contains(&entity) {
-                        let _raycast_guard = raycast.enter();
-                        // Use the mesh handle to get a reference to a mesh asset
-                        if let Some(mesh) =
-                            meshes.get(simplified_mesh.map(|bm| &bm.mesh).unwrap_or(mesh_handle))
-                        {
-                            if let Some(intersection) = ray_intersection_over_mesh(
-                                mesh,
-                                &transform.compute_matrix(),
-                                &ray,
-                                if no_backface_culling.is_some() {
-                                    Backfaces::Include
-                                } else {
-                                    Backfaces::Cull
-                                },
-                            ) {
-                                picks.lock().unwrap().insert(
-                                    FloatOrd(intersection.distance()),
-                                    (entity, intersection),
-                                );
-                            }
-                        }
-                    }
-                };
-
-            mesh_query.par_iter().for_each(pick_mesh);
-            #[cfg(feature = "2d")]
-            mesh2d_query.par_iter().for_each(
-                |(mesh_handle, simplified_mesh, transform, entity)| {
-                    pick_mesh((
-                        &mesh_handle.0,
-                        simplified_mesh,
-                        Some(&NoBackfaceCulling),
-                        transform,
-                        entity,
-                    ))
-                },
-            );
-
-            let picks = Arc::try_unwrap(picks).unwrap().into_inner().unwrap();
+            let picks = raycast.cast_ray(ray, pick_source.is_screenspace());
             pick_source.intersections = picks.into_values().map(|(e, i)| (e, i)).collect();
         }
     }
 }
-pub fn update_intersections<T: TypePath + Send + Sync>(
+
+pub fn update_target_intersections<T: TypePath + Send + Sync>(
     sources: Query<(Entity, &RaycastSource<T>)>,
     mut meshes: Query<&mut RaycastMesh<T>>,
     mut previously_updated_raycast_meshes: Local<Vec<Entity>>,
@@ -523,7 +408,7 @@ pub fn update_intersections<T: TypePath + Send + Sync>(
 /// Cast a ray on a mesh, and returns the intersection
 pub fn ray_intersection_over_mesh(
     mesh: &Mesh,
-    mesh_to_world: &Mat4,
+    mesh_transform: &Mat4,
     ray: &Ray3d,
     backface_culling: Backfaces,
 ) -> Option<IntersectionData> {
@@ -555,7 +440,7 @@ pub fn ray_intersection_over_mesh(
         // Iterate over the list of pick rays that belong to the same group as this mesh
         match indices {
             Indices::U16(vertex_indices) => ray_mesh_intersection(
-                mesh_to_world,
+                mesh_transform,
                 vertex_positions,
                 vertex_normals,
                 ray,
@@ -563,7 +448,7 @@ pub fn ray_intersection_over_mesh(
                 backface_culling,
             ),
             Indices::U32(vertex_indices) => ray_mesh_intersection(
-                mesh_to_world,
+                mesh_transform,
                 vertex_positions,
                 vertex_normals,
                 ray,
@@ -573,7 +458,7 @@ pub fn ray_intersection_over_mesh(
         }
     } else {
         ray_mesh_intersection(
-            mesh_to_world,
+            mesh_transform,
             vertex_positions,
             vertex_normals,
             ray,
@@ -599,10 +484,10 @@ impl IntoUsize for u32 {
 
 /// Checks if a ray intersects a mesh, and returns the nearest intersection if one exists.
 pub fn ray_mesh_intersection(
-    mesh_to_world: &Mat4,
+    mesh_transform: &Mat4,
     vertex_positions: &[[f32; 3]],
     vertex_normals: Option<&[[f32; 3]]>,
-    pick_ray: &Ray3d,
+    ray: &Ray3d,
     indices: Option<&Vec<impl IntoUsize>>,
     backface_culling: Backfaces,
 ) -> Option<IntersectionData> {
@@ -611,11 +496,11 @@ pub fn ray_mesh_intersection(
     let mut min_pick_distance = f32::MAX;
     let mut pick_intersection = None;
 
-    let world_to_mesh = mesh_to_world.inverse();
+    let world_to_mesh = mesh_transform.inverse();
 
     let mesh_space_ray = Ray3d::new(
-        world_to_mesh.transform_point3(pick_ray.origin()),
-        world_to_mesh.transform_vector3(pick_ray.direction()),
+        world_to_mesh.transform_point3(ray.origin()),
+        world_to_mesh.transform_vector3(ray.direction()),
     );
 
     if let Some(indices) = indices {
@@ -649,16 +534,16 @@ pub fn ray_mesh_intersection(
             );
             if let Some(i) = intersection {
                 pick_intersection = Some(IntersectionData::new(
-                    mesh_to_world.transform_point3(i.position()),
-                    mesh_to_world.transform_vector3(i.normal()),
-                    mesh_to_world
+                    mesh_transform.transform_point3(i.position()),
+                    mesh_transform.transform_vector3(i.normal()),
+                    mesh_transform
                         .transform_vector3(mesh_space_ray.direction() * i.distance())
                         .length(),
                     i.triangle().map(|tri| {
                         Triangle::from([
-                            mesh_to_world.transform_point3a(tri.v0),
-                            mesh_to_world.transform_point3a(tri.v1),
-                            mesh_to_world.transform_point3a(tri.v2),
+                            mesh_transform.transform_point3a(tri.v0),
+                            mesh_transform.transform_point3a(tri.v1),
+                            mesh_transform.transform_point3a(tri.v2),
                         ])
                     }),
                 ));
@@ -688,16 +573,16 @@ pub fn ray_mesh_intersection(
             );
             if let Some(i) = intersection {
                 pick_intersection = Some(IntersectionData::new(
-                    mesh_to_world.transform_point3(i.position()),
-                    mesh_to_world.transform_vector3(i.normal()),
-                    mesh_to_world
+                    mesh_transform.transform_point3(i.position()),
+                    mesh_transform.transform_vector3(i.normal()),
+                    mesh_transform
                         .transform_vector3(mesh_space_ray.direction() * i.distance())
                         .length(),
                     i.triangle().map(|tri| {
                         Triangle::from([
-                            mesh_to_world.transform_point3a(tri.v0),
-                            mesh_to_world.transform_point3a(tri.v1),
-                            mesh_to_world.transform_point3a(tri.v2),
+                            mesh_transform.transform_point3a(tri.v0),
+                            mesh_transform.transform_point3a(tri.v1),
+                            mesh_transform.transform_point3a(tri.v2),
                         ])
                     }),
                 ));

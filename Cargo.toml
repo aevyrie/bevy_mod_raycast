@@ -15,7 +15,6 @@ bevy = { version = "0.11", default-features = false, features = [
     "bevy_render",
     "bevy_asset",
 ] }
-arrayvec = "0.7"
 
 [dev-dependencies]
 bevy = { version = "0.11", default-features = false, features = [
