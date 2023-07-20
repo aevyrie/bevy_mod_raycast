@@ -30,10 +30,9 @@ fn immediate_mode_raycast(raycast: Raycast<MyRaycastSet>, mut gizmos: Gizmos, ti
         let ray = Ray3d::new(ray_pos, ray_dir);
         if let Some((_, hit)) = raycast.cast_ray(ray, false).values().next() {
             gizmos.line(ray_pos, hit.position(), Color::RED);
-            gizmos.sphere(hit.position(), Quat::IDENTITY, 0.1, Color::BLUE);
             let proj = (ray_dir.dot(hit.normal()) / hit.normal().dot(hit.normal())) * hit.normal();
             ray_dir = (ray_dir - 2.0 * proj).normalize();
-            ray_pos = hit.position() + ray_dir * 0.01;
+            ray_pos = hit.position() + ray_dir * 1e-6;
         } else {
             gizmos.ray(ray_pos, ray_dir, Color::RED);
             break;
