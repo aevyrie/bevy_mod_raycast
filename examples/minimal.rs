@@ -1,13 +1,11 @@
-use bevy::{core_pipeline::tonemapping::Tonemapping, prelude::*};
-use bevy_mod_raycast::{
-    print_intersections, DefaultPluginState, DefaultRaycastingPlugin, RaycastMesh, RaycastSource,
-};
+//! This example casts a ray from the camera using its transform, intersects a mesh, displays the
+//! debug cursor at the intersection, and reports the intersection.
+//!
+//! It also demonstrates how normals are interpolated. Notice the debug cursor doesn't snap to the
+//! faces of the low-poly sphere's faces, but smoothly interpolates using the mesh's normals.
 
-// This example casts a ray from the camera using its transform, intersects a mesh, displays
-// the debug cursor at the intersection, and reports the intersection.
-//
-// It also demonstrates how normals are interpolated. Notice the debug cursor doesn't snap to the
-// faces of the low-poly sphere's faces, but smoothly interpolates using the mesh's normals.
+use bevy::prelude::*;
+use bevy_mod_raycast::{prelude::*, print_intersections};
 
 fn main() {
     App::new()
@@ -34,14 +32,15 @@ fn setup(
     // Overwrite the default plugin state with one that enables the debug cursor. This line can be
     // removed if the debug cursor isn't needed as the state is set to default values when the
     // default plugin is added.
-    commands.insert_resource(DefaultPluginState::<MyRaycastSet>::default().with_debug_cursor());
+    commands.insert_resource(
+        bevy_mod_raycast::RaycastPluginState::<MyRaycastSet>::default().with_debug_cursor(),
+    );
     commands.spawn((
         Camera3dBundle {
             projection: Projection::Orthographic(OrthographicProjection {
                 scale: 0.01,
                 ..default()
             }),
-            tonemapping: Tonemapping::ReinhardLuminance,
             ..default()
         },
         // Designate the camera as our ray casting source. Using `new_transform_empty()` means that

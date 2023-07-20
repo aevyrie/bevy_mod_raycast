@@ -1,3 +1,7 @@
+//! This example will show you how to use a simplified mesh to improve performance when raycasting
+//! over a scene with a complicated mesh. The simplified mesh will be used to check faster for
+//! intersection with the mesh.
+
 use bevy::{
     core_pipeline::tonemapping::Tonemapping,
     diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
@@ -5,13 +9,9 @@ use bevy::{
     window::PresentMode,
 };
 use bevy_mod_raycast::{
-    DefaultPluginState, DefaultRaycastingPlugin, RaycastMesh, RaycastMethod, RaycastSource,
+    DefaultRaycastingPlugin, RaycastMesh, RaycastMethod, RaycastPluginState, RaycastSource,
     RaycastSystem, SimplifiedMesh,
 };
-
-// This example will show you how to setup simplified mesh to optimize when raycasting over a
-// scene with a complicated mesh. The simplified mesh will be used to check faster for intersection
-// with the mesh.
 
 fn main() {
     App::new()
@@ -63,7 +63,7 @@ fn setup_scene(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    commands.insert_resource(DefaultPluginState::<MyRaycastSet>::default().with_debug_cursor());
+    commands.insert_resource(RaycastPluginState::<MyRaycastSet>::default().with_debug_cursor());
     commands
         .spawn(Camera3dBundle {
             tonemapping: Tonemapping::ReinhardLuminance,
@@ -94,8 +94,7 @@ fn setup_scene(
 }
 
 // Set up UI to show status of simplified mesh
-fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let font = asset_server.load("fonts/FiraMono-Medium.ttf");
+fn setup_ui(mut commands: Commands) {
     commands
         .spawn(NodeBundle {
             style: Style {
@@ -113,17 +112,17 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                         TextSection {
                             value: "Press spacebar to toggle - FPS: ".to_string(),
                             style: TextStyle {
-                                font: font.clone(),
                                 font_size: 30.0,
                                 color: Color::WHITE,
+                                ..default()
                             },
                         },
                         TextSection {
                             value: "".to_string(),
                             style: TextStyle {
-                                font: font.clone(),
                                 font_size: 30.0,
                                 color: Color::WHITE,
+                                ..default()
                             },
                         },
                     ],
@@ -139,17 +138,17 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                         TextSection {
                             value: "Simplified Mesh: ".to_string(),
                             style: TextStyle {
-                                font: font.clone(),
                                 font_size: 30.0,
                                 color: Color::WHITE,
+                                ..default()
                             },
                         },
                         TextSection {
                             value: "ON".to_string(),
                             style: TextStyle {
-                                font: font.clone(),
                                 font_size: 30.0,
                                 color: Color::GREEN,
+                                ..default()
                             },
                         },
                     ],

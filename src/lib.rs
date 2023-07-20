@@ -27,21 +27,28 @@ pub use crate::{primitives::*, raycast::*};
 #[cfg(feature = "debug")]
 pub use debug::*;
 
+pub mod prelude {
+    pub use crate::{
+        system_param::Raycast, DefaultRaycastingPlugin, Ray3d, RaycastMesh, RaycastMethod,
+        RaycastPluginState, RaycastSource, RaycastSystem,
+    };
+}
+
 pub struct DefaultRaycastingPlugin<T>(pub PhantomData<fn() -> T>);
 impl<T: TypePath + Send + Sync> Plugin for DefaultRaycastingPlugin<T> {
     fn build(&self, app: &mut App) {
-        app.init_resource::<DefaultPluginState<T>>().add_systems(
+        app.init_resource::<RaycastPluginState<T>>().add_systems(
             First,
             (
                 build_rays::<T>
                     .in_set(RaycastSystem::BuildRays::<T>)
-                    .run_if(|state: Res<DefaultPluginState<T>>| state.build_rays),
+                    .run_if(|state: Res<RaycastPluginState<T>>| state.build_rays),
                 update_raycast::<T>
                     .in_set(RaycastSystem::UpdateRaycast::<T>)
-                    .run_if(|state: Res<DefaultPluginState<T>>| state.update_raycast),
+                    .run_if(|state: Res<RaycastPluginState<T>>| state.update_raycast),
                 update_target_intersections::<T>
                     .in_set(RaycastSystem::UpdateIntersections::<T>)
-                    .run_if(|state: Res<DefaultPluginState<T>>| state.update_raycast),
+                    .run_if(|state: Res<RaycastPluginState<T>>| state.update_raycast),
             )
                 .chain(),
         );
@@ -54,7 +61,7 @@ impl<T: TypePath + Send + Sync> Plugin for DefaultRaycastingPlugin<T> {
             First,
             update_debug_cursor::<T>
                 .in_set(RaycastSystem::UpdateDebugCursor::<T>)
-                .run_if(|state: Res<DefaultPluginState<T>>| state.update_debug_cursor)
+                .run_if(|state: Res<RaycastPluginState<T>>| state.update_debug_cursor)
                 .after(RaycastSystem::UpdateIntersections::<T>),
         );
     }
@@ -114,7 +121,7 @@ impl<T> Clone for RaycastSystem<T> {
 
 /// Global plugin state used to enable or disable all ray casting for a given type T.
 #[derive(Component, Resource)]
-pub struct DefaultPluginState<T> {
+pub struct RaycastPluginState<T> {
     pub build_rays: bool,
     pub update_raycast: bool,
     #[cfg(feature = "debug")]
@@ -122,9 +129,9 @@ pub struct DefaultPluginState<T> {
     _marker: PhantomData<fn() -> T>,
 }
 
-impl<T> Default for DefaultPluginState<T> {
+impl<T> Default for RaycastPluginState<T> {
     fn default() -> Self {
-        DefaultPluginState {
+        RaycastPluginState {
             build_rays: true,
             update_raycast: true,
             #[cfg(feature = "debug")]
@@ -135,9 +142,9 @@ impl<T> Default for DefaultPluginState<T> {
 }
 
 #[cfg(feature = "debug")]
-impl<T> DefaultPluginState<T> {
+impl<T> RaycastPluginState<T> {
     pub fn with_debug_cursor(self) -> Self {
-        DefaultPluginState {
+        RaycastPluginState {
             update_debug_cursor: true,
             ..self
         }

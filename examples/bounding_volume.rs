@@ -1,5 +1,8 @@
+//! This example will show you how to setup bounding volume to optimize when raycasting over a scene
+//! with many meshes. The bounding volume will be used to check faster for which mesh to actually
+//! raycast on.
+
 use bevy::{
-    core_pipeline::tonemapping::Tonemapping,
     diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
     math::Vec3A,
     prelude::*,
@@ -7,14 +10,7 @@ use bevy::{
     window::PresentMode,
 };
 
-use bevy_mod_raycast::{
-    DefaultPluginState, DefaultRaycastingPlugin, RaycastMesh, RaycastMethod, RaycastSource,
-    RaycastSystem,
-};
-
-// This example will show you how to setup bounding volume to optimize when raycasting over a
-// scene with many meshes. The bounding volume will be used to check faster for which mesh
-// to actually raycast on.
+use bevy_mod_raycast::prelude::*;
 
 fn main() {
     App::new()
@@ -63,7 +59,7 @@ fn update_raycast_with_cursor(
 
 // Set up a simple 3D scene
 fn setup_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.insert_resource(DefaultPluginState::<MyRaycastSet>::default().with_debug_cursor());
+    commands.insert_resource(RaycastPluginState::<MyRaycastSet>::default().with_debug_cursor());
     commands.spawn(DirectionalLightBundle {
         transform: Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, 20.0, 20.0, 0.0)),
         directional_light: DirectionalLight {
@@ -73,12 +69,10 @@ fn setup_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
         ..Default::default()
     });
 
-    commands
-        .spawn(Camera3dBundle {
-            tonemapping: Tonemapping::ReinhardLuminance,
-            ..default()
-        })
-        .insert(RaycastSource::<MyRaycastSet>::new()); // Designate the camera as our source
+    commands.spawn((
+        Camera3dBundle::default(),
+        RaycastSource::<MyRaycastSet>::new(), // Designate the camera as our source
+    ));
 
     // Spawn multiple mesh to raycast on
     let n = 8;
@@ -112,8 +106,7 @@ fn make_scene_pickable(
 }
 
 // Set up UI to show status of bounding volume
-fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let font = asset_server.load("fonts/FiraMono-Medium.ttf");
+fn setup_ui(mut commands: Commands) {
     commands
         .spawn(NodeBundle {
             style: Style {
@@ -131,17 +124,17 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                         TextSection {
                             value: "Press spacebar to toggle - FPS: ".to_string(),
                             style: TextStyle {
-                                font: font.clone(),
                                 font_size: 40.0,
                                 color: Color::WHITE,
+                                ..default()
                             },
                         },
                         TextSection {
                             value: "".to_string(),
                             style: TextStyle {
-                                font: font.clone(),
                                 font_size: 40.0,
                                 color: Color::WHITE,
+                                ..default()
                             },
                         },
                     ],
@@ -156,17 +149,17 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                         TextSection {
                             value: "AABB Culling: ".to_string(),
                             style: TextStyle {
-                                font: font.clone(),
                                 font_size: 40.0,
                                 color: Color::WHITE,
+                                ..default()
                             },
                         },
                         TextSection {
                             value: "ON".to_string(),
                             style: TextStyle {
-                                font: font.clone(),
                                 font_size: 40.0,
                                 color: Color::GREEN,
+                                ..default()
                             },
                         },
                     ],

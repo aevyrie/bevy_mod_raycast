@@ -1,8 +1,5 @@
-use bevy::{core_pipeline::tonemapping::Tonemapping, prelude::*, sprite::MaterialMesh2dBundle};
-use bevy_mod_raycast::{
-    print_intersections, DefaultRaycastingPlugin, RaycastMesh, RaycastMethod, RaycastSource,
-    RaycastSystem,
-};
+use bevy::{prelude::*, sprite::MaterialMesh2dBundle};
+use bevy_mod_raycast::{prelude::*, print_intersections};
 
 fn main() {
     App::new()
@@ -40,10 +37,7 @@ fn setup(
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     commands
-        .spawn(Camera2dBundle {
-            tonemapping: Tonemapping::ReinhardLuminance,
-            ..default()
-        })
+        .spawn(Camera2dBundle { ..default() })
         .insert(RaycastSource::<MyRaycastSet>::new()); // Designate the camera as our source;
     commands
         .spawn(MaterialMesh2dBundle {

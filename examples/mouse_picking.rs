@@ -1,9 +1,6 @@
-use bevy::{core_pipeline::tonemapping::Tonemapping, prelude::*, window::PresentMode};
+use bevy::{prelude::*, window::PresentMode};
 
-use bevy_mod_raycast::{
-    print_intersections, DefaultPluginState, DefaultRaycastingPlugin, RaycastMesh, RaycastMethod,
-    RaycastSource, RaycastSystem,
-};
+use bevy_mod_raycast::{prelude::*, print_intersections};
 
 // This example will show you how to use your mouse cursor as a ray casting source, cast into the
 // scene, intersect a mesh, and mark the intersection with the built in debug cursor. If you are
@@ -63,11 +60,10 @@ fn setup(
     // Overwrite the default plugin state with one that enables the debug cursor. This line can be
     // removed if the debug cursor isn't needed as the state is set to default values when the
     // default plugin is added.
-    commands.insert_resource(DefaultPluginState::<MyRaycastSet>::default().with_debug_cursor());
+    commands.insert_resource(RaycastPluginState::<MyRaycastSet>::default().with_debug_cursor());
     commands
         .spawn(Camera3dBundle {
             transform: Transform::from_xyz(-2.0, 2.0, 2.0).looking_at(Vec3::ZERO, Vec3::Y),
-            tonemapping: Tonemapping::ReinhardLuminance,
             ..Default::default()
         })
         .insert(RaycastSource::<MyRaycastSet>::new()); // Designate the camera as our source
