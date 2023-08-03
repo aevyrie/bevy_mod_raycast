@@ -73,7 +73,7 @@ fn setup_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     commands.spawn((
         Camera3dBundle::default(),
-        RaycastSource::<MyRaycastSet>::new(), // Designate the camera as our source
+        RaycastSource::<MyRaycastSet>::default().with_early_exit(true), // Designate camera as our source
     ));
 
     // Spawn multiple mesh to raycast on

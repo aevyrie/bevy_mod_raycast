@@ -13,7 +13,7 @@ fn main() {
 }
 
 const MAX_BOUNCES: usize = 128;
-const LASER_MOVE_SPEED: f32 = 0.005;
+const LASER_MOVE_SPEED: f32 = 0.05;
 
 #[derive(Reflect)]
 struct Laser;
@@ -29,7 +29,7 @@ fn bouncing_raycast(raycast: Raycast<Laser>, mut gizmos: Gizmos, time: Res<Time>
 
     for i in 0..MAX_BOUNCES {
         let ray = Ray3d::new(ray_pos, ray_dir);
-        if let Some((_, hit)) = raycast.cast_ray(ray, false).first() {
+        if let Some((_, hit)) = raycast.cast_ray(ray, false, true).first() {
             let a = 0.2 + 0.8 * (1.0 - i as f32 / MAX_BOUNCES as f32);
             let color = Color::rgba(1.0, 0.0, 0.0, a);
             intersections.push((hit.position(), color));

@@ -64,6 +64,7 @@ impl<'w, 's, T: TypePath + Send + Sync> Raycast<'w, 's, T> {
         &self,
         ray: Ray3d,
         should_frustum_cull: bool,
+        should_early_exit: bool,
     ) -> Vec<(Entity, IntersectionData)> {
         let ray_cull = info_span!("ray culling");
         let ray_cull_guard = ray_cull.enter();
@@ -112,12 +113,14 @@ impl<'w, 's, T: TypePath + Send + Sync> Raycast<'w, 's, T> {
                     return
                 };
 
-                // Is it even possible the mesh could be closer than the current best?
-                let Some(&nearest_hit) = nearest_hit_lock.read().as_deref().ok() else {
-                    return
-                };
-                if aabb_near > nearest_hit {
-                    return;
+                if should_early_exit {
+                    // Is it even possible the mesh could be closer than the current best?
+                    let Some(&nearest_hit) = nearest_hit_lock.read().as_deref().ok() else {
+                        return
+                    };
+                    if aabb_near > nearest_hit {
+                        return;
+                    }
                 }
 
                 let mesh_handle = simplified_mesh.map(|m| &m.mesh).unwrap_or(mesh_handle);
@@ -134,8 +137,10 @@ impl<'w, 's, T: TypePath + Send + Sync> Raycast<'w, 's, T> {
                 let intersection = ray_intersection_over_mesh(mesh, &transform, &ray, backfaces);
                 if let Some(intersection) = intersection {
                     let distance = FloatOrd(intersection.distance());
-                    if let Ok(nearest_hit) = nearest_hit_lock.write().as_deref_mut() {
-                        *nearest_hit = distance.min(*nearest_hit);
+                    if should_early_exit {
+                        if let Ok(nearest_hit) = nearest_hit_lock.write().as_deref_mut() {
+                            *nearest_hit = distance.min(*nearest_hit);
+                        }
                     }
                     hits_tx.send((distance, (entity, intersection))).ok();
                 };
@@ -156,6 +161,12 @@ impl<'w, 's, T: TypePath + Send + Sync> Raycast<'w, 's, T> {
         );
         let mut hits: Vec<_> = hits_rx.try_iter().collect();
         hits.sort_by_key(|(k, _)| *k);
-        hits.drain(..).map(|(_, v)| v).collect()
+        if should_early_exit {
+            hits.first()
+                .map(|(_, (e, i))| vec![(*e, i.clone())])
+                .unwrap_or_default()
+        } else {
+            hits.drain(..).map(|(_, v)| v).collect()
+        }
     }
 }

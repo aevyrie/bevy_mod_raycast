@@ -31,7 +31,7 @@ fn immediate_mode_raycast(raycast: Raycast<MyRaycastSet>, mut gizmos: Gizmos, ti
     gizmos.sphere(ray_pos, Quat::IDENTITY, 0.1, Color::YELLOW);
 
     // This is all that is needed to raycast into the world!
-    let hits = raycast.cast_ray(ray, false);
+    let hits = raycast.cast_ray(ray, false, true);
 
     // Go through the intersections and render them as a pink circle
     if let Some((_, hit)) = hits.first() {

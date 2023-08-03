@@ -189,6 +189,9 @@ impl<T: TypePath> Default for RaycastMesh<T> {
 #[reflect(Component)]
 pub struct RaycastSource<T: TypePath> {
     pub cast_method: RaycastMethod,
+    /// Should raycasts early-out, only hitting the topmost entity? This is generally more
+    /// performant.
+    pub should_early_exit: bool,
     #[reflect(skip_serializing)]
     pub ray: Option<Ray3d>,
     #[reflect(ignore)]
@@ -201,6 +204,7 @@ impl<T: TypePath> Default for RaycastSource<T> {
     fn default() -> Self {
         RaycastSource {
             cast_method: RaycastMethod::Screenspace(Vec2::ZERO),
+            should_early_exit: true,
             ray: None,
             intersections: Vec::new(),
             _marker: PhantomData,
@@ -224,8 +228,7 @@ impl<T: TypePath> RaycastSource<T> {
         RaycastSource {
             cast_method: RaycastMethod::Screenspace(cursor_pos_screen),
             ray: Ray3d::from_screenspace(cursor_pos_screen, camera, camera_transform),
-            intersections: self.intersections,
-            _marker: self._marker,
+            ..self
         }
     }
     /// Initializes a [RaycastSource] with a valid ray derived from a transform.
@@ -233,10 +236,18 @@ impl<T: TypePath> RaycastSource<T> {
         RaycastSource {
             cast_method: RaycastMethod::Transform,
             ray: Some(Ray3d::from_transform(transform)),
-            intersections: self.intersections,
-            _marker: self._marker,
+            ..self
         }
     }
+
+    /// Set the `should_early_exit` field of this raycast source.
+    pub fn with_early_exit(self, should_early_exit: bool) -> Self {
+        Self {
+            should_early_exit,
+            ..self
+        }
+    }
+
     /// Instantiates and initializes a [RaycastSource] with a valid screenspace ray.
     pub fn new_screenspace(
         cursor_pos_screen: Vec2,
@@ -382,7 +393,11 @@ pub fn update_raycast<T: TypePath + Send + Sync + 'static>(
     for mut pick_source in &mut pick_source_query {
         if let Some(ray) = pick_source.ray {
             pick_source.intersections.clear();
-            pick_source.intersections = raycast.cast_ray(ray, pick_source.is_screenspace());
+            pick_source.intersections = raycast.cast_ray(
+                ray,
+                pick_source.is_screenspace(),
+                pick_source.should_early_exit,
+            );
         }
     }
 }
