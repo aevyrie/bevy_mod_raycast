@@ -1,5 +1,6 @@
 //! This example demonstrates how to use the [`Raycast`] system param in queries to run raycasts
-//! on-demand, in an immediate mode style. Unlike using a [`RaycastSource`]
+//! on-demand, in an immediate mode style. This is unlike using a [`RaycastSource`] which runs a
+//! raycast and stores the result once per frame.
 
 use bevy::prelude::*;
 use bevy_mod_raycast::prelude::*;
@@ -15,26 +16,31 @@ fn main() {
         .run();
 }
 
-#[derive(Reflect, Clone)]
+#[derive(Reflect)]
 struct MyRaycastSet;
 
 fn immediate_mode_raycast(raycast: Raycast<MyRaycastSet>, mut gizmos: Gizmos, time: Res<Time>) {
     // Animate the ray around the sphere mesh, always pointing to the center of the sphere
     let t = time.elapsed_seconds();
-    let ray_pos = Vec3::new(t.sin(), (3.0 * t).cos() * 0.5, t.cos()) * 2.0;
-    let ray_dir = (-ray_pos).normalize();
+    let ray_pos = Vec3::new(t.sin(), (3.0 * t).cos() * 0.5, t.cos()) * 2.5;
+    let ray_dir = -ray_pos.normalize();
     let ray = Ray3d::new(ray_pos, ray_dir);
 
     // Debug draw the ray
     gizmos.ray(ray_pos, ray_dir, Color::YELLOW);
     gizmos.sphere(ray_pos, Quat::IDENTITY, 0.1, Color::YELLOW);
 
-    // This is all that is needed to raycast the ray into the world
+    // This is all that is needed to raycast into the world!
     let hits = raycast.cast_ray(ray, false);
 
-    // Go through the intersections and render the intersection as a pink circle
-    for (_entity, hit) in hits.values() {
-        gizmos.circle(hit.position(), hit.normal(), 0.1, Color::PINK);
+    // Go through the intersections and render them as a pink circle
+    if let Some((_, hit)) = hits.first() {
+        gizmos.sphere(
+            hit.position(),
+            Quat::from_rotation_arc(Vec3::Z, hit.normal()),
+            0.2,
+            Color::PINK,
+        );
     }
 }
 

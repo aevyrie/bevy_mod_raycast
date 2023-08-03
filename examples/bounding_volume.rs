@@ -41,7 +41,7 @@ fn main() {
 // This is a unit struct we will use to mark our generic `RaycastMesh`s and `RaycastSource` as part
 // of the same group, or "RaycastSet". For more complex use cases, you might use this to associate
 // some meshes with one ray casting source, and other meshes with a different ray casting source."
-#[derive(Clone, Reflect)]
+#[derive(Reflect)]
 struct MyRaycastSet;
 
 // Update our `RaycastSource` with the current cursor position every frame.
@@ -75,17 +75,18 @@ fn setup_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
     ));
 
     // Spawn multiple mesh to raycast on
-    let n = 8;
+    let n = 0;
     for i in -n..=n {
         for j in -n..=n {
-            for k in -n..=n {
+            for k in -1000..=-1 {
                 commands.spawn((bevy::prelude::SceneBundle {
                     scene: asset_server.load("models/monkey/Monkey.gltf#Scene0"),
                     transform: Transform::from_translation(Vec3::new(
                         i as f32 * 3.0,
                         j as f32 * 3.0,
-                        k as f32 * 3.0 - n as f32 * 4.0,
-                    )),
+                        k as f32 * 3.0,
+                    ))
+                    .with_scale(Vec3::splat((k as f32).abs().powf(1.01))),
                     ..default()
                 },));
             }
@@ -207,8 +208,10 @@ fn manage_aabb(
 
         for (entity, mut aabb) in &mut query {
             if enabled.0 {
+                // bevy's built in systems will see that the Aabb is missing and make a valid one
                 commands.entity(entity).remove::<Aabb>();
             } else {
+                // infinite AABB to make AABB useless
                 aabb.half_extents = Vec3A::ONE * f32::MAX;
             }
         }

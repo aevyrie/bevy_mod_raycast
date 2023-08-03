@@ -27,8 +27,7 @@ fn main() {
             DefaultRaycastingPlugin::<MyRaycastSet>::default(),
         ))
         // You will need to pay attention to what order you add systems! Putting them in the wrong
-        // order can result in multiple frames of latency. Ray casting should probably happen after
-        // the positions of your meshes have been updated in the UPDATE stage.
+        // order can result in multiple frames of latency.
         .add_systems(
             First,
             update_raycast_with_cursor_position.before(RaycastSystem::BuildRays::<MyRaycastSet>),
@@ -41,7 +40,7 @@ fn main() {
 // This is a unit struct we will use to mark our generic `RaycastMesh`s and `RaycastSource` as part
 // of the same group, or "RaycastSet". For more complex use cases, you might use this to associate
 // some meshes with one ray casting source, and other meshes with a different ray casting source."
-#[derive(Clone, Reflect)]
+#[derive(Reflect)]
 struct MyRaycastSet;
 
 // Update our `RaycastSource` with the current cursor position every frame.

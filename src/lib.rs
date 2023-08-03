@@ -311,9 +311,8 @@ pub enum RaycastMethod {
     ///
     /// # Component Requirements
     ///
-    /// This requires a [Windows] resource to convert the cursor coordinates to NDC, and a [Camera]
-    /// component associated with this [RaycastSource]'s entity, to determine where the screenspace
-    /// ray is firing from in the world.
+    /// This requires a [Camera] component on this [RaycastSource]'s entity, to determine where the
+    /// screenspace ray is firing from in the world.
     Screenspace(Vec2),
     /// Use a transform in world space to define a pick ray. This transform is applied to a vector
     /// at the origin pointing up to generate a ray.
@@ -383,8 +382,7 @@ pub fn update_raycast<T: TypePath + Send + Sync + 'static>(
     for mut pick_source in &mut pick_source_query {
         if let Some(ray) = pick_source.ray {
             pick_source.intersections.clear();
-            let picks = raycast.cast_ray(ray, pick_source.is_screenspace());
-            pick_source.intersections = picks.into_values().map(|(e, i)| (e, i)).collect();
+            pick_source.intersections = raycast.cast_ray(ray, pick_source.is_screenspace());
         }
     }
 }

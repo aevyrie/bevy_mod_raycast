@@ -1,7 +1,4 @@
-use std::{
-    collections::BTreeMap,
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, RwLock};
 
 use bevy::{
     ecs::system::{lifetimeless::Read, SystemParam},
@@ -26,7 +23,7 @@ pub struct Raycast<'w, 's, T: TypePath + Send + Sync> {
         's,
         (
             Read<ComputedVisibility>,
-            Option<Read<Aabb>>,
+            Read<Aabb>,
             Read<GlobalTransform>,
             Entity,
         ),
@@ -59,41 +56,49 @@ pub struct Raycast<'w, 's, T: TypePath + Send + Sync> {
 }
 
 impl<'w, 's, T: TypePath + Send + Sync> Raycast<'w, 's, T> {
+    /// Casts the `ray` into the world and returns a sorted list of intersections, nearest first.
+    ///
+    /// Setting `should_frustum_cull` to true will prevent raycasting anything that is not visible
+    /// to a camera. This is a useful optimization when doing a screenspace raycast.
     pub fn cast_ray(
         &self,
         ray: Ray3d,
         should_frustum_cull: bool,
-    ) -> BTreeMap<FloatOrd, (Entity, IntersectionData)> {
+    ) -> Vec<(Entity, IntersectionData)> {
         let ray_cull = info_span!("ray culling");
-        let raycast = info_span!("raycast");
         let ray_cull_guard = ray_cull.enter();
-        // Check all entities to see if the source ray intersects the AABB, use this
-        // to build a short list of entities that are in the path of the ray.
-        let culled_list: Vec<Entity> = self
-            .culling_query
-            .iter()
-            .filter_map(|(comp_visibility, bound_vol, transform, entity)| {
+        // Check all entities to see if the ray intersects the AABB, use this to build a short list
+        // of entities that are in the path of the ray.
+        let max_hits = self.culling_query.iter().len();
+        let (aabb_hits_tx, aabb_hits_rx) =
+            crossbeam_channel::bounded::<(FloatOrd, Entity)>(max_hits);
+
+        self.culling_query
+            .par_iter()
+            .for_each(|(comp_visibility, aabb, transform, entity)| {
                 let should_raycast = match should_frustum_cull {
                     true => comp_visibility.is_visible(),
                     false => comp_visibility.is_visible_in_hierarchy(),
                 };
-                if !should_raycast {
-                    return None;
-                }
-                if let Some(aabb) = bound_vol {
-                    ray.intersects_aabb(aabb, &transform.compute_matrix())
+                if should_raycast {
+                    if let Some([near, _]) = ray
+                        .intersects_aabb(aabb, &transform.compute_matrix())
                         .filter(|[_, far]| *far >= 0.0)
-                        .map(|_| entity)
-                } else {
-                    Some(entity)
+                    {
+                        aabb_hits_tx.send((FloatOrd(near), entity)).ok();
+                    }
                 }
-            })
-            .collect();
+            });
+        let mut culled_list: Vec<(FloatOrd, Entity)> = aabb_hits_rx.try_iter().collect();
+        culled_list.sort_by_key(|(aabb_near, _)| *aabb_near);
         drop(ray_cull_guard);
 
-        let picks = Arc::new(Mutex::new(BTreeMap::new()));
+        let nearest_hit_lock = Arc::new(RwLock::new(FloatOrd(f32::INFINITY)));
 
-        let pick_mesh =
+        let (hits_tx, hits_rx) =
+            crossbeam_channel::bounded::<(FloatOrd, (Entity, IntersectionData))>(culled_list.len());
+        let raycast_guard = info_span!("raycast");
+        let raycast_mesh =
             |(mesh_handle, simplified_mesh, no_backface_culling, transform, entity): (
                 &Handle<Mesh>,
                 Option<&SimplifiedMesh>,
@@ -101,37 +106,46 @@ impl<'w, 's, T: TypePath + Send + Sync> Raycast<'w, 's, T> {
                 &GlobalTransform,
                 Entity,
             )| {
-                if culled_list.contains(&entity) {
-                    let _raycast_guard = raycast.enter();
-                    // Use the mesh handle to get a reference to a mesh asset
-                    if let Some(mesh) = self
-                        .meshes
-                        .get(simplified_mesh.map(|bm| &bm.mesh).unwrap_or(mesh_handle))
-                    {
-                        if let Some(intersection) = ray_intersection_over_mesh(
-                            mesh,
-                            &transform.compute_matrix(),
-                            &ray,
-                            if no_backface_culling.is_some() {
-                                Backfaces::Include
-                            } else {
-                                Backfaces::Cull
-                            },
-                        ) {
-                            picks
-                                .lock()
-                                .unwrap()
-                                .insert(FloatOrd(intersection.distance()), (entity, intersection));
-                        }
-                    }
+                // Is the entity in the list of culled entities?
+                let culled_list = culled_list.iter().find(|(_, v)| *v == entity);
+                let Some(&(aabb_near, entity)) = culled_list else {
+                    return
+                };
+
+                // Is it even possible the mesh could be closer than the current best?
+                let Some(&nearest_hit) = nearest_hit_lock.read().as_deref().ok() else {
+                    return
+                };
+                if aabb_near > nearest_hit {
+                    return;
                 }
+
+                let mesh_handle = simplified_mesh.map(|m| &m.mesh).unwrap_or(mesh_handle);
+                let Some(mesh) = self.meshes.get(mesh_handle) else {
+                    return
+                };
+
+                let _raycast_guard = raycast_guard.enter();
+                let backfaces = match no_backface_culling {
+                    Some(_) => Backfaces::Include,
+                    None => Backfaces::Cull,
+                };
+                let transform = transform.compute_matrix();
+                let intersection = ray_intersection_over_mesh(mesh, &transform, &ray, backfaces);
+                if let Some(intersection) = intersection {
+                    let distance = FloatOrd(intersection.distance());
+                    if let Ok(nearest_hit) = nearest_hit_lock.write().as_deref_mut() {
+                        *nearest_hit = distance.min(*nearest_hit);
+                    }
+                    hits_tx.send((distance, (entity, intersection))).ok();
+                };
             };
 
-        self.mesh_query.par_iter().for_each(pick_mesh);
+        self.mesh_query.par_iter().for_each(raycast_mesh);
         #[cfg(feature = "2d")]
         self.mesh2d_query.par_iter().for_each(
             |(mesh_handle, simplified_mesh, transform, entity)| {
-                pick_mesh((
+                raycast_mesh((
                     &mesh_handle.0,
                     simplified_mesh,
                     Some(&NoBackfaceCulling),
@@ -140,6 +154,8 @@ impl<'w, 's, T: TypePath + Send + Sync> Raycast<'w, 's, T> {
                 ))
             },
         );
-        Arc::try_unwrap(picks).unwrap().into_inner().unwrap()
+        let mut hits: Vec<_> = hits_rx.try_iter().collect();
+        hits.sort_by_key(|(k, _)| *k);
+        hits.drain(..).map(|(_, v)| v).collect()
     }
 }

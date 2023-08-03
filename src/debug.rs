@@ -13,14 +13,19 @@ pub fn update_debug_cursor<T: TypePath + Send + Sync>(
     mut meshes: Query<&RaycastSource<T>>,
     mut gizmos: Gizmos,
 ) {
-    for (_, intersection) in meshes.iter().flat_map(|m| m.intersections()) {
-        gizmos.ray(intersection.position(), intersection.normal(), Color::GREEN);
-        gizmos.circle(
-            intersection.position(),
-            intersection.normal(),
-            0.1,
-            Color::GREEN,
-        );
+    for (is_first, intersection) in meshes.iter().flat_map(|m| {
+        m.intersections()
+            .iter()
+            .map(|i| i.1.clone())
+            .enumerate()
+            .map(|(i, hit)| (i == 0, hit))
+    }) {
+        let color = match is_first {
+            true => Color::GREEN,
+            false => Color::PINK,
+        };
+        gizmos.ray(intersection.position(), intersection.normal(), color);
+        gizmos.circle(intersection.position(), intersection.normal(), 0.1, color);
     }
 }
 

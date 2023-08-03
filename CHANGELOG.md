@@ -1,6 +1,6 @@
 # 0.9.0
 
-- Added: `Raycast` system param allows immediate raycasting into the world.
+- Added: `Raycast` system param allows immediate raycasting into the world using the `cast_ray` method.
 - Removed the `Intersection` component. Intersection data can be found using `RaycastMesh::intersections()` and `RaycastSource::intersections()`.
 - Changed: `Ray3d::from_screenspace` start from the near plane.
 - Fixed: Raycasts do not hit bottoms of un-rotated `RayCastMesh`es.

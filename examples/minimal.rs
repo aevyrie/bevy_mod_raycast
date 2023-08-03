@@ -20,7 +20,7 @@ fn main() {
 
 // Mark our generic `RaycastMesh`s and `RaycastSource`s as part of the same "RaycastSet". This
 // plugin uses generics to distinguish between groups of raycasters.
-#[derive(Reflect, Clone)]
+#[derive(Reflect)]
 struct MyRaycastSet;
 
 // Set up a simple scene with a sphere, camera, and light.

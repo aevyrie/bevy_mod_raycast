@@ -168,14 +168,14 @@ pub mod rays {
                 .map(Ray3d::from)
         }
 
-        /// Checks if the ray intersects with an AABB of a mesh.
+        /// Checks if the ray intersects with an AABB of a mesh, returning `[near, far]` if it does.
         pub fn intersects_aabb(&self, aabb: &Aabb, model_to_world: &Mat4) -> Option<[f32; 2]> {
             // Transform the ray to model space
             let world_to_model = model_to_world.inverse();
             let ray_dir: Vec3A = world_to_model.transform_vector3(self.direction()).into();
             let ray_origin: Vec3A = world_to_model.transform_point3(self.origin()).into();
-            // Check if the ray intersects the mesh's AABB. It's useful to work in model space because
-            // we can do an AABB intersection test, instead of an OBB intersection test.
+            // Check if the ray intersects the mesh's AABB. It's useful to work in model space
+            // because we can do an AABB intersection test, instead of an OBB intersection test.
 
             let t_0: Vec3A = (aabb.min() - ray_origin) / ray_dir;
             let t_1: Vec3A = (aabb.max() - ray_origin) / ray_dir;
