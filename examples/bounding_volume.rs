@@ -2,6 +2,8 @@
 //! with many meshes. The bounding volume will be used to check faster for which mesh to actually
 //! raycast on.
 
+use std::ops::Sub;
+
 use bevy::{
     diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
     math::Vec3A,
@@ -78,7 +80,7 @@ fn setup_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
     let n = 0;
     for i in -n..=n {
         for j in -n..=n {
-            for k in -1000..=-1 {
+            for k in -300..=-1 {
                 commands.spawn((bevy::prelude::SceneBundle {
                     scene: asset_server.load("models/monkey/Monkey.gltf#Scene0"),
                     transform: Transform::from_translation(Vec3::new(
@@ -86,7 +88,7 @@ fn setup_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
                         j as f32 * 3.0,
                         k as f32 * 3.0,
                     ))
-                    .with_scale(Vec3::splat((k as f32).abs().powf(1.01))),
+                    .with_scale(Vec3::splat((k as f32).abs().sub(1.0).powf(1.01))),
                     ..default()
                 },));
             }
