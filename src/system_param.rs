@@ -1,5 +1,3 @@
-use std::sync::{Arc, RwLock};
-
 use bevy::{
     ecs::system::{lifetimeless::Read, SystemParam},
     prelude::*,
@@ -37,7 +35,6 @@ pub struct Raycast<'w, 's, T: TypePath + Send + Sync> {
             Option<Read<SimplifiedMesh>>,
             Option<Read<NoBackfaceCulling>>,
             Read<GlobalTransform>,
-            Entity,
         ),
         With<RaycastMesh<T>>,
     >,
@@ -49,7 +46,6 @@ pub struct Raycast<'w, 's, T: TypePath + Send + Sync> {
             Read<Mesh2dHandle>,
             Option<Read<SimplifiedMesh>>,
             Read<GlobalTransform>,
-            Entity,
         ),
         With<RaycastMesh<T>>,
     >,
@@ -94,72 +90,56 @@ impl<'w, 's, T: TypePath + Send + Sync> Raycast<'w, 's, T> {
         culled_list.sort_by_key(|(aabb_near, _)| *aabb_near);
         drop(ray_cull_guard);
 
-        let nearest_hit_lock = Arc::new(RwLock::new(FloatOrd(f32::INFINITY)));
+        let mut nearest_hit = FloatOrd(f32::INFINITY);
 
-        let (hits_tx, hits_rx) =
-            crossbeam_channel::bounded::<(FloatOrd, (Entity, IntersectionData))>(culled_list.len());
+        let mut hits = Vec::<(FloatOrd, (Entity, IntersectionData))>::new();
         let raycast_guard = info_span!("raycast");
-        let raycast_mesh =
-            |(mesh_handle, simplified_mesh, no_backface_culling, transform, entity): (
-                &Handle<Mesh>,
-                Option<&SimplifiedMesh>,
-                Option<&NoBackfaceCulling>,
-                &GlobalTransform,
-                Entity,
-            )| {
-                // Is the entity in the list of culled entities?
-                let culled_list = culled_list.iter().find(|(_, v)| *v == entity);
-                let Some(&(aabb_near, entity)) = culled_list else {
-                    return
-                };
 
-                if should_early_exit {
-                    // Is it even possible the mesh could be closer than the current best?
-                    let Some(&nearest_hit) = nearest_hit_lock.read().as_deref().ok() else {
-                        return
-                    };
-                    if aabb_near > nearest_hit {
-                        return;
-                    }
-                }
-
-                let mesh_handle = simplified_mesh.map(|m| &m.mesh).unwrap_or(mesh_handle);
-                let Some(mesh) = self.meshes.get(mesh_handle) else {
-                    return
-                };
-
-                let _raycast_guard = raycast_guard.enter();
-                let backfaces = match no_backface_culling {
-                    Some(_) => Backfaces::Include,
-                    None => Backfaces::Cull,
-                };
-                let transform = transform.compute_matrix();
-                let intersection = ray_intersection_over_mesh(mesh, &transform, &ray, backfaces);
-                if let Some(intersection) = intersection {
-                    let distance = FloatOrd(intersection.distance());
+        culled_list.iter().for_each(|(aabb_near, entity)| {
+            let mut raycast_mesh =
+                |mesh_handle: &Handle<Mesh>,
+                 simplified_mesh: Option<&SimplifiedMesh>,
+                 no_backface_culling: Option<&NoBackfaceCulling>,
+                 transform: &GlobalTransform| {
                     if should_early_exit {
-                        if let Ok(nearest_hit) = nearest_hit_lock.write().as_deref_mut() {
-                            *nearest_hit = distance.min(*nearest_hit);
+                        // Is it even possible the mesh could be closer than the current best?
+                        if *aabb_near > nearest_hit {
+                            return;
                         }
                     }
-                    hits_tx.send((distance, (entity, intersection))).ok();
-                };
-            };
+                    // Does the mesh handle resolve?
+                    let mesh_handle = simplified_mesh.map(|m| &m.mesh).unwrap_or(mesh_handle);
+                    let Some(mesh) = self.meshes.get(mesh_handle) else {
+                        return
+                    };
 
-        self.mesh_query.par_iter().for_each(raycast_mesh);
-        #[cfg(feature = "2d")]
-        self.mesh2d_query.par_iter().for_each(
-            |(mesh_handle, simplified_mesh, transform, entity)| {
-                raycast_mesh((
-                    &mesh_handle.0,
-                    simplified_mesh,
-                    Some(&NoBackfaceCulling),
-                    transform,
-                    entity,
-                ))
-            },
-        );
-        let mut hits: Vec<_> = hits_rx.try_iter().collect();
+                    let _raycast_guard = raycast_guard.enter();
+                    let backfaces = match no_backface_culling {
+                        Some(_) => Backfaces::Include,
+                        None => Backfaces::Cull,
+                    };
+                    let transform = transform.compute_matrix();
+                    let intersection =
+                        ray_intersection_over_mesh(mesh, &transform, &ray, backfaces);
+                    if let Some(intersection) = intersection {
+                        let distance = FloatOrd(intersection.distance());
+                        if should_early_exit && distance < nearest_hit {
+                            nearest_hit = distance.min(nearest_hit);
+                        }
+                        hits.push((distance, (*entity, intersection)));
+                    };
+                };
+
+            if let Ok((mesh, simp_mesh, culling, transform)) = self.mesh_query.get(*entity) {
+                raycast_mesh(mesh, simp_mesh, culling, transform);
+            }
+
+            #[cfg(feature = "2d")]
+            if let Ok((mesh, simp_mesh, transform)) = self.mesh2d_query.get(*entity) {
+                raycast_mesh(&mesh.0, simp_mesh, Some(&NoBackfaceCulling), transform);
+            }
+        });
+
         hits.sort_by_key(|(k, _)| *k);
         if should_early_exit {
             hits.first()

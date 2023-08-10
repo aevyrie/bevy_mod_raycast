@@ -18,21 +18,14 @@ bevy = { version = "0.11", default-features = false, features = [
 crossbeam-channel = "0.5"
 
 [dev-dependencies]
-bevy = { version = "0.11", default-features = false, features = [
-    "bevy_pbr",
-    "bevy_winit",
-    "bevy_ui",
-    "bevy_core_pipeline",
-    "bevy_text",
-    "bevy_gltf",
-    "bevy_scene",
+bevy = { version = "0.11", default-features = true, features = [
     "default_font",
     "ktx2",
     "tonemapping_luts",
     "x11",
     "zstd",
 ] }
-criterion = "0.4"
+criterion = "0.5"
 
 [features]
 default = ["2d", "debug"]
