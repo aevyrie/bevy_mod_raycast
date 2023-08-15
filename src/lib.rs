@@ -399,9 +399,7 @@ pub fn update_raycast<T: TypePath + Send + Sync + 'static>(
                     pick_source.is_screenspace(),
                     pick_source.should_early_exit,
                 )
-                .iter()
-                .cloned()
-                .collect();
+                .to_vec();
         }
     }
 }
