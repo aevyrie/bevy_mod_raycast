@@ -1,3 +1,8 @@
+# 0.10.0
+
+- Changed: `Raycast::cast_ray` is now a mutable query. The system param now stores allocated buffers in `Local`s to reuse allocated memory.
+- Changed: parallel AABB culling now uses an unbounded channel to reduce time spent allocating a bounded channel when many entities are present.
+
 # 0.9.0
 
 - Added: `Raycast` system param allows immediate raycasting into the world using the `cast_ray` method.
