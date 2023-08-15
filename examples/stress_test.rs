@@ -57,7 +57,6 @@ fn update_raycast_pos(
     }
 }
 
-// Set up a simple 3D scene
 fn setup_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(RaycastPluginState::<MyRaycastSet>::default().with_debug_cursor());
     commands.spawn(DirectionalLightBundle {
@@ -74,9 +73,8 @@ fn setup_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
         RaycastSource::<MyRaycastSet>::default().with_early_exit(true), // Camera as source
     ));
 
-    // Spawn multiple mesh to raycast on
     for x in -2..=2 {
-        for k in -500..=-10 {
+        for k in -200..=-10 {
             commands.spawn((bevy::prelude::SceneBundle {
                 scene: asset_server.load("models/monkey/Monkey.gltf#Scene0"),
                 transform: Transform::from_translation(Vec3::new(
@@ -84,7 +82,7 @@ fn setup_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
                     0.0,
                     k as f32 * 3.0,
                 ))
-                .with_scale(Vec3::splat((k as f32).abs().sub(5.0)) * 0.7),
+                .with_scale(Vec3::splat((k as f32).abs().sub(5.0)) * 0.8),
                 ..default()
             },));
         }

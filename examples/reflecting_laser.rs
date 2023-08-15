@@ -9,6 +9,7 @@ fn main() {
         .add_plugins((DefaultPlugins, DefaultRaycastingPlugin::<Laser>::default()))
         .add_systems(Startup, setup_scene)
         .add_systems(Update, bouncing_raycast)
+        .insert_resource(ClearColor(Color::BLACK))
         .run();
 }
 
@@ -18,9 +19,10 @@ const LASER_MOVE_SPEED: f32 = 0.05;
 #[derive(Reflect)]
 struct Laser;
 
-fn bouncing_raycast(raycast: Raycast<Laser>, mut gizmos: Gizmos, time: Res<Time>) {
-    let t = (time.elapsed_seconds() * LASER_MOVE_SPEED).sin() * std::f32::consts::PI;
-    let mut ray_pos = Vec3::new(t.sin(), (3.0 * t).cos() * 0.5, t.cos()) * 3.0;
+fn bouncing_raycast(mut raycast: Raycast<Laser>, mut gizmos: Gizmos, time: Res<Time>) {
+    let t =
+        ((time.elapsed_seconds() - 4.0).max(0.0) * LASER_MOVE_SPEED).cos() * std::f32::consts::PI;
+    let mut ray_pos = Vec3::new(t.sin(), (3.0 * t).cos() * 0.5, t.cos()) * 0.5;
     let mut ray_dir = (-ray_pos).normalize();
     gizmos.sphere(ray_pos, Quat::IDENTITY, 0.1, Color::YELLOW);
 
@@ -53,21 +55,17 @@ fn setup_scene(
 ) {
     commands.insert_resource(RaycastPluginState::<Laser>::default().with_debug_cursor());
     commands.spawn(DirectionalLightBundle {
-        transform: Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, 1.0, 1.0, 1.0)),
+        transform: Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, -0.1, 0.2, 0.0)),
         ..Default::default()
     });
-    commands.spawn((
-        Camera3dBundle {
-            transform: Transform::from_xyz(7.0, 5.0, 9.0).looking_at(Vec3::Y * -1.0, Vec3::Y),
-            ..default()
-        },
-        RaycastSource::<Laser>::new(), // Designate the camera as our source
-    ));
+    commands.spawn((Camera3dBundle {
+        transform: Transform::from_xyz(1.5, 1.5, 1.5).looking_at(Vec3::ZERO, Vec3::Y),
+        ..default()
+    },));
     commands.spawn((
         PbrBundle {
             mesh: meshes.add(shape::Cube::default().into()),
-            material: materials.add(Color::WHITE.with_a(0.1).into()),
-            transform: Transform::from_scale(Vec3::splat(6.0)),
+            material: materials.add(Color::WHITE.with_a(0.05).into()),
             ..default()
         },
         RaycastMesh::<Laser>::default(),

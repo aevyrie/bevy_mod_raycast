@@ -387,17 +387,21 @@ pub fn build_rays<T: TypePath>(
 /// intersections. If these entities have bounding volumes, these will be checked first, greatly
 /// accelerating the process.
 pub fn update_raycast<T: TypePath + Send + Sync + 'static>(
-    raycast: system_param::Raycast<T>,
+    mut raycast: system_param::Raycast<T>,
     mut pick_source_query: Query<&mut RaycastSource<T>>,
 ) {
     for mut pick_source in &mut pick_source_query {
         if let Some(ray) = pick_source.ray {
             pick_source.intersections.clear();
-            pick_source.intersections = raycast.cast_ray(
-                ray,
-                pick_source.is_screenspace(),
-                pick_source.should_early_exit,
-            );
+            pick_source.intersections = raycast
+                .cast_ray(
+                    ray,
+                    pick_source.is_screenspace(),
+                    pick_source.should_early_exit,
+                )
+                .iter()
+                .cloned()
+                .collect();
         }
     }
 }

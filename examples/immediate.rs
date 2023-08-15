@@ -19,7 +19,7 @@ fn main() {
 #[derive(Reflect)]
 struct MyRaycastSet;
 
-fn immediate_mode_raycast(raycast: Raycast<MyRaycastSet>, mut gizmos: Gizmos, time: Res<Time>) {
+fn immediate_mode_raycast(mut raycast: Raycast<MyRaycastSet>, mut gizmos: Gizmos, time: Res<Time>) {
     // Animate the ray around the sphere mesh, always pointing to the center of the sphere
     let t = time.elapsed_seconds();
     let ray_pos = Vec3::new(t.sin(), (3.0 * t).cos() * 0.5, t.cos()) * 2.5;
