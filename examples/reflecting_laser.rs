@@ -1,7 +1,7 @@
 //! This example demonstrates how to use the [`Raycast`] system param to chain multiple raycasts and
 //! bounce off of surfaces.
 
-use bevy::prelude::*;
+use bevy::{core_pipeline::bloom::BloomSettings, prelude::*};
 use bevy_mod_raycast::prelude::*;
 
 fn main() {
@@ -13,8 +13,8 @@ fn main() {
         .run();
 }
 
-const MAX_BOUNCES: usize = 128;
-const LASER_MOVE_SPEED: f32 = 0.05;
+const MAX_BOUNCES: usize = 64;
+const LASER_MOVE_SPEED: f32 = 0.03;
 
 #[derive(Reflect)]
 struct Laser;
@@ -24,18 +24,17 @@ fn bouncing_raycast(mut raycast: Raycast<Laser>, mut gizmos: Gizmos, time: Res<T
         ((time.elapsed_seconds() - 4.0).max(0.0) * LASER_MOVE_SPEED).cos() * std::f32::consts::PI;
     let mut ray_pos = Vec3::new(t.sin(), (3.0 * t).cos() * 0.5, t.cos()) * 0.5;
     let mut ray_dir = (-ray_pos).normalize();
-    gizmos.sphere(ray_pos, Quat::IDENTITY, 0.1, Color::YELLOW);
+    gizmos.sphere(ray_pos, Quat::IDENTITY, 0.1, Color::WHITE);
 
     let mut intersections = Vec::with_capacity(MAX_BOUNCES + 1);
-    intersections.push((ray_pos, Color::RED));
+    intersections.push((ray_pos, Color::rgb(30.0, 0.0, 0.0)));
 
     for i in 0..MAX_BOUNCES {
         let ray = Ray3d::new(ray_pos, ray_dir);
         if let Some((_, hit)) = raycast.cast_ray(ray, false, true).first() {
-            let a = 0.2 + 0.8 * (1.0 - i as f32 / MAX_BOUNCES as f32);
-            let color = Color::rgba(1.0, 0.0, 0.0, a);
-            intersections.push((hit.position(), color));
-            gizmos.sphere(hit.position(), Quat::IDENTITY, 0.02, color);
+            let r = 1.0 + 10.0 * (1.0 - i as f32 / MAX_BOUNCES as f32);
+            intersections.push((hit.position(), Color::rgb(r, 0.0, 0.0)));
+            gizmos.sphere(hit.position(), Quat::IDENTITY, 0.005, Color::RED * r * 2.0);
             // reflect the ray
             let proj = (ray_dir.dot(hit.normal()) / hit.normal().dot(hit.normal())) * hit.normal();
             ray_dir = (ray_dir - 2.0 * proj).normalize();
@@ -58,14 +57,22 @@ fn setup_scene(
         transform: Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, -0.1, 0.2, 0.0)),
         ..Default::default()
     });
-    commands.spawn((Camera3dBundle {
-        transform: Transform::from_xyz(1.5, 1.5, 1.5).looking_at(Vec3::ZERO, Vec3::Y),
-        ..default()
-    },));
+    commands.spawn((
+        Camera3dBundle {
+            transform: Transform::from_xyz(1.5, 1.5, 1.5).looking_at(Vec3::ZERO, Vec3::Y),
+            camera: Camera {
+                hdr: true,
+                ..default()
+            },
+            tonemapping: bevy::core_pipeline::tonemapping::Tonemapping::TonyMcMapface,
+            ..default()
+        },
+        BloomSettings::default(),
+    ));
     commands.spawn((
         PbrBundle {
             mesh: meshes.add(shape::Cube::default().into()),
-            material: materials.add(Color::WHITE.with_a(0.05).into()),
+            material: materials.add(Color::GRAY.with_a(0.05).into()),
             ..default()
         },
         RaycastMesh::<Laser>::default(),
