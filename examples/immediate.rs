@@ -3,7 +3,7 @@
 //! raycast and stores the result once per frame.
 
 use bevy::prelude::*;
-use bevy_mod_raycast::prelude::*;
+use bevy_mod_raycast::{prelude::*, system_param::RaycastSettings};
 
 fn main() {
     App::new()
@@ -31,16 +31,11 @@ fn immediate_mode_raycast(mut raycast: Raycast<MyRaycastSet>, mut gizmos: Gizmos
     gizmos.sphere(ray_pos, Quat::IDENTITY, 0.1, Color::YELLOW);
 
     // This is all that is needed to raycast into the world!
-    let hits = raycast.cast_ray(ray, false, true);
+    let hits = raycast.cast_ray(ray, &RaycastSettings::default());
 
     // Go through the intersections and render them as a pink circle
     if let Some((_, hit)) = hits.first() {
-        gizmos.sphere(
-            hit.position(),
-            Quat::from_rotation_arc(Vec3::Z, hit.normal()),
-            0.2,
-            Color::PINK,
-        );
+        gizmos.sphere(hit.position(), Quat::IDENTITY, 0.2, Color::PINK);
     }
 }
 

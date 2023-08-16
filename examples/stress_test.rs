@@ -70,7 +70,7 @@ fn setup_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     commands.spawn((
         Camera3dBundle::default(),
-        RaycastSource::<MyRaycastSet>::default().with_early_exit(true), // Camera as source
+        RaycastSource::<MyRaycastSet>::default(), // Camera as source
     ));
 
     for x in -2..=2 {

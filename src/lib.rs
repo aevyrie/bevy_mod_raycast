@@ -22,6 +22,7 @@ use bevy::{
         render_resource::PrimitiveTopology,
     },
 };
+use system_param::RaycastVisibility;
 
 pub use crate::{primitives::*, raycast::*};
 #[cfg(feature = "debug")]
@@ -188,10 +189,14 @@ impl<T: TypePath> Default for RaycastMesh<T> {
 #[derive(Component, Clone, Reflect)]
 #[reflect(Component)]
 pub struct RaycastSource<T: TypePath> {
+    /// The method used to generate rays for this raycast.
     pub cast_method: RaycastMethod,
-    /// Should raycasts early-out, only hitting the topmost entity? This is generally more
-    /// performant.
+    /// When `true`, raycasting will only hit the nearest entity, skipping any entities that are
+    /// further away. This can significantly improve performance in cases where a ray intersects
+    /// many AABBs.
     pub should_early_exit: bool,
+    /// Determines how raycasting should consider entity visibility.
+    pub visibility: RaycastVisibility,
     #[reflect(skip_serializing)]
     pub ray: Option<Ray3d>,
     #[reflect(ignore)]
@@ -205,6 +210,7 @@ impl<T: TypePath> Default for RaycastSource<T> {
         RaycastSource {
             cast_method: RaycastMethod::Screenspace(Vec2::ZERO),
             should_early_exit: true,
+            visibility: RaycastVisibility::MustBeVisibleAndInView,
             ray: None,
             intersections: Vec::new(),
             _marker: PhantomData,
@@ -246,6 +252,11 @@ impl<T: TypePath> RaycastSource<T> {
             should_early_exit,
             ..self
         }
+    }
+
+    /// Set the `visibility` field of this raycast source.
+    pub fn with_visibility(self, visibility: RaycastVisibility) -> Self {
+        Self { visibility, ..self }
     }
 
     /// Instantiates and initializes a [RaycastSource] with a valid screenspace ray.
@@ -393,13 +404,8 @@ pub fn update_raycast<T: TypePath + Send + Sync + 'static>(
     for mut pick_source in &mut pick_source_query {
         if let Some(ray) = pick_source.ray {
             pick_source.intersections.clear();
-            pick_source.intersections = raycast
-                .cast_ray(
-                    ray,
-                    pick_source.is_screenspace(),
-                    pick_source.should_early_exit,
-                )
-                .to_vec();
+            let settings = pick_source.as_ref().into();
+            pick_source.intersections = raycast.cast_ray(ray, &settings).to_vec();
         }
     }
 }

@@ -7,7 +7,7 @@
 [![docs.rs](https://docs.rs/bevy_mod_raycast/badge.svg)](https://docs.rs/bevy_mod_raycast)
 [![Bevy tracking](https://img.shields.io/badge/Bevy%20tracking-main-lightblue)](https://github.com/bevyengine/bevy/blob/main/docs/plugins_guidelines.md#main-branch-tracking)
 
-![raycast_demo](https://user-images.githubusercontent.com/2632925/164993927-079d960e-210f-4722-80c2-91059c460efc.gif)
+![raycast demo](https://github.com/aevyrie/bevy_mod_raycast/assets/2632925/4a1019d3-cbfa-4b20-b5c9-19a71ca09e04)
 
 A [Bevy](https://github.com/bevyengine/bevy) plugin for 3D ray casting against meshes. Used to build [`bevy_mod_picking`](https://github.com/aevyrie/bevy_mod_picking). Contributions welcome!
   
@@ -15,12 +15,13 @@ A [Bevy](https://github.com/bevyengine/bevy) plugin for 3D ray casting against m
 
 ## Uses
 
-This plugin makes it simple to create ray casting sources, such as a transform (first person, third person shooter), or screenspace coordinates (mouse picking). Rays are shot from these sources every frame using a bevy system, and the intersections are stored in the ray casting source's component. 
+This plugin makes it simple to create ray casting sources, such as a transform (first person, third person shooter), or screenspace coordinates (mouse picking).
 
-- Only meshes that you mark with a component will be checked for intersections. 
+- Only meshes that you mark with a component will be checked for intersections.
 - You can define which ray casting source(s) should interact with which mesh(es) by marking grouped sources and targets with the same type. 
 - This plugin also provides some functionality to compute the intersection of rays with primitive shapes.
 - Acceleration is provided using Bevy's AABBs and visibility culling.
+- An immediate mode API is provided to allow raycasts on demand, as well as raycasting using components updated once per frame.
 
 ## Alternatives
 

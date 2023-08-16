@@ -2,7 +2,7 @@
 //! bounce off of surfaces.
 
 use bevy::{core_pipeline::bloom::BloomSettings, prelude::*};
-use bevy_mod_raycast::prelude::*;
+use bevy_mod_raycast::{prelude::*, system_param::RaycastSettings};
 
 fn main() {
     App::new()
@@ -31,7 +31,7 @@ fn bouncing_raycast(mut raycast: Raycast<Laser>, mut gizmos: Gizmos, time: Res<T
 
     for i in 0..MAX_BOUNCES {
         let ray = Ray3d::new(ray_pos, ray_dir);
-        if let Some((_, hit)) = raycast.cast_ray(ray, false, true).first() {
+        if let Some((_, hit)) = raycast.cast_ray(ray, &RaycastSettings::default()).first() {
             let r = 1.0 + 10.0 * (1.0 - i as f32 / MAX_BOUNCES as f32);
             intersections.push((hit.position(), Color::rgb(r, 0.0, 0.0)));
             gizmos.sphere(hit.position(), Quat::IDENTITY, 0.005, Color::RED * r * 2.0);

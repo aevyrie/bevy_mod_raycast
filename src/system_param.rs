@@ -9,8 +9,49 @@ use bevy::{
 
 use crate::{
     ray_intersection_over_mesh, Backfaces, IntersectionData, NoBackfaceCulling, Ray3d, RaycastMesh,
-    SimplifiedMesh,
+    RaycastSource, SimplifiedMesh,
 };
+
+/// How a raycast should handle visibility
+#[derive(Clone, Copy, Reflect)]
+pub enum RaycastVisibility {
+    /// Completely ignore visibility checks. Hidden items can still be raycasted against.
+    Ignore,
+    /// Only raycast against entities that are visible in the hierarchy; see [`Visibility`].
+    MustBeVisible,
+    /// Only raycast against entities that are visible in the hierarchy and visible to a camera or
+    /// light; see [`Visibility`].
+    MustBeVisibleAndInView,
+}
+
+/// Settings for a raycast.
+#[derive(Clone, Reflect)]
+pub struct RaycastSettings {
+    /// Determines how raycasting should consider entity visibility.
+    pub visibility: RaycastVisibility,
+    /// When `true`, raycasting will only hit the nearest entity, skipping any entities that are
+    /// further away. This can significantly improve performance in cases where a ray intersects
+    /// many AABBs.
+    pub should_early_exit: bool,
+}
+
+impl<T: TypePath> From<&RaycastSource<T>> for RaycastSettings {
+    fn from(value: &RaycastSource<T>) -> Self {
+        Self {
+            visibility: value.visibility,
+            should_early_exit: value.should_early_exit,
+        }
+    }
+}
+
+impl Default for RaycastSettings {
+    fn default() -> Self {
+        Self {
+            visibility: RaycastVisibility::MustBeVisibleAndInView,
+            should_early_exit: true,
+        }
+    }
+}
 
 /// A [`SystemParam`] that allows you to raycast into the world.
 #[derive(SystemParam)]
@@ -62,8 +103,7 @@ impl<'w, 's, T: TypePath + Send + Sync> Raycast<'w, 's, T> {
     pub fn cast_ray(
         &mut self,
         ray: Ray3d,
-        should_frustum_cull: bool,
-        should_early_exit: bool,
+        settings: &RaycastSettings,
     ) -> &[(Entity, IntersectionData)] {
         let ray_cull = info_span!("ray culling");
         let ray_cull_guard = ray_cull.enter();
@@ -77,10 +117,11 @@ impl<'w, 's, T: TypePath + Send + Sync> Raycast<'w, 's, T> {
         let (aabb_hits_tx, aabb_hits_rx) = crossbeam_channel::unbounded::<(FloatOrd, Entity)>();
         self.culling_query
             .par_iter()
-            .for_each(|(comp_visibility, aabb, transform, entity)| {
-                let should_raycast = match should_frustum_cull {
-                    true => comp_visibility.is_visible(),
-                    false => comp_visibility.is_visible_in_hierarchy(),
+            .for_each(|(visibility, aabb, transform, entity)| {
+                let should_raycast = match settings.visibility {
+                    RaycastVisibility::Ignore => true,
+                    RaycastVisibility::MustBeVisible => visibility.is_visible_in_hierarchy(),
+                    RaycastVisibility::MustBeVisibleAndInView => visibility.is_visible_in_view(),
                 };
                 if should_raycast {
                     if let Some([near, _]) = ray
@@ -104,7 +145,7 @@ impl<'w, 's, T: TypePath + Send + Sync> Raycast<'w, 's, T> {
                  no_backface_culling: Option<&NoBackfaceCulling>,
                  transform: &GlobalTransform| {
                     // Is it even possible the mesh could be closer than the current best?
-                    if should_early_exit && *aabb_near > nearest_hit {
+                    if settings.should_early_exit && *aabb_near > nearest_hit {
                         return;
                     }
 
@@ -124,7 +165,7 @@ impl<'w, 's, T: TypePath + Send + Sync> Raycast<'w, 's, T> {
                         ray_intersection_over_mesh(mesh, &transform, &ray, backfaces);
                     if let Some(intersection) = intersection {
                         let distance = FloatOrd(intersection.distance());
-                        if should_early_exit && distance < nearest_hit {
+                        if settings.should_early_exit && distance < nearest_hit {
                             nearest_hit = distance.min(nearest_hit);
                         }
                         self.hits.push((distance, (*entity, intersection)));
@@ -142,22 +183,11 @@ impl<'w, 's, T: TypePath + Send + Sync> Raycast<'w, 's, T> {
         });
 
         self.hits.sort_by_key(|(k, _)| *k);
-
-        if should_early_exit {
-            *self.output = self
-                .hits
-                .first()
-                .iter()
-                .map(|(_, (entity, interaction))| (*entity, interaction.to_owned()))
-                .collect();
-        } else {
-            *self.output = self
-                .hits
-                .iter()
-                .map(|(_, (entity, interaction))| (*entity, interaction.to_owned()))
-                .collect()
+        if settings.should_early_exit && self.hits.len() > 1 {
+            self.hits.drain(1..);
         }
-
+        let hits = self.hits.iter().map(|(_, (e, i))| (*e, i.to_owned()));
+        *self.output = hits.collect();
         self.output.as_ref()
     }
 }

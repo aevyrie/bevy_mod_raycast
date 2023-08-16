@@ -1,3 +1,11 @@
+# 0.11.0
+
+- Changed: `Raycast::cast_ray` now accepts a `RaycastSettings` parameter.
+- Added: entity visibility handling can now be configured using the `RaycastVisibility` field on `RaycastSettings` and `RaycastSource`:
+  - `Ignore`: Completely ignore visibility checks. Hidden items can still be raycasted against.
+  - `MustBeVisible`: Only raycast against entities that are visible in the hierarchy.
+  - `MustBeVisibleAndInView`: Only raycast against entities that are visible in the hierarchy and visible to a camera or light. This is the same as setting the `should_frustum_cull` parameter of `cast_ray` to `true` in 0.10.
+
 # 0.10.0
 
 - Changed: `Raycast::cast_ray` is now a mutable query. The system param now stores allocated buffers in `Local`s to reuse allocated memory.
