@@ -163,8 +163,12 @@ pub mod rays {
             camera: &Camera,
             camera_transform: &GlobalTransform,
         ) -> Option<Self> {
+            let mut viewport_pos = cursor_pos_screen;
+            if let Some(viewport) = &camera.viewport {
+                viewport_pos -= viewport.physical_position.as_vec2();
+            }
             camera
-                .viewport_to_world(camera_transform, cursor_pos_screen)
+                .viewport_to_world(camera_transform, viewport_pos)
                 .map(Ray3d::from)
         }
 
