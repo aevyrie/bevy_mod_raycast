@@ -22,7 +22,7 @@ use bevy::{
         render_resource::PrimitiveTopology,
     },
 };
-use system_param::RaycastVisibility;
+use system_param::{RaycastSettings, RaycastVisibility};
 
 pub use crate::{primitives::*, raycast::*};
 #[cfg(feature = "debug")]
@@ -404,7 +404,8 @@ pub fn update_raycast<T: TypePath + Send + Sync + 'static>(
     for mut pick_source in &mut pick_source_query {
         if let Some(ray) = pick_source.ray {
             pick_source.intersections.clear();
-            let settings = pick_source.as_ref().into();
+            let test = |_| pick_source.should_early_exit;
+            let settings = RaycastSettings::default().with_early_exit_test(&test);
             pick_source.intersections = raycast.cast_ray(ray, &settings).to_vec();
         }
     }

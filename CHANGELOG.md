@@ -1,20 +1,37 @@
+# 0.12.0
+
+- Changed: the `should_early_exit` boolean field  has been removed from `RaycastSettings` in favor
+  of a more flexible closure `early_exit_test`. This early exit test is run on every entity to
+  determine if it should block further entities from being hit. The previous behavior can be
+  replicated by passing in a closure that ignores the input and returns a boolean, such as `&|_|
+  true` instead of `true`.
+- Added: raycasts can now apply a test to determine which entities to allow during a raycast by
+  using the `filter` field on `RaycastSettings`.
+
 # 0.11.0
 
 - Changed: `Raycast::cast_ray` now accepts a `RaycastSettings` parameter.
-- Added: entity visibility handling can now be configured using the `RaycastVisibility` field on `RaycastSettings` and `RaycastSource`:
+- Added: entity visibility handling can now be configured using the `RaycastVisibility` field on
+  `RaycastSettings` and `RaycastSource`:
   - `Ignore`: Completely ignore visibility checks. Hidden items can still be raycasted against.
   - `MustBeVisible`: Only raycast against entities that are visible in the hierarchy.
-  - `MustBeVisibleAndInView`: Only raycast against entities that are visible in the hierarchy and visible to a camera or light. This is the same as setting the `should_frustum_cull` parameter of `cast_ray` to `true` in 0.10.
+  - `MustBeVisibleAndInView`: Only raycast against entities that are visible in the hierarchy and
+    visible to a camera or light. This is the same as setting the `should_frustum_cull` parameter of
+    `cast_ray` to `true` in 0.10.
 
 # 0.10.0
 
-- Changed: `Raycast::cast_ray` is now a mutable query. The system param now stores allocated buffers in `Local`s to reuse allocated memory.
-- Changed: parallel AABB culling now uses an unbounded channel to reduce time spent allocating a bounded channel when many entities are present.
+- Changed: `Raycast::cast_ray` is now a mutable query. The system param now stores allocated buffers
+  in `Local`s to reuse allocated memory.
+- Changed: parallel AABB culling now uses an unbounded channel to reduce time spent allocating a
+  bounded channel when many entities are present.
 
 # 0.9.0
 
-- Added: `Raycast` system param allows immediate raycasting into the world using the `cast_ray` method.
-- Removed the `Intersection` component. Intersection data can be found using `RaycastMesh::intersections()` and `RaycastSource::intersections()`.
+- Added: `Raycast` system param allows immediate raycasting into the world using the `cast_ray`
+  method.
+- Removed the `Intersection` component. Intersection data can be found using
+  `RaycastMesh::intersections()` and `RaycastSource::intersections()`.
 - Changed: `Ray3d::from_screenspace` start from the near plane.
 - Fixed: Raycasts do not hit bottoms of un-rotated `RayCastMesh`es.
 - Changed: `DefaultPluginState` renamed to `RaycastPluginState`.
