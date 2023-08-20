@@ -2,7 +2,7 @@
 //! bounce off of surfaces.
 
 use bevy::{core_pipeline::bloom::BloomSettings, prelude::*};
-use bevy_mod_raycast::{prelude::*, system_param::RaycastSettings};
+use bevy_mod_raycast::prelude::*;
 
 fn main() {
     App::new()
@@ -19,7 +19,7 @@ const LASER_MOVE_SPEED: f32 = 0.03;
 #[derive(Reflect)]
 struct Laser;
 
-fn bouncing_raycast(mut raycast: Raycast<Laser>, mut gizmos: Gizmos, time: Res<Time>) {
+fn bouncing_raycast(mut raycast: Raycast, mut gizmos: Gizmos, time: Res<Time>) {
     let t =
         ((time.elapsed_seconds() - 4.0).max(0.0) * LASER_MOVE_SPEED).cos() * std::f32::consts::PI;
     let mut ray_pos = Vec3::new(t.sin(), (3.0 * t).cos() * 0.5, t.cos()) * 0.5;
@@ -52,7 +52,6 @@ fn setup_scene(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    commands.insert_resource(RaycastPluginState::<Laser>::default().with_debug_cursor());
     commands.spawn(DirectionalLightBundle {
         transform: Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, -0.1, 0.2, 0.0)),
         ..Default::default()
@@ -75,7 +74,6 @@ fn setup_scene(
             material: materials.add(Color::GRAY.with_a(0.05).into()),
             ..default()
         },
-        RaycastMesh::<Laser>::default(),
         // Without this, raycasts would shoot straight out from the inside of the cube.
         bevy_mod_raycast::NoBackfaceCulling,
     ));

@@ -8,10 +8,7 @@ use bevy::{
     prelude::*,
     window::PresentMode,
 };
-use bevy_mod_raycast::{
-    DefaultRaycastingPlugin, RaycastMesh, RaycastMethod, RaycastPluginState, RaycastSource,
-    RaycastSystem, SimplifiedMesh,
-};
+use bevy_mod_raycast::prelude::*;
 
 fn main() {
     App::new()

@@ -7,19 +7,13 @@ use bevy_mod_raycast::{prelude::*, system_param::RaycastSettings};
 
 fn main() {
     App::new()
-        .add_plugins((
-            DefaultPlugins,
-            DefaultRaycastingPlugin::<MyRaycastSet>::default(),
-        ))
+        .add_plugins(DefaultPlugins)
         .add_systems(Startup, setup)
         .add_systems(Update, immediate_mode_raycast)
         .run();
 }
 
-#[derive(Reflect)]
-struct MyRaycastSet;
-
-fn immediate_mode_raycast(mut raycast: Raycast<MyRaycastSet>, mut gizmos: Gizmos, time: Res<Time>) {
+fn immediate_mode_raycast(mut raycast: Raycast, mut gizmos: Gizmos, time: Res<Time>) {
     // Animate the ray around the sphere mesh, always pointing to the center of the sphere
     let t = time.elapsed_seconds();
     let ray_pos = Vec3::new(t.sin(), (3.0 * t).cos() * 0.5, t.cos()) * 2.5;
@@ -48,14 +42,11 @@ fn setup(
         transform: Transform::from_xyz(0.0, 0.0, 5.0),
         ..default()
     },));
-    commands.spawn((
-        PbrBundle {
-            mesh: meshes.add(Mesh::try_from(shape::Icosphere::default()).unwrap()),
-            material: materials.add(Color::rgb(1.0, 1.0, 1.0).into()),
-            ..Default::default()
-        },
-        RaycastMesh::<MyRaycastSet>::default(), // Make this mesh ray cast-able
-    ));
+    commands.spawn((PbrBundle {
+        mesh: meshes.add(Mesh::try_from(shape::Icosphere::default()).unwrap()),
+        material: materials.add(Color::rgb(1.0, 1.0, 1.0).into()),
+        ..Default::default()
+    },));
     commands.spawn(PointLightBundle {
         transform: Transform::from_translation(Vec3::new(4.0, 8.0, 4.0)),
         ..Default::default()

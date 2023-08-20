@@ -1,14 +1,13 @@
 use bevy::{
     ecs::system::{lifetimeless::Read, SystemParam},
     prelude::*,
-    reflect::TypePath,
     render::primitives::Aabb,
     sprite::Mesh2dHandle,
     utils::FloatOrd,
 };
 
 use crate::{
-    ray_intersection_over_mesh, Backfaces, IntersectionData, NoBackfaceCulling, Ray3d, RaycastMesh,
+    ray_intersection_over_mesh, Backfaces, IntersectionData, NoBackfaceCulling, Ray3d,
     SimplifiedMesh,
 };
 
@@ -73,7 +72,7 @@ impl<'a> Default for RaycastSettings<'a> {
 
 /// A [`SystemParam`] that allows you to raycast into the world.
 #[derive(SystemParam)]
-pub struct Raycast<'w, 's, T: TypePath + Send + Sync> {
+pub struct Raycast<'w, 's> {
     pub meshes: Res<'w, Assets<Mesh>>,
     pub hits: Local<'s, Vec<(FloatOrd, (Entity, IntersectionData))>>,
     pub output: Local<'s, Vec<(Entity, IntersectionData)>>,
@@ -87,7 +86,7 @@ pub struct Raycast<'w, 's, T: TypePath + Send + Sync> {
             Read<GlobalTransform>,
             Entity,
         ),
-        With<RaycastMesh<T>>,
+        With<Handle<Mesh>>,
     >,
     pub mesh_query: Query<
         'w,
@@ -98,7 +97,6 @@ pub struct Raycast<'w, 's, T: TypePath + Send + Sync> {
             Option<Read<NoBackfaceCulling>>,
             Read<GlobalTransform>,
         ),
-        With<RaycastMesh<T>>,
     >,
     #[cfg(feature = "2d")]
     pub mesh2d_query: Query<
@@ -109,11 +107,10 @@ pub struct Raycast<'w, 's, T: TypePath + Send + Sync> {
             Option<Read<SimplifiedMesh>>,
             Read<GlobalTransform>,
         ),
-        With<RaycastMesh<T>>,
     >,
 }
 
-impl<'w, 's, T: TypePath + Send + Sync> Raycast<'w, 's, T> {
+impl<'w, 's> Raycast<'w, 's> {
     /// Casts the `ray` into the world and returns a sorted list of intersections, nearest first.
     pub fn cast_ray(
         &mut self,

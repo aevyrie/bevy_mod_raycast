@@ -1,3 +1,11 @@
+# 0.13.0
+
+- Changed: the immediate mode raycasting system param `Raycast` no longer requires a type parameter
+  for a raycasting set. Instead, you can supply this constraint as a filter in `RaycastSettings`.
+  This makes it possible to raycast any bevy mesh without any special components on cameras or
+  meshes.
+- Fixed: `SimplifiedMesh` and `RaycastSettings` added to the prelude.
+
 # 0.12.0
 
 - Changed: the `should_early_exit` boolean field  has been removed from `RaycastSettings` in favor

@@ -30,8 +30,9 @@ pub use debug::*;
 
 pub mod prelude {
     pub use crate::{
-        system_param::Raycast, DefaultRaycastingPlugin, Ray3d, RaycastMesh, RaycastMethod,
-        RaycastPluginState, RaycastSource, RaycastSystem,
+        system_param::{Raycast, RaycastSettings, RaycastVisibility},
+        DefaultRaycastingPlugin, Ray3d, RaycastMesh, RaycastMethod, RaycastPluginState,
+        RaycastSource, RaycastSystem, SimplifiedMesh,
     };
 }
 
@@ -398,14 +399,19 @@ pub fn build_rays<T: TypePath>(
 /// intersections. If these entities have bounding volumes, these will be checked first, greatly
 /// accelerating the process.
 pub fn update_raycast<T: TypePath + Send + Sync + 'static>(
-    mut raycast: system_param::Raycast<T>,
+    mut raycast: system_param::Raycast,
     mut pick_source_query: Query<&mut RaycastSource<T>>,
+    targets: Query<&RaycastMesh<T>>,
 ) {
     for mut pick_source in &mut pick_source_query {
         if let Some(ray) = pick_source.ray {
             pick_source.intersections.clear();
+
+            let filter = |entity| targets.contains(entity);
             let test = |_| pick_source.should_early_exit;
-            let settings = RaycastSettings::default().with_early_exit_test(&test);
+            let settings = RaycastSettings::default()
+                .with_filter(&filter)
+                .with_early_exit_test(&test);
             pick_source.intersections = raycast.cast_ray(ray, &settings).to_vec();
         }
     }
