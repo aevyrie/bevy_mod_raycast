@@ -70,6 +70,11 @@ impl<'a> Default for RaycastSettings<'a> {
     }
 }
 
+#[cfg(feature = "2d")]
+type MeshFilter = Or<(With<Handle<Mesh>>, With<Mesh2dHandle>)>;
+#[cfg(not(feature = "2d"))]
+type MeshFilter = With<Handle<Mesh>>;
+
 /// A [`SystemParam`] that allows you to raycast into the world.
 #[derive(SystemParam)]
 pub struct Raycast<'w, 's> {
@@ -86,7 +91,7 @@ pub struct Raycast<'w, 's> {
             Read<GlobalTransform>,
             Entity,
         ),
-        With<Handle<Mesh>>,
+        MeshFilter,
     >,
     pub mesh_query: Query<
         'w,

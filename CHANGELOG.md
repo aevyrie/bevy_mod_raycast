@@ -1,3 +1,7 @@
+# 0.13.1
+
+- Fixed: overly-strict query filter preventing raycasting 2d meshes.
+
 # 0.13.0
 
 - Changed: the immediate mode raycasting system param `Raycast` no longer requires a type parameter
