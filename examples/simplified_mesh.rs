@@ -6,20 +6,13 @@ use bevy::{
     core_pipeline::tonemapping::Tonemapping,
     diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
     prelude::*,
-    window::PresentMode,
 };
 use bevy_mod_raycast::prelude::*;
 
 fn main() {
     App::new()
         .add_plugins((
-            DefaultPlugins.set(WindowPlugin {
-                primary_window: Some(Window {
-                    present_mode: PresentMode::AutoNoVsync, // Reduces input lag.
-                    ..Default::default()
-                }),
-                ..default()
-            }),
+            DefaultPlugins.set(low_latency_window_plugin()),
             FrameTimeDiagnosticsPlugin,
             DefaultRaycastingPlugin::<MyRaycastSet>::default(),
         ))
