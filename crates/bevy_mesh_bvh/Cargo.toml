@@ -1,0 +1,21 @@
+[package]
+name = "bevy_mesh_bvh"
+version = "0.1.0"
+authors = ["Aevyrie <aevyrie@gmail.com>"]
+edition = "2021"
+license = "MIT"
+description = "Mesh BVHs for Bevy"
+repository = "https://github.com/aevyrie/bevy_mod_raycast/"
+keywords = ["gamedev", "graphics", "bevy", "3d", "raycast"]
+categories = ["game-engines", "rendering"]
+resolver = "2"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bvh = { version = "0.7", features = ["serde"] }
+bevy = { version = "0.11", default-features = false, features = [
+    "bevy_render",
+    "bevy_asset",
+] }
+serde = "1"

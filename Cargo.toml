@@ -1,37 +1,3 @@
-[package]
-name = "bevy_mod_raycast"
-version = "0.13.1"
-authors = ["Aevyrie <aevyrie@gmail.com>"]
-edition = "2021"
-license = "MIT"
-description = "Ray Casting for the Bevy Engine."
-repository = "https://github.com/aevyrie/bevy_mod_raycast/"
-keywords = ["gamedev", "graphics", "bevy", "3d", "raycast"]
-categories = ["game-engines", "rendering"]
+[workspace]
+members = ["crates/*"]
 resolver = "2"
-
-[dependencies]
-bevy = { version = "0.11", default-features = false, features = [
-    "bevy_render",
-    "bevy_asset",
-] }
-crossbeam-channel = "0.5"
-
-[dev-dependencies]
-bevy = { version = "0.11", default-features = true, features = [
-    "default_font",
-    "ktx2",
-    "tonemapping_luts",
-    "x11",
-    "zstd",
-] }
-criterion = "0.5"
-
-[features]
-default = ["2d", "debug"]
-2d = ["bevy/bevy_sprite"]
-debug = ["bevy/bevy_gizmos"]
-
-[[bench]]
-name = "ray_mesh_intersection"
-harness = false

@@ -36,6 +36,8 @@ pub mod prelude {
     };
 }
 
+mod refactor;
+
 pub struct DefaultRaycastingPlugin<T>(pub PhantomData<fn() -> T>);
 impl<T: TypePath + Send + Sync> Plugin for DefaultRaycastingPlugin<T> {
     fn build(&self, app: &mut App) {

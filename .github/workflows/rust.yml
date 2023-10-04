@@ -32,13 +32,13 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: check
-        run: cargo check
+        run: cargo check --all-targets --workspace
 
       - name: Install clippy  
         run: rustup component add clippy
       
       - name: run clippy
-        run: cargo clippy -- -D warnings
+        run: cargo clippy --all-targets --workspace -- -D warnings
      
       - name: test
-        run: cargo test
+        run: cargo test --all-targets --workspace

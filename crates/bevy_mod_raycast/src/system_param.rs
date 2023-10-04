@@ -173,8 +173,8 @@ impl<'w, 's> Raycast<'w, 's> {
                         // Does the mesh handle resolve?
                         let mesh_handle = simplified_mesh.map(|m| &m.mesh).unwrap_or(mesh_handle);
                         let Some(mesh) = self.meshes.get(mesh_handle) else {
-                        return
-                    };
+                            return;
+                        };
 
                         let _raycast_guard = raycast_guard.enter();
                         let backfaces = match no_backface_culling {
