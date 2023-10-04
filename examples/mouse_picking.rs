@@ -60,6 +60,16 @@ fn setup(
     commands
         .spawn(Camera3dBundle {
             transform: Transform::from_xyz(-2.0, 2.0, 2.0).looking_at(Vec3::ZERO, Vec3::Y),
+            camera: Camera {
+                // Define a viewport so we can verify screenspace rays are being constructed to
+                // account for viewport size.
+                viewport: Some(bevy::render::camera::Viewport {
+                    physical_position: UVec2::new(200, 200),
+                    physical_size: UVec2::new(400, 400),
+                    ..default()
+                }),
+                ..default()
+            },
             ..default()
         })
         .insert(RaycastSource::<MyRaycastSet>::new()); // Designate the camera as our source
