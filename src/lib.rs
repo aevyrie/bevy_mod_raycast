@@ -21,6 +21,7 @@ use bevy::{
         mesh::{Indices, Mesh, VertexAttributeValues},
         render_resource::PrimitiveTopology,
     },
+    window::PrimaryWindow,
 };
 use system_param::{RaycastSettings, RaycastVisibility};
 
@@ -30,6 +31,7 @@ pub use debug::*;
 
 pub mod prelude {
     pub use crate::{
+        low_latency_window_plugin,
         system_param::{Raycast, RaycastSettings, RaycastVisibility},
         DefaultRaycastingPlugin, Ray3d, RaycastMesh, RaycastMethod, RaycastPluginState,
         RaycastSource, RaycastSystem, SimplifiedMesh,
@@ -231,10 +233,11 @@ impl<T: TypePath> RaycastSource<T> {
         cursor_pos_screen: Vec2,
         camera: &Camera,
         camera_transform: &GlobalTransform,
+        window: &Window,
     ) -> Self {
         RaycastSource {
             cast_method: RaycastMethod::Screenspace(cursor_pos_screen),
-            ray: Ray3d::from_screenspace(cursor_pos_screen, camera, camera_transform),
+            ray: Ray3d::from_screenspace(cursor_pos_screen, camera, camera_transform, window),
             ..self
         }
     }
@@ -265,8 +268,14 @@ impl<T: TypePath> RaycastSource<T> {
         cursor_pos_screen: Vec2,
         camera: &Camera,
         camera_transform: &GlobalTransform,
+        window: &Window,
     ) -> Self {
-        RaycastSource::new().with_ray_screenspace(cursor_pos_screen, camera, camera_transform)
+        RaycastSource::new().with_ray_screenspace(
+            cursor_pos_screen,
+            camera,
+            camera_transform,
+            window,
+        )
     }
     /// Initializes a [RaycastSource] with a valid ray derived from a transform.
     pub fn new_transform(transform: Mat4) -> Self {
@@ -352,11 +361,19 @@ pub fn build_rays<T: TypePath>(
         Option<&GlobalTransform>,
         Option<&Camera>,
     )>,
+    window: Query<&Window, With<PrimaryWindow>>,
 ) {
     for (mut pick_source, transform, camera) in &mut pick_source_query {
         pick_source.ray = match &mut pick_source.cast_method {
             RaycastMethod::Screenspace(cursor_pos_screen) => {
                 // Get all the info we need from the camera and window
+                let window = match window.get_single() {
+                    Ok(window) => window,
+                    Err(_) => {
+                        error!("No primary window found, cannot cast ray");
+                        return;
+                    }
+                };
                 let camera = match camera {
                     Some(camera) => camera,
                     None => {
@@ -375,7 +392,7 @@ pub fn build_rays<T: TypePath>(
                         return;
                     }
                 };
-                Ray3d::from_screenspace(*cursor_pos_screen, camera, camera_transform)
+                Ray3d::from_screenspace(*cursor_pos_screen, camera, camera_transform, window)
             }
             // Use the specified transform as the origin and direction of the ray
             RaycastMethod::Transform => {
@@ -713,3 +730,16 @@ pub struct SimplifiedMesh {
 
 #[derive(Component)]
 pub struct NoBackfaceCulling;
+
+/// Used for examples to reduce picking latency. Not relevant code for the examples.
+#[doc(hidden)]
+#[allow(dead_code)]
+pub fn low_latency_window_plugin() -> bevy::window::WindowPlugin {
+    bevy::window::WindowPlugin {
+        primary_window: Some(bevy::window::Window {
+            present_mode: bevy::window::PresentMode::AutoNoVsync,
+            ..Default::default()
+        }),
+        ..Default::default()
+    }
+}

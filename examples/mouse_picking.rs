@@ -7,7 +7,7 @@ use bevy_mod_raycast::{prelude::*, print_intersections};
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPlugins.set(low_latency_window_plugin()))
         // The DefaultRaycastingPlugin bundles all the functionality you might need into a single
         // plugin. This includes building rays, casting them, and placing a debug cursor at the
         // intersection. For more advanced uses, you can compose the systems in this plugin however
