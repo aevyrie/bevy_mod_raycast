@@ -1,3 +1,7 @@
+# UNRELEASED
+
+- Fixed: window scale factor not being considered for screenspace raycasts.
+
 # 0.13.1
 
 - Fixed: overly-strict query filter preventing raycasting 2d meshes.
