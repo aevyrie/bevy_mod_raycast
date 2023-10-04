@@ -7,7 +7,7 @@ use bevy_mod_raycast::{prelude::*, print_intersections};
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPlugins.set(low_latency_window_plugin()))
         // The DefaultRaycastingPlugin bundles all the functionality you might need into a single
         // plugin. This includes building rays, casting them, and placing a debug cursor at the
         // intersection. For more advanced uses, you can compose the systems in this plugin however
@@ -38,7 +38,9 @@ fn update_raycast_with_cursor(
     mut query: Query<&mut RaycastSource<MyRaycastSet>>,
 ) {
     // Grab the most recent cursor event if it exists:
-    let Some(cursor_moved) = cursor.iter().last() else { return };
+    let Some(cursor_moved) = cursor.iter().last() else {
+        return;
+    };
     for mut pick_source in &mut query {
         pick_source.cast_method = RaycastMethod::Screenspace(cursor_moved.position);
     }

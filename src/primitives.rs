@@ -162,10 +162,11 @@ pub mod rays {
             cursor_pos_screen: Vec2,
             camera: &Camera,
             camera_transform: &GlobalTransform,
+            window: &Window,
         ) -> Option<Self> {
             let mut viewport_pos = cursor_pos_screen;
             if let Some(viewport) = &camera.viewport {
-                viewport_pos -= viewport.physical_position.as_vec2();
+                viewport_pos -= viewport.physical_position.as_vec2() / window.scale_factor() as f32;
             }
             camera
                 .viewport_to_world(camera_transform, viewport_pos)

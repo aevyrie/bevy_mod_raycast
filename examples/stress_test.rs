@@ -9,7 +9,6 @@ use bevy::{
     math::Vec3A,
     prelude::*,
     render::primitives::Aabb,
-    window::PresentMode,
 };
 
 use bevy_mod_raycast::prelude::*;
@@ -17,13 +16,7 @@ use bevy_mod_raycast::prelude::*;
 fn main() {
     App::new()
         .add_plugins((
-            DefaultPlugins.set(WindowPlugin {
-                primary_window: Some(Window {
-                    present_mode: PresentMode::AutoNoVsync,
-                    ..default()
-                }),
-                ..default()
-            }),
+            DefaultPlugins.set(low_latency_window_plugin()),
             FrameTimeDiagnosticsPlugin,
             DefaultRaycastingPlugin::<MyRaycastSet>::default(),
         ))
