@@ -22,7 +22,8 @@ fn main() {
             First,
             update_raycast_with_cursor.before(RaycastSystem::BuildRays::<MyRaycastSet>),
         )
-        .add_systems(Startup, (setup, print_intersections::<MyRaycastSet>))
+        .add_systems(Startup, setup)
+        .add_systems(Update, print_intersections::<MyRaycastSet>)
         .run();
 }
 
