@@ -1,4 +1,4 @@
-# UNRELEASED
+# 0.13.2
 
 - Fixed: window scale factor not being considered for screenspace raycasts.
 
