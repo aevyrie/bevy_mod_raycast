@@ -3,42 +3,48 @@ on:
   push:
     branches:
       - main
-
-name: CI
-
 jobs:
-  ci:
-    name: CI
+  format:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2.7.0
+      - run: rustup component add rustfmt
+      - run: cargo fmt --all -- --check
 
-      - name: Update Packages
-        run: sudo apt-get update -yq
-      - name: Install dependencies
-        run: sudo apt-get install -yq --no-install-recommends libudev-dev libasound2-dev libxcb-composite0-dev
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2.7.0
+      - run: cargo check
 
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: stable
-          
-      - name: Cache Dependencies
-        uses: Swatinem/rust-cache@ce325b60658c1b38465c06cc965b79baf32c1e72
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2.7.0
+      - run: rustup component add clippy
+      - run: cargo clippy -- -D warnings
 
-      - name: Install fmt
-        run: rustup component add rustfmt
-      
-      - name: fmt
-        run: cargo fmt --all -- --check
-
-      - name: check
-        run: cargo check
-
-      - name: Install clippy  
-        run: rustup component add clippy
-      
-      - name: run clippy
-        run: cargo clippy -- -D warnings
-     
-      - name: test
-        run: cargo test
+  doc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2.7.0
+      - run: cargo doc --no-deps --workspace
+        env:
+          RUSTDOCFLAGS: -D warnings
+    
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2.7.0
+      - run: sudo apt-get install -yq --no-install-recommends libudev-dev libasound2-dev libxcb-composite0-dev
+      - run: cargo test
