@@ -4,17 +4,8 @@ on:
     branches:
       - main
 jobs:
-  setup:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Update Packages
-        run: sudo apt-get update -yq
-      - name: Install dependencies
-        run: sudo apt-get install -yq --no-install-recommends libudev-dev libasound2-dev libxcb-composite0-dev
-
   format:
     runs-on: ubuntu-latest
-    needs: [setup]
     steps:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
@@ -24,7 +15,6 @@ jobs:
 
   check:
     runs-on: ubuntu-latest
-    needs: [setup]
     steps:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
@@ -33,7 +23,6 @@ jobs:
 
   clippy:
     runs-on: ubuntu-latest
-    needs: [setup]
     steps:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
@@ -43,7 +32,6 @@ jobs:
 
   doc:
     runs-on: ubuntu-latest
-    needs: [setup]
     steps:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
@@ -54,7 +42,6 @@ jobs:
     
   test:
     runs-on: ubuntu-latest
-    needs: [setup]
     steps:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
