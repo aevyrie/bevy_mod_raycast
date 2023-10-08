@@ -51,8 +51,6 @@
 
 #![allow(clippy::type_complexity)]
 
-#[cfg(feature = "debug")]
-pub mod debug;
 pub mod immediate;
 pub mod markers;
 pub mod primitives;
