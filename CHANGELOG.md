@@ -1,3 +1,11 @@
+# 0.14.1
+
+- Changed: relaxed type bounds on the generic raycast set type parameter in `RaycastSource<T>` and
+  `RaycastMesh<T>` to no longer require `Clone.`
+- Added: substantially improved documentation.
+- Fixed: plugin not building with `--no-default-features`.
+- Fixed: `RaycastSource`'s visibility settings being ignored.
+
 # 0.14.0
 
 - Fixed: window scale factor not being considered for screenspace raycasts.

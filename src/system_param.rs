@@ -2,7 +2,6 @@ use bevy::{
     ecs::system::{lifetimeless::Read, SystemParam},
     prelude::*,
     render::primitives::Aabb,
-    sprite::Mesh2dHandle,
     utils::FloatOrd,
 };
 
@@ -49,6 +48,12 @@ impl<'a> RaycastSettings<'a> {
         self
     }
 
+    /// Set the [`RaycastVisibility`] setting to apply to the raycast.
+    pub fn with_visibility(mut self, visibility: RaycastVisibility) -> Self {
+        self.visibility = visibility;
+        self
+    }
+
     /// This raycast should exit as soon as the nearest hit is found.
     pub fn always_early_exit(self) -> Self {
         self.with_early_exit_test(&|_| true)
@@ -71,17 +76,68 @@ impl<'a> Default for RaycastSettings<'a> {
 }
 
 #[cfg(feature = "2d")]
-type MeshFilter = Or<(With<Handle<Mesh>>, With<Mesh2dHandle>)>;
+type MeshFilter = Or<(With<Handle<Mesh>>, With<bevy::sprite::Mesh2dHandle>)>;
 #[cfg(not(feature = "2d"))]
 type MeshFilter = With<Handle<Mesh>>;
 
-/// A [`SystemParam`] that allows you to raycast into the world.
+/// Add this raycasting [`SystemParam`] to your system to raycast into the world with an
+/// immediate-mode API. Call `cast_ray` to immediately perform a raycast and get a result. Under the
+/// hood, this is a collection of regular bevy queries, resources, and locals that are added to your
+/// system.
+///
+/// ## Usage
+///
+/// The following system raycasts into the world with a ray positioned at the origin, pointing in
+/// the x-direction, and returns a list of intersections:
+///
+/// ```
+/// # use bevy_mod_raycast::prelude::*;
+/// # use bevy::prelude::*;
+/// fn raycast_system(mut raycast: Raycast) {
+///     let ray = Ray3d::new(Vec3::ZERO, Vec3::X);
+///     let hits = raycast.cast_ray(ray, &RaycastSettings::default());
+/// }
+/// ```
+/// ## Configuration
+///
+/// You can specify behavior of the raycast using [`RaycastSettings`]. This allows you to filter out
+/// entities, configure early-out, and set whether the [`Visibility`] of an entity should be
+/// considered.
+///
+/// ```
+/// # use bevy_mod_raycast::prelude::*;
+/// # use bevy::prelude::*;
+/// # #[derive(Component)]
+/// # struct Foo;
+/// fn raycast_system(mut raycast: Raycast, foo_query: Query<With<Foo>>) {
+///     let ray = Ray3d::new(Vec3::ZERO, Vec3::X);
+///
+///     // Only raycast against entities with the `Foo` component.
+///     let filter = |entity| foo_query.contains(entity);
+///     // Never early-exit. Note that you can change behavior per-entity.
+///     let early_exit_test = |_entity| false;
+///     // Ignore the visibility of entities. This allows raycasting hidden entities.
+///     let visibility = RaycastVisibility::Ignore;
+///
+///     let settings = RaycastSettings::default()
+///         .with_filter(&filter)
+///         .with_early_exit_test(&early_exit_test)
+///         .with_visibility(visibility);
+///
+///     let hits = raycast.cast_ray(ray, &settings);
+/// }
+/// ```
 #[derive(SystemParam)]
 pub struct Raycast<'w, 's> {
+    #[doc(hidden)]
     pub meshes: Res<'w, Assets<Mesh>>,
+    #[doc(hidden)]
     pub hits: Local<'s, Vec<(FloatOrd, (Entity, IntersectionData))>>,
+    #[doc(hidden)]
     pub output: Local<'s, Vec<(Entity, IntersectionData)>>,
+    #[doc(hidden)]
     pub culled_list: Local<'s, Vec<(FloatOrd, Entity)>>,
+    #[doc(hidden)]
     pub culling_query: Query<
         'w,
         's,
@@ -93,6 +149,7 @@ pub struct Raycast<'w, 's> {
         ),
         MeshFilter,
     >,
+    #[doc(hidden)]
     pub mesh_query: Query<
         'w,
         's,
@@ -104,11 +161,12 @@ pub struct Raycast<'w, 's> {
         ),
     >,
     #[cfg(feature = "2d")]
+    #[doc(hidden)]
     pub mesh2d_query: Query<
         'w,
         's,
         (
-            Read<Mesh2dHandle>,
+            Read<bevy::sprite::Mesh2dHandle>,
             Option<Read<SimplifiedMesh>>,
             Read<GlobalTransform>,
         ),
