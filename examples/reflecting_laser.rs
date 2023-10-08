@@ -6,7 +6,7 @@ use bevy_mod_raycast::prelude::*;
 
 fn main() {
     App::new()
-        .add_plugins((DefaultPlugins, DefaultRaycastingPlugin::<Laser>::default()))
+        .add_plugins(DefaultPlugins)
         .add_systems(Startup, setup_scene)
         .add_systems(Update, bouncing_raycast)
         .insert_resource(ClearColor(Color::BLACK))

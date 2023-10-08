@@ -12,7 +12,8 @@
 //! This is the simplest way to get started. Add the [`Raycast`]
 //! [`SystemParam`](bevy::ecs::system::SystemParam) to your system, and call [`Raycast::cast_ray`],
 //! to get a list of intersections. Raycasts are performed immediately when you call the `cast_ray`
-//! method. See the [`Raycast`] documentation for more details.
+//! method. See the [`Raycast`] documentation for more details. You don't even need to add a plugin
+//! to your application.
 //!
 //! # Retained Mode API
 //!
@@ -48,8 +49,8 @@
 //!
 //! This plugin is well suited for use cases where you don't want to use a full physics engine, you
 //! are putting together a simple prototype, or you just want the simplest-possible API. Using the
-//! [`Raycast`] system param requires no added components: all you have to do is add the plugin to
-//! your app, and you can now raycast against any [`Mesh`]es in the scene, from any system.
+//! [`Raycast`] system param requires no added components or plugins. You can just start raycasting
+//! in your systems.
 //!
 //! ## Limitations
 //!
