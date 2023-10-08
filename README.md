@@ -13,7 +13,7 @@ A small [Bevy](https://github.com/bevyengine/bevy) plugin for mesh raycasting.
 
 ## Getting Started
 
-Using the `Raycast` system param, you don't even need to add a plugin to your app. You can simply start raycasting:
+Using the [`Raycast`](https://docs.rs/bevy_mod_raycast/latest/bevy_mod_raycast/system_param/struct.Raycast.html) system param, you don't even need to add a plugin to your app. You can simply start raycasting:
 
 ```rs
 use bevy_mod_raycast::prelude::*;
@@ -23,7 +23,7 @@ fn my_raycast_system(mut raycast: Raycast) {
 }
 ```
 
-- [Read the docs!](docs.rs/bevy_mod_raycast)
+- [Read the docs!](https://docs.rs/bevy_mod_raycast)
 - Play with the [examples](./examples).
 
 ## Bevy Version Support
