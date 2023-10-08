@@ -1,6 +1,6 @@
 <div align="center">
 
-# Simple Bevy Raycasting
+# Simple Raycasting for Bevy
 
 A small [Bevy](https://github.com/bevyengine/bevy) plugin for mesh raycasting.
   
@@ -13,13 +13,14 @@ A small [Bevy](https://github.com/bevyengine/bevy) plugin for mesh raycasting.
 
 ## Getting Started
 
-Using the [`Raycast`](https://docs.rs/bevy_mod_raycast/latest/bevy_mod_raycast/system_param/struct.Raycast.html) system param, you don't even need to add a plugin to your app. You can simply start raycasting:
+Using the [`Raycast`](https://docs.rs/bevy_mod_raycast/latest/bevy_mod_raycast/system_param/struct.Raycast.html) system param, you don't even need to add a plugin, simply start raycasting:
 
 ```rs
 use bevy_mod_raycast::prelude::*;
 
 fn my_raycast_system(mut raycast: Raycast) {
-    let hits = raycast.cast_ray(Ray3d::default(), &RaycastSettings::default());
+    let ray = Ray3d::new(Vec3::ZERO, Vec3::X);
+    let hits = raycast.cast_ray(ray, &RaycastSettings::default());
 }
 ```
 

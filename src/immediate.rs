@@ -219,7 +219,7 @@ impl<'w, 's> Raycast<'w, 's> {
         drop(ray_cull_guard);
 
         let mut nearest_blocking_hit = FloatOrd(f32::INFINITY);
-        let raycast_guard = info_span!("raycast");
+        let raycast_guard = debug_span!("raycast");
         self.culled_list
             .iter()
             .filter(|(_, entity)| (settings.filter)(*entity))
