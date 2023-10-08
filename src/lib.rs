@@ -1,3 +1,65 @@
+//! A small `bevy` plugin for raycasting against [`Mesh`]es.
+//!
+//! The plugin provides two ways of raycasting:
+//! - An "immediate-mode" API, which allows you to raycast into the scene on-demand in any system.
+//! - A "retained-mode" API, where raycasts are performed once every frame based on entities tagged
+//!    with specific components.
+//!
+//! # Immediate Mode API
+//!
+//! See the `immediate` example for reference.
+//!
+//! This is the simplest way to get started. Add the [`Raycast`]
+//! [`SystemParam`](bevy::ecs::system::SystemParam) to your system, and call [`Raycast::cast_ray`],
+//! to get a list of intersections. Raycasts are performed immediately when you call the `cast_ray`
+//! method. See the [`Raycast`] documentation for more details. You don't even need to add a plugin
+//! to your application.
+//!
+//! # Retained Mode API
+//!
+//! See the `minimal` example for reference.
+//!
+//! This API requires you add a [`RaycastSource`] to the entity that will be generating rays, and a
+//! [`RaycastMesh`] to all meshes that you want to raycast against. The [`RaycastSource`] has some
+//! built in modes for common use cases. You can set this entity to cast based on where it is
+//! pointing, using [`RaycastMethod::Transform`], or you can use [`RaycastMethod::Screenspace`]
+//! along with a screenspace coordinate if the entity is a camera.
+//!
+//! These components are both generic, and raycasts will only happen between entities with the same
+//! generic parameter. For example, [`RaycastSource<Foo>`] can cast rays against meshes with
+//! [`RaycastMesh<Foo>`], but not against meshes that instead only have a [`RaycastMesh<Bar>`]
+//! component.
+//!
+//! ## Comparison to Immediate Mode
+//!
+//! While the retained mode API requires adding components on entities, in return it's generally
+//! more "hands-off". Once you add the components to entities, the plugin will run raycasts for you
+//! every frame, and you can query your [`RaycastSource`]s to see what they have intersected that
+//! frame.
+//!
+//! You can also think of this as being the "declarative" API. Instead of defining how the raycast
+//! happens, you instead describe what you want. For example, "this entity should cast rays in the
+//! direction it faces", and you can then query that entity to find out what it hit.
+//!
+//! By comparison, the immediate mode API is more imperative. You must define the raycast directly,
+//! but in return you are immediately given the results of the raycast without needing to wait for
+//! the scheduled raycasting system to run and query the results.
+//!
+//! # Use Cases
+//!
+//! This plugin is well suited for use cases where you don't want to use a full physics engine, you
+//! are putting together a simple prototype, or you just want the simplest-possible API. Using the
+//! [`Raycast`] system param requires no added components or plugins. You can just start raycasting
+//! in your systems.
+//!
+//! ## Limitations
+//!
+//! This plugin runs entirely on the CPU, with minimal acceleration structures, and without support
+//! for skinned meshes. However, there is a good chance that this simply won't be an issue for your
+//! application. The provided `stress_test` example is a worst-case scenario that can help you judge
+//! if the plugin will meet your performance needs. Using a laptop with an i7-11800H, I am able to
+//! reach 110-530 fps in the stress test, raycasting against 1,000 monkey meshes.
+
 #![allow(clippy::type_complexity)]
 
 #[cfg(feature = "debug")]
@@ -23,7 +85,6 @@ use bevy::{
     },
     window::PrimaryWindow,
 };
-use system_param::{RaycastSettings, RaycastVisibility};
 
 pub use crate::{primitives::*, raycast::*};
 #[cfg(feature = "debug")]
@@ -37,6 +98,8 @@ pub mod prelude {
         RaycastSource, RaycastSystem, SimplifiedMesh,
     };
 }
+
+use prelude::*;
 
 pub struct DefaultRaycastingPlugin<T>(pub PhantomData<fn() -> T>);
 impl<T: TypePath + Send + Sync> Plugin for DefaultRaycastingPlugin<T> {
@@ -160,7 +223,7 @@ impl<T> RaycastPluginState<T> {
 /// # Requirements
 ///
 /// The marked entity must also have a [Mesh] component.
-#[derive(Component, Debug, Clone, Reflect)]
+#[derive(Component, Debug, Reflect)]
 #[reflect(Component)]
 pub struct RaycastMesh<T: TypePath> {
     #[reflect(ignore)]
@@ -186,10 +249,19 @@ impl<T: TypePath> Default for RaycastMesh<T> {
     }
 }
 
+impl<T: TypePath> Clone for RaycastMesh<T> {
+    fn clone(&self) -> Self {
+        RaycastMesh {
+            intersections: self.intersections.clone(),
+            _marker: PhantomData,
+        }
+    }
+}
+
 /// The `RaycastSource` component is used to generate rays with the specified `cast_method`. A `ray`
 /// is generated when the RaycastSource is initialized, either by waiting for update_raycast system
 /// to process the ray, or by using a `with_ray` function.`
-#[derive(Component, Clone, Reflect)]
+#[derive(Component, Reflect)]
 #[reflect(Component)]
 pub struct RaycastSource<T: TypePath> {
     /// The method used to generate rays for this raycast.
@@ -216,6 +288,19 @@ impl<T: TypePath> Default for RaycastSource<T> {
             visibility: RaycastVisibility::MustBeVisibleAndInView,
             ray: None,
             intersections: Vec::new(),
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl<T: TypePath> Clone for RaycastSource<T> {
+    fn clone(&self) -> Self {
+        Self {
+            cast_method: self.cast_method.clone(),
+            should_early_exit: self.should_early_exit,
+            visibility: self.visibility,
+            ray: self.ray,
+            intersections: self.intersections.clone(),
             _marker: PhantomData,
         }
     }
@@ -428,7 +513,8 @@ pub fn update_raycast<T: TypePath + Send + Sync + 'static>(
             let test = |_| pick_source.should_early_exit;
             let settings = RaycastSettings::default()
                 .with_filter(&filter)
-                .with_early_exit_test(&test);
+                .with_early_exit_test(&test)
+                .with_visibility(pick_source.visibility);
             pick_source.intersections = raycast.cast_ray(ray, &settings).to_vec();
         }
     }

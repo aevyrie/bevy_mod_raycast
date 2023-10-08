@@ -66,8 +66,9 @@ fn setup_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
         RaycastSource::<MyRaycastSet>::default(), // Camera as source
     ));
 
+    let mut i = 0;
     for x in -2..=2 {
-        for k in -200..=-10 {
+        for k in -210..-10 {
             commands.spawn((bevy::prelude::SceneBundle {
                 scene: asset_server.load("models/monkey/Monkey.gltf#Scene0"),
                 transform: Transform::from_translation(Vec3::new(
@@ -75,11 +76,13 @@ fn setup_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
                     0.0,
                     k as f32 * 3.0,
                 ))
-                .with_scale(Vec3::splat((k as f32).abs().sub(5.0)) * 0.8),
+                .with_scale(Vec3::splat((k as f32).abs().sub(5.0)) * 0.6),
                 ..default()
             },));
+            i += 1;
         }
     }
+    info!("Raycasting against {i} meshes");
 }
 
 #[allow(clippy::type_complexity)]

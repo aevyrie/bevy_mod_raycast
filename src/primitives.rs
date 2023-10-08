@@ -4,7 +4,6 @@ pub use rays::*;
 
 #[non_exhaustive]
 pub enum Primitive3d {
-    ///Sphere{ radius: f32, position: Vec3 },
     Plane { point: Vec3, normal: Vec3 },
 }
 
