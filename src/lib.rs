@@ -1,6 +1,7 @@
 //! A small [`bevy`] plugin for raycasting against [`Mesh`]es.
 //!
 //! ```
+//! # use bevy::prelude::*;
 //! use bevy_mod_raycast::prelude::*;
 //!
 //! fn raycast_system(mut raycast: Raycast) {
