@@ -1,10 +1,9 @@
 #![allow(unused)]
 
+use bevy::{prelude::*, reflect::TypePath};
 use std::marker::PhantomData;
 
-use bevy::{prelude::*, reflect::TypePath};
-
-use crate::{RaycastMesh, RaycastSource};
+use crate::prelude::*;
 
 /// Updates the 3d cursor to be in the pointed world coordinates
 #[allow(clippy::too_many_arguments)]
@@ -29,6 +28,7 @@ pub fn update_debug_cursor<T: TypePath + Send + Sync>(
     }
 }
 
+/// Used to debug [`RaycastMesh`] intersections.
 pub fn print_intersections<T: TypePath + Send + Sync>(query: Query<&RaycastMesh<T>>) {
     for (_, intersection) in query.iter().flat_map(|mesh| mesh.intersections.iter()) {
         info!(

@@ -3,7 +3,7 @@
 //! raycast and stores the result once per frame.
 
 use bevy::prelude::*;
-use bevy_mod_raycast::{prelude::*, system_param::RaycastSettings};
+use bevy_mod_raycast::prelude::*;
 
 fn main() {
     App::new()

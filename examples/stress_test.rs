@@ -16,9 +16,9 @@ use bevy_mod_raycast::prelude::*;
 fn main() {
     App::new()
         .add_plugins((
-            DefaultPlugins.set(low_latency_window_plugin()),
+            DefaultPlugins.set(bevy_mod_raycast::low_latency_window_plugin()),
             FrameTimeDiagnosticsPlugin,
-            DefaultRaycastingPlugin::<MyRaycastSet>::default(),
+            RetainedRaycastingPlugin::<MyRaycastSet>::default(),
         ))
         .add_systems(Startup, (setup_scene, setup_ui))
         .add_systems(

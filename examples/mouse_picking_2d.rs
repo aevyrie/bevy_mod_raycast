@@ -1,11 +1,11 @@
 use bevy::{prelude::*, sprite::MaterialMesh2dBundle};
-use bevy_mod_raycast::{prelude::*, print_intersections};
+use bevy_mod_raycast::prelude::*;
 
 fn main() {
     App::new()
         .add_plugins((
             DefaultPlugins,
-            DefaultRaycastingPlugin::<MyRaycastSet>::default(),
+            RetainedRaycastingPlugin::<MyRaycastSet>::default(),
         ))
         .add_systems(
             First,

@@ -1,3 +1,13 @@
+//! # Immediate Mode Raycasting API
+//!
+//! See the `immediate` example for reference.
+//!
+//! This is the simplest way to get started. Add the [`Raycast`]
+//! [`SystemParam`](bevy::ecs::system::SystemParam) to your system, and call [`Raycast::cast_ray`],
+//! to get a list of intersections. Raycasts are performed immediately when you call the `cast_ray`
+//! method. See the [`Raycast`] documentation for more details. You don't even need to add a plugin
+//! to your application.
+
 use bevy::{
     ecs::system::{lifetimeless::Read, SystemParam},
     prelude::*,
@@ -5,10 +15,7 @@ use bevy::{
     utils::FloatOrd,
 };
 
-use crate::{
-    ray_intersection_over_mesh, Backfaces, IntersectionData, NoBackfaceCulling, Ray3d,
-    SimplifiedMesh,
-};
+use crate::prelude::*;
 
 /// How a raycast should handle visibility
 #[derive(Clone, Copy, Reflect)]

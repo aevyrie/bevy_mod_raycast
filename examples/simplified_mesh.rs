@@ -12,9 +12,9 @@ use bevy_mod_raycast::prelude::*;
 fn main() {
     App::new()
         .add_plugins((
-            DefaultPlugins.set(low_latency_window_plugin()),
+            DefaultPlugins.set(bevy_mod_raycast::low_latency_window_plugin()),
             FrameTimeDiagnosticsPlugin,
-            DefaultRaycastingPlugin::<MyRaycastSet>::default(),
+            RetainedRaycastingPlugin::<MyRaycastSet>::default(),
         ))
         // You will need to pay attention to what order you add systems! Putting them in the wrong
         // order can result in multiple frames of latency.

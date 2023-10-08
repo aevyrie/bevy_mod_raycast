@@ -75,6 +75,6 @@ fn setup_scene(
             ..default()
         },
         // Without this, raycasts would shoot straight out from the inside of the cube.
-        bevy_mod_raycast::NoBackfaceCulling,
+        bevy_mod_raycast::markers::NoBackfaceCulling,
     ));
 }

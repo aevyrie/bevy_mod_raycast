@@ -3,16 +3,16 @@
 //! looking for a more fully-featured mouse picking plugin, try out bevy_mod_picking.
 
 use bevy::prelude::*;
-use bevy_mod_raycast::{prelude::*, print_intersections};
+use bevy_mod_raycast::prelude::*;
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins.set(low_latency_window_plugin()))
+        .add_plugins(DefaultPlugins.set(bevy_mod_raycast::low_latency_window_plugin()))
         // The DefaultRaycastingPlugin bundles all the functionality you might need into a single
         // plugin. This includes building rays, casting them, and placing a debug cursor at the
         // intersection. For more advanced uses, you can compose the systems in this plugin however
         // you need. For example, you might exclude the debug cursor system.
-        .add_plugins(DefaultRaycastingPlugin::<MyRaycastSet>::default())
+        .add_plugins(RetainedRaycastingPlugin::<MyRaycastSet>::default())
         // You will need to pay attention to what order you add systems! Putting them in the wrong
         // order can result in multiple frames of latency. Ray casting should probably happen near
         // start of the frame. For example, we want to be sure this system runs before we construct
