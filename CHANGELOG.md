@@ -1,3 +1,7 @@
+# 0.15.0
+
+- Changed: immediate and retained raycasting APIs organized into respective modules.
+
 # 0.14.1
 
 - Changed: relaxed type bounds on the generic raycast set type parameter in `RaycastSource<T>` and
