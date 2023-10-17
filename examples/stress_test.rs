@@ -21,13 +21,7 @@ fn main() {
             RetainedRaycastingPlugin::<MyRaycastSet>::default(),
         ))
         .add_systems(Startup, (setup_scene, setup_ui))
-        .add_systems(
-            First,
-            (
-                update_status,
-                update_raycast_pos.before(RaycastSystem::BuildRays::<MyRaycastSet>),
-            ),
-        )
+        .add_systems(First, update_status)
         .add_systems(Update, (update_fps, make_scene_pickable))
         .run();
 }
@@ -37,18 +31,6 @@ fn main() {
 // some meshes with one ray casting source, and other meshes with a different ray casting source."
 #[derive(Reflect)]
 struct MyRaycastSet;
-
-// Update our `RaycastSource` with the current cursor position every frame.
-fn update_raycast_pos(
-    mut cursor: EventReader<CursorMoved>,
-    mut query: Query<&mut RaycastSource<MyRaycastSet>>,
-) {
-    for mut pick_source in &mut query {
-        if let Some(cursor_latest) = cursor.iter().last() {
-            pick_source.cast_method = RaycastMethod::Screenspace(cursor_latest.position);
-        }
-    }
-}
 
 fn setup_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(RaycastPluginState::<MyRaycastSet>::default().with_debug_cursor());
@@ -63,7 +45,7 @@ fn setup_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     commands.spawn((
         Camera3dBundle::default(),
-        RaycastSource::<MyRaycastSet>::default(), // Camera as source
+        RaycastSource::<MyRaycastSet>::new_cursor(),
     ));
 
     let mut i = 0;

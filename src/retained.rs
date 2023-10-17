@@ -284,10 +284,20 @@ impl<T: TypePath> RaycastSource<T> {
             window,
         )
     }
+
+    /// Initializes a [RaycastSource] for cursor raycasting.
+    pub fn new_cursor() -> Self {
+        RaycastSource {
+            cast_method: RaycastMethod::Cursor,
+            ..default()
+        }
+    }
+
     /// Initializes a [RaycastSource] with a valid ray derived from a transform.
     pub fn new_transform(transform: Mat4) -> Self {
         RaycastSource::new().with_ray_transform(transform)
     }
+
     /// Instantiates a [RaycastSource] with [RaycastMethod::Transform], and an empty ray. It will
     /// not be initialized until the [update_raycast] system is run and a [GlobalTransform] is
     /// present on this entity.
@@ -302,6 +312,7 @@ impl<T: TypePath> RaycastSource<T> {
             ..Default::default()
         }
     }
+
     /// Get a reference to the ray cast source's intersections, if one exists.
     pub fn get_intersections(&self) -> Option<&[(Entity, IntersectionData)]> {
         if self.intersections.is_empty() {
@@ -310,11 +321,13 @@ impl<T: TypePath> RaycastSource<T> {
             Some(&self.intersections)
         }
     }
+
     /// Get a reference to the ray cast source's intersections. Returns an empty list if there are
     /// no intersections.
     pub fn intersections(&self) -> &[(Entity, IntersectionData)] {
         &self.intersections
     }
+
     /// Get a reference to the nearest intersection point, if there is one.
     pub fn get_nearest_intersection(&self) -> Option<(Entity, &IntersectionData)> {
         if self.intersections.is_empty() {
@@ -323,10 +336,12 @@ impl<T: TypePath> RaycastSource<T> {
             self.intersections.first().map(|(e, i)| (*e, i))
         }
     }
+
     /// Run an intersection check between this [`RaycastSource`] and a 3D primitive [`Primitive3d`].
     pub fn intersect_primitive(&self, shape: Primitive3d) -> Option<IntersectionData> {
         Some(self.ray?.intersects_primitive(shape)?.into())
     }
+
     /// Get a copy of the ray cast source's ray.
     pub fn get_ray(&self) -> Option<Ray3d> {
         self.ray
@@ -346,6 +361,8 @@ impl<T: TypePath> RaycastSource<T> {
 /// Specifies the method used to generate rays.
 #[derive(Clone, Debug, Reflect)]
 pub enum RaycastMethod {
+    /// Use the mouse cursor to build a ray.
+    Cursor,
     /// Specify screen coordinates relative to the camera component associated with this entity.
     ///
     /// # Component Requirements
@@ -372,51 +389,56 @@ pub fn build_rays<T: TypePath>(
 ) {
     for (mut pick_source, transform, camera) in &mut pick_source_query {
         pick_source.ray = match &mut pick_source.cast_method {
+            RaycastMethod::Cursor => {
+                query_window(&window, camera, transform).and_then(|(window, camera, transform)| {
+                    window.cursor_position().and_then(|cursor_pos| {
+                        Ray3d::from_screenspace(cursor_pos, camera, transform, window)
+                    })
+                })
+            }
             RaycastMethod::Screenspace(cursor_pos_screen) => {
-                // Get all the info we need from the camera and window
-                let window = match window.get_single() {
-                    Ok(window) => window,
-                    Err(_) => {
-                        error!("No primary window found, cannot cast ray");
-                        return;
-                    }
-                };
-                let camera = match camera {
-                    Some(camera) => camera,
-                    None => {
-                        error!(
-                    "The PickingSource is a CameraScreenSpace but has no associated Camera component"
-                );
-                        return;
-                    }
-                };
-                let camera_transform = match transform {
-                    Some(transform) => transform,
-                    None => {
-                        error!(
-                    "The PickingSource is a CameraScreenSpace but has no associated GlobalTransform component"
-                );
-                        return;
-                    }
-                };
-                Ray3d::from_screenspace(*cursor_pos_screen, camera, camera_transform, window)
+                query_window(&window, camera, transform).and_then(|(window, camera, transform)| {
+                    Ray3d::from_screenspace(*cursor_pos_screen, camera, transform, window)
+                })
             }
-            // Use the specified transform as the origin and direction of the ray
-            RaycastMethod::Transform => {
-                let transform = match transform {
-                Some(matrix) => matrix,
-                None => {
-                    error!(
-                    "The PickingSource is a Transform but has no associated GlobalTransform component"
-                );
-                    return
-                }
-            }
-            .compute_matrix();
-                Some(Ray3d::from_transform(transform))
-            }
+            RaycastMethod::Transform => transform
+                .map(|t| t.compute_matrix())
+                .map(Ray3d::from_transform),
         };
     }
+}
+
+fn query_window<'q, 'a: 'q, 'b>(
+    window: &'q Query<'_, '_, &'a Window, With<PrimaryWindow>>,
+    camera: Option<&'b Camera>,
+    transform: Option<&'b GlobalTransform>,
+) -> Option<(&'q Window, &'b Camera, &'b GlobalTransform)> {
+    let window = match window.get_single() {
+        Ok(window) => window,
+        Err(_) => {
+            error!("No primary window found, cannot cast ray");
+            return None;
+        }
+    };
+    let camera = match camera {
+        Some(camera) => camera,
+        None => {
+            error!(
+                "The PickingSource is a CameraScreenSpace but has no associated Camera component"
+            );
+            return None;
+        }
+    };
+    let camera_transform = match transform {
+        Some(transform) => transform,
+        None => {
+            error!(
+        "The PickingSource is a CameraScreenSpace but has no associated GlobalTransform component"
+    );
+            return None;
+        }
+    };
+    Some((window, camera, camera_transform))
 }
 
 /// Iterates through all entities with the [RaycastMesh] component, checking for

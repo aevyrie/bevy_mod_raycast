@@ -180,6 +180,41 @@ pub struct Raycast<'w, 's> {
 }
 
 impl<'w, 's> Raycast<'w, 's> {
+    #[cfg(feature = "debug")]
+    /// Like [`Raycast::cast_ray`], but debug-draws the ray and intersection.
+    pub fn debug_cast_ray(
+        &mut self,
+        ray: Ray3d,
+        settings: &RaycastSettings,
+        gizmos: &mut Gizmos,
+    ) -> &[(Entity, IntersectionData)] {
+        let orientation = Quat::from_rotation_arc(Vec3::NEG_Z, ray.direction());
+        gizmos.ray(ray.origin(), ray.direction(), Color::BLUE);
+        gizmos.sphere(ray.origin(), orientation, 0.1, Color::BLUE);
+
+        let hits = self.cast_ray(ray, settings);
+
+        for (is_first, intersection) in hits
+            .iter()
+            .map(|i| i.1.clone())
+            .enumerate()
+            .map(|(i, hit)| (i == 0, hit))
+        {
+            let color = match is_first {
+                true => Color::GREEN,
+                false => Color::PINK,
+            };
+            gizmos.ray(intersection.position(), intersection.normal(), color);
+            gizmos.circle(intersection.position(), intersection.normal(), 0.1, color);
+        }
+
+        if let Some(hit) = hits.first() {
+            debug!("{:?}", hit);
+        }
+
+        hits
+    }
+
     /// Casts the `ray` into the world and returns a sorted list of intersections, nearest first.
     pub fn cast_ray(
         &mut self,

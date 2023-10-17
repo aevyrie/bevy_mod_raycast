@@ -3,7 +3,6 @@
 //! intersection with the mesh.
 
 use bevy::{
-    core_pipeline::tonemapping::Tonemapping,
     diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
     prelude::*,
 };
@@ -13,36 +12,17 @@ fn main() {
     App::new()
         .add_plugins((
             DefaultPlugins.set(bevy_mod_raycast::low_latency_window_plugin()),
+            DefaultRaycastingPlugin,
             FrameTimeDiagnosticsPlugin,
-            RetainedRaycastingPlugin::<MyRaycastSet>::default(),
         ))
-        // You will need to pay attention to what order you add systems! Putting them in the wrong
-        // order can result in multiple frames of latency.
-        .add_systems(
-            First,
-            update_raycast_with_cursor_position.before(RaycastSystem::BuildRays::<MyRaycastSet>),
-        )
         .add_systems(Startup, (setup_scene, setup_ui))
-        .add_systems(Update, (update_fps, manage_simplified_mesh))
+        .add_systems(Update, (raycast, update_fps, manage_simplified_mesh))
         .run();
 }
 
-// This is a unit struct we will use to mark our generic `RaycastMesh`s and `RaycastSource` as part
-// of the same group, or "RaycastSet". For more complex use cases, you might use this to associate
-// some meshes with one ray casting source, and other meshes with a different ray casting source."
-#[derive(Reflect)]
-struct MyRaycastSet;
-
-// Update our `RaycastSource` with the current cursor position every frame.
-fn update_raycast_with_cursor_position(
-    mut cursor: EventReader<CursorMoved>,
-    mut query: Query<&mut RaycastSource<MyRaycastSet>>,
-) {
-    for mut pick_source in &mut query {
-        // Grab the most recent cursor event if it exists:
-        if let Some(cursor_latest) = cursor.iter().last() {
-            pick_source.cast_method = RaycastMethod::Screenspace(cursor_latest.position);
-        }
+fn raycast(cursor_ray: Res<CursorRay>, mut raycast: Raycast, mut gizmos: Gizmos) {
+    if let Some(ray) = **cursor_ray {
+        raycast.debug_cast_ray(ray, &default(), &mut gizmos);
     }
 }
 
@@ -52,13 +32,7 @@ fn setup_scene(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    commands.insert_resource(RaycastPluginState::<MyRaycastSet>::default().with_debug_cursor());
-    commands
-        .spawn(Camera3dBundle {
-            tonemapping: Tonemapping::ReinhardLuminance,
-            ..default()
-        })
-        .insert(RaycastSource::<MyRaycastSet>::new()); // Designate the camera as our source
+    commands.spawn(Camera3dBundle::default());
     commands.spawn((
         PbrBundle {
             // This is a very complex mesh that will be hard to raycast on
@@ -74,7 +48,6 @@ fn setup_scene(
         SimplifiedMesh {
             mesh: meshes.add(Mesh::from(shape::UVSphere::default())),
         },
-        RaycastMesh::<MyRaycastSet>::default(), // Make this mesh ray cast-able
     ));
     commands.spawn(PointLightBundle {
         transform: Transform::from_translation(Vec3::new(4.0, 8.0, 4.0)),
@@ -158,15 +131,15 @@ struct FpsText;
 // Insert or remove SimplifiedMesh component from the mesh being raycasted on.
 fn manage_simplified_mesh(
     mut commands: Commands,
-    query: Query<(Entity, Option<&SimplifiedMesh>), With<RaycastMesh<MyRaycastSet>>>,
+    query: Query<(Entity, Option<&SimplifiedMesh>), With<Handle<Mesh>>>,
     mut status_query: Query<&mut Text, With<SimplifiedStatus>>,
     keyboard: Res<Input<KeyCode>>,
     mut meshes: ResMut<Assets<Mesh>>,
 ) {
     if keyboard.just_pressed(KeyCode::Space) {
-        if let Ok((entity, ray)) = query.get_single() {
+        if let Ok((entity, simplified_mesh)) = query.get_single() {
             if let Ok(mut text) = status_query.get_single_mut() {
-                if ray.is_none() {
+                if simplified_mesh.is_none() {
                     commands.entity(entity).insert(SimplifiedMesh {
                         mesh: meshes.add(Mesh::from(shape::UVSphere::default())),
                     });
