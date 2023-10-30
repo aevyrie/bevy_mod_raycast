@@ -1,5 +1,5 @@
 use bevy::math::{Mat4, Vec3};
-use bevy_mod_raycast::{Backfaces, Ray3d};
+use bevy_mod_raycast::prelude::*;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 fn ptoxznorm(p: u32, size: u32) -> (f32, f32) {
@@ -50,7 +50,7 @@ fn ray_mesh_intersection(c: &mut Criterion) {
             let mesh = mesh_creation(vertices_per_side);
 
             b.iter(|| {
-                black_box(bevy_mod_raycast::ray_mesh_intersection(
+                black_box(bevy_mod_raycast::prelude::ray_mesh_intersection(
                     &mesh_to_world,
                     &mesh.positions,
                     Some(&mesh.normals),
@@ -74,7 +74,7 @@ fn ray_mesh_intersection_no_intersection(c: &mut Criterion) {
             let mesh = mesh_creation(vertices_per_side);
 
             b.iter(|| {
-                black_box(bevy_mod_raycast::ray_mesh_intersection(
+                black_box(bevy_mod_raycast::prelude::ray_mesh_intersection(
                     &mesh_to_world,
                     &mesh.positions,
                     Some(&mesh.normals),

@@ -1,6 +1,6 @@
 <div align="center">
 
-# Simple Bevy Raycasting
+# `bevy_mod_raycast`
 
 A small [Bevy](https://github.com/bevyengine/bevy) plugin for mesh raycasting.
   
@@ -13,21 +13,23 @@ A small [Bevy](https://github.com/bevyengine/bevy) plugin for mesh raycasting.
 
 ## Getting Started
 
-Using the [`Raycast`](https://docs.rs/bevy_mod_raycast/latest/bevy_mod_raycast/system_param/struct.Raycast.html) system param, you don't even need to add a plugin to your app. You can simply start raycasting:
+Using the [`Raycast`](https://docs.rs/bevy_mod_raycast/latest/bevy_mod_raycast/system_param/struct.Raycast.html) system param, you don't even need to add a plugin, raycast immediately with the ECS:
 
 ```rs
 use bevy_mod_raycast::prelude::*;
 
 fn my_raycast_system(mut raycast: Raycast) {
-    let hits = raycast.cast_ray(Ray3d::default(), &RaycastSettings::default());
+    let ray = Ray3d::new(Vec3::ZERO, Vec3::X);
+    let hits = raycast.cast_ray(ray, &RaycastSettings::default());
 }
 ```
 
-- [Read the docs!](https://docs.rs/bevy_mod_raycast)
+- 👉 [Read the docs!](https://docs.rs/bevy_mod_raycast)
 - Play with the [examples](./examples).
 
-## Bevy Version Support
 
+<details>
+<summary><h2>Bevy Version Support</h2></summary>
 I intend to track the `main` branch of Bevy. PRs supporting this are welcome! 
 
 | bevy | bevy_mod_raycast |
@@ -40,3 +42,4 @@ I intend to track the `main` branch of Bevy. PRs supporting this are welcome!
 | 0.6  | 0.3              |
 | 0.5  | 0.2              |
 | 0.4  | 0.1              |
+</details>

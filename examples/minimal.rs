@@ -1,78 +1,40 @@
-//! This example casts a ray from the camera using its transform, intersects a mesh, displays the
-//! debug cursor at the intersection, and reports the intersection.
-//!
-//! It also demonstrates how normals are interpolated. Notice the debug cursor doesn't snap to the
-//! faces of the low-poly sphere's faces, but smoothly interpolates using the mesh's normals.
+//! This example demonstrates how to use the [`Raycast`] system param to run raycasts on-demand, in
+//! an immediate mode style. This is unlike using a deferred API, which runs a raycast based on
+//! [`RaycastSource`] components once per frame.
 
 use bevy::prelude::*;
-use bevy_mod_raycast::{prelude::*, print_intersections};
+use bevy_mod_raycast::prelude::*;
 
 fn main() {
     App::new()
-        .add_plugins((
-            DefaultPlugins,
-            DefaultRaycastingPlugin::<MyRaycastSet>::default(),
-        ))
+        .add_plugins(DefaultPlugins)
         .add_systems(Startup, setup)
-        .add_systems(Update, (rotator, print_intersections::<MyRaycastSet>))
+        .add_systems(Update, raycast)
         .run();
 }
 
-// Mark our generic `RaycastMesh`s and `RaycastSource`s as part of the same "RaycastSet". This
-// plugin uses generics to distinguish between groups of raycasters.
-#[derive(Reflect)]
-struct MyRaycastSet;
+const DIST: Vec3 = Vec3::new(0.0, 0.0, -7.0);
 
-// Set up a simple scene with a sphere, camera, and light.
+fn raycast(mut raycast: Raycast, mut gizmos: Gizmos, time: Res<Time>) {
+    let t = time.elapsed_seconds();
+    let pos = Vec3::new(t.sin(), (t * 1.5).cos() * 2.0, t.cos()) * 1.5 + DIST;
+    let dir = (DIST - pos).normalize();
+    // This is all that is needed to raycast into the world! You can also use the normal, non-debug
+    // version (raycast.cast_ray) when you don't need to visualize the ray or intersections.
+    raycast.debug_cast_ray(Ray3d::new(pos, dir), &default(), &mut gizmos);
+}
+
 fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    // Overwrite the default plugin state with one that enables the debug cursor. This line can be
-    // removed if the debug cursor isn't needed as the state is set to default values when the
-    // default plugin is added.
-    commands.insert_resource(
-        bevy_mod_raycast::RaycastPluginState::<MyRaycastSet>::default().with_debug_cursor(),
-    );
-    commands.spawn((
-        Camera3dBundle {
-            projection: Projection::Orthographic(OrthographicProjection {
-                scale: 0.01,
-                ..default()
-            }),
-            ..default()
-        },
-        // Designate the camera as our ray casting source. Using `new_transform_empty()` means that
-        // the ray casting source will not be initialized with a valid ray. Instead, a ray will be
-        // calculated the first time the update_raycast system runs. Because we are setting this as
-        // a RaycastMethod::Transform source, the update_raycast system will look for a
-        // GlobalTransform on the camera entity, and build a ray using this transform. In this
-        // example, this means that as the camera rotates in the scene, the update_raycast system
-        // will build a valid ray every frame using the camera's updated position.
-        RaycastSource::<MyRaycastSet>::new_transform_empty(),
-    ));
-    commands.spawn((
-        PbrBundle {
-            mesh: meshes.add(Mesh::try_from(shape::Icosphere::default()).unwrap()),
-            material: materials.add(Color::rgb(1.0, 1.0, 1.0).into()),
-            transform: Transform::from_translation(Vec3::new(0.0, 0.0, -5.0)),
-            ..Default::default()
-        },
-        RaycastMesh::<MyRaycastSet>::default(), // Make this mesh ray cast-able
-    ));
-    commands.spawn(PointLightBundle {
-        transform: Transform::from_translation(Vec3::new(4.0, 8.0, 4.0)),
-        ..Default::default()
+    commands.spawn(Camera3dBundle::default());
+    commands.spawn(PointLightBundle::default());
+    commands.spawn(PbrBundle {
+        mesh: meshes.add(Mesh::try_from(shape::Capsule::default()).unwrap()),
+        material: materials.add(Color::rgb(1.0, 1.0, 1.0).into()),
+        transform: Transform::from_translation(DIST),
+        ..default()
     });
-}
-
-/// Rotate the camera up and down to show that the raycast intersection is updated every frame.
-fn rotator(time: Res<Time>, mut query: Query<&mut Transform, With<RaycastSource<MyRaycastSet>>>) {
-    for mut transform in &mut query {
-        *transform = Transform::from_rotation(
-            Quat::from_rotation_x(time.elapsed_seconds().sin() * 0.2)
-                * Quat::from_rotation_y((time.elapsed_seconds() * 1.5).sin() * 0.1),
-        );
-    }
 }

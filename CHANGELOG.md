@@ -1,3 +1,15 @@
+# 0.15.0
+
+- Changed: immediate and deferred raycasting APIs organized into respective modules.
+- Added: the `DefaultRaycastingPlugin` now builds a ray using the mouse cursor every frame and
+  stores it in the `CursorRay` resource.
+- Added: `RaycastMethod::Cursor` variant added to `RaycastSource` settings for the common use case
+  of using the mouse cursor.
+- Added: `debug_cast_ray` mirrors the `cast_ray` method, but handles debug drawing the ray and any
+  intersections.
+- Changed: removed unused `Reflect` derive from `RaycastSettings`. This struct is neither a resource
+  nor a component.
+
 # 0.14.1
 
 - Changed: relaxed type bounds on the generic raycast set type parameter in `RaycastSource<T>` and

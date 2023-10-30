@@ -237,6 +237,14 @@ pub mod rays {
                 }
             }
         }
+
+        pub fn set_origin(&mut self, origin: Vec3) {
+            self.origin = origin.into();
+        }
+
+        pub fn set_direction(&mut self, direction: Vec3) {
+            self.direction = direction.normalize().into();
+        }
     }
 
     impl From<Ray> for Ray3d {

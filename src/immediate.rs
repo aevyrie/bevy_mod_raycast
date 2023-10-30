@@ -1,3 +1,12 @@
+//! # Immediate Mode Raycasting API
+//!
+//! See the `minimal` example for reference.
+//!
+//! This is the simplest way to get started. Add the [`Raycast`] [`SystemParam`] to your system, and
+//! call [`Raycast::cast_ray`], to get a list of intersections. Raycasts are performed immediately
+//! when you call the `cast_ray` method. See the [`Raycast`] documentation for more details. You
+//! don't even need to add a plugin to your application.
+
 use bevy::{
     ecs::system::{lifetimeless::Read, SystemParam},
     prelude::*,
@@ -5,10 +14,7 @@ use bevy::{
     utils::FloatOrd,
 };
 
-use crate::{
-    ray_intersection_over_mesh, Backfaces, IntersectionData, NoBackfaceCulling, Ray3d,
-    SimplifiedMesh,
-};
+use crate::prelude::*;
 
 /// How a raycast should handle visibility
 #[derive(Clone, Copy, Reflect)]
@@ -23,7 +29,7 @@ pub enum RaycastVisibility {
 }
 
 /// Settings for a raycast.
-#[derive(Clone, Reflect)]
+#[derive(Clone)]
 pub struct RaycastSettings<'a> {
     /// Determines how raycasting should consider entity visibility.
     pub visibility: RaycastVisibility,
@@ -174,6 +180,41 @@ pub struct Raycast<'w, 's> {
 }
 
 impl<'w, 's> Raycast<'w, 's> {
+    #[cfg(feature = "debug")]
+    /// Like [`Raycast::cast_ray`], but debug-draws the ray and intersection.
+    pub fn debug_cast_ray(
+        &mut self,
+        ray: Ray3d,
+        settings: &RaycastSettings,
+        gizmos: &mut Gizmos,
+    ) -> &[(Entity, IntersectionData)] {
+        let orientation = Quat::from_rotation_arc(Vec3::NEG_Z, ray.direction());
+        gizmos.ray(ray.origin(), ray.direction(), Color::BLUE);
+        gizmos.sphere(ray.origin(), orientation, 0.1, Color::BLUE);
+
+        let hits = self.cast_ray(ray, settings);
+
+        for (is_first, intersection) in hits
+            .iter()
+            .map(|i| i.1.clone())
+            .enumerate()
+            .map(|(i, hit)| (i == 0, hit))
+        {
+            let color = match is_first {
+                true => Color::GREEN,
+                false => Color::PINK,
+            };
+            gizmos.ray(intersection.position(), intersection.normal(), color);
+            gizmos.circle(intersection.position(), intersection.normal(), 0.1, color);
+        }
+
+        if let Some(hit) = hits.first() {
+            debug!("{:?}", hit);
+        }
+
+        hits
+    }
+
     /// Casts the `ray` into the world and returns a sorted list of intersections, nearest first.
     pub fn cast_ray(
         &mut self,
@@ -213,7 +254,7 @@ impl<'w, 's> Raycast<'w, 's> {
         drop(ray_cull_guard);
 
         let mut nearest_blocking_hit = FloatOrd(f32::INFINITY);
-        let raycast_guard = info_span!("raycast");
+        let raycast_guard = debug_span!("raycast");
         self.culled_list
             .iter()
             .filter(|(_, entity)| (settings.filter)(*entity))

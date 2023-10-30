@@ -1,7 +1,3 @@
-//! This example will show you how to setup bounding volume to optimize when raycasting over a scene
-//! with many meshes. The bounding volume will be used to check faster for which mesh to actually
-//! raycast on.
-
 use std::ops::Sub;
 
 use bevy::{
@@ -16,18 +12,12 @@ use bevy_mod_raycast::prelude::*;
 fn main() {
     App::new()
         .add_plugins((
-            DefaultPlugins.set(low_latency_window_plugin()),
+            DefaultPlugins.set(bevy_mod_raycast::low_latency_window_plugin()),
             FrameTimeDiagnosticsPlugin,
-            DefaultRaycastingPlugin::<MyRaycastSet>::default(),
+            DeferredRaycastingPlugin::<MyRaycastSet>::default(),
         ))
         .add_systems(Startup, (setup_scene, setup_ui))
-        .add_systems(
-            First,
-            (
-                update_status,
-                update_raycast_pos.before(RaycastSystem::BuildRays::<MyRaycastSet>),
-            ),
-        )
+        .add_systems(First, update_status)
         .add_systems(Update, (update_fps, make_scene_pickable))
         .run();
 }
@@ -38,32 +28,17 @@ fn main() {
 #[derive(Reflect)]
 struct MyRaycastSet;
 
-// Update our `RaycastSource` with the current cursor position every frame.
-fn update_raycast_pos(
-    mut cursor: EventReader<CursorMoved>,
-    mut query: Query<&mut RaycastSource<MyRaycastSet>>,
-) {
-    for mut pick_source in &mut query {
-        if let Some(cursor_latest) = cursor.iter().last() {
-            pick_source.cast_method = RaycastMethod::Screenspace(cursor_latest.position);
-        }
-    }
-}
-
 fn setup_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(RaycastPluginState::<MyRaycastSet>::default().with_debug_cursor());
     commands.spawn(DirectionalLightBundle {
         transform: Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, 20.0, 20.0, 0.0)),
-        directional_light: DirectionalLight {
-            illuminance: 5000.0,
-            ..Default::default()
-        },
-        ..Default::default()
+        directional_light: DirectionalLight::default(),
+        ..default()
     });
 
     commands.spawn((
         Camera3dBundle::default(),
-        RaycastSource::<MyRaycastSet>::default(), // Camera as source
+        RaycastSource::<MyRaycastSet>::new_cursor(),
     ));
 
     let mut i = 0;
@@ -113,10 +88,10 @@ fn setup_ui(mut commands: Commands) {
             style: Style {
                 align_self: AlignSelf::FlexStart,
                 flex_direction: FlexDirection::Column,
-                ..Default::default()
+                ..default()
             },
             background_color: Color::NONE.into(),
-            ..Default::default()
+            ..default()
         })
         .with_children(|ui| {
             ui.spawn(TextBundle::from_sections([text_section(

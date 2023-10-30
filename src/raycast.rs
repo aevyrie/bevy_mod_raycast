@@ -1,8 +1,281 @@
 use std::f32::EPSILON;
 
-use bevy::math::Vec3A;
+use bevy::{
+    math::Vec3A,
+    prelude::*,
+    render::{
+        mesh::{Indices, VertexAttributeValues},
+        render_resource::PrimitiveTopology,
+    },
+};
 
-use crate::{primitives::*, TriangleTrait};
+use crate::primitives::*;
+
+/// Cast a ray on a mesh, and returns the intersection
+pub fn ray_intersection_over_mesh(
+    mesh: &Mesh,
+    mesh_transform: &Mat4,
+    ray: &Ray3d,
+    backface_culling: Backfaces,
+) -> Option<IntersectionData> {
+    if mesh.primitive_topology() != PrimitiveTopology::TriangleList {
+        error!(
+            "Invalid intersection check: `TriangleList` is the only supported `PrimitiveTopology`"
+        );
+        return None;
+    }
+    // Get the vertex positions from the mesh reference resolved from the mesh handle
+    let vertex_positions: &Vec<[f32; 3]> = match mesh.attribute(Mesh::ATTRIBUTE_POSITION) {
+        None => panic!("Mesh does not contain vertex positions"),
+        Some(vertex_values) => match &vertex_values {
+            VertexAttributeValues::Float32x3(positions) => positions,
+            _ => panic!("Unexpected types in {:?}", Mesh::ATTRIBUTE_POSITION),
+        },
+    };
+    let vertex_normals: Option<&[[f32; 3]]> =
+        if let Some(normal_values) = mesh.attribute(Mesh::ATTRIBUTE_NORMAL) {
+            match &normal_values {
+                VertexAttributeValues::Float32x3(normals) => Some(normals),
+                _ => None,
+            }
+        } else {
+            None
+        };
+
+    if let Some(indices) = &mesh.indices() {
+        // Iterate over the list of pick rays that belong to the same group as this mesh
+        match indices {
+            Indices::U16(vertex_indices) => ray_mesh_intersection(
+                mesh_transform,
+                vertex_positions,
+                vertex_normals,
+                ray,
+                Some(vertex_indices),
+                backface_culling,
+            ),
+            Indices::U32(vertex_indices) => ray_mesh_intersection(
+                mesh_transform,
+                vertex_positions,
+                vertex_normals,
+                ray,
+                Some(vertex_indices),
+                backface_culling,
+            ),
+        }
+    } else {
+        ray_mesh_intersection(
+            mesh_transform,
+            vertex_positions,
+            vertex_normals,
+            ray,
+            None::<&Vec<u32>>,
+            backface_culling,
+        )
+    }
+}
+
+pub trait IntoUsize: Copy {
+    fn into_usize(self) -> usize;
+}
+impl IntoUsize for u16 {
+    fn into_usize(self) -> usize {
+        self as usize
+    }
+}
+impl IntoUsize for u32 {
+    fn into_usize(self) -> usize {
+        self as usize
+    }
+}
+
+/// Checks if a ray intersects a mesh, and returns the nearest intersection if one exists.
+pub fn ray_mesh_intersection(
+    mesh_transform: &Mat4,
+    vertex_positions: &[[f32; 3]],
+    vertex_normals: Option<&[[f32; 3]]>,
+    ray: &Ray3d,
+    indices: Option<&Vec<impl IntoUsize>>,
+    backface_culling: Backfaces,
+) -> Option<IntersectionData> {
+    // The ray cast can hit the same mesh many times, so we need to track which hit is
+    // closest to the camera, and record that.
+    let mut min_pick_distance = f32::MAX;
+    let mut pick_intersection = None;
+
+    let world_to_mesh = mesh_transform.inverse();
+
+    let mesh_space_ray = Ray3d::new(
+        world_to_mesh.transform_point3(ray.origin()),
+        world_to_mesh.transform_vector3(ray.direction()),
+    );
+
+    if let Some(indices) = indices {
+        // Make sure this chunk has 3 vertices to avoid a panic.
+        if indices.len() % 3 != 0 {
+            warn!("Index list not a multiple of 3");
+            return None;
+        }
+        // Now that we're in the vector of vertex indices, we want to look at the vertex
+        // positions for each triangle, so we'll take indices in chunks of three, where each
+        // chunk of three indices are references to the three vertices of a triangle.
+        for index in indices.chunks(3) {
+            let tri_vertex_positions = [
+                Vec3A::from(vertex_positions[index[0].into_usize()]),
+                Vec3A::from(vertex_positions[index[1].into_usize()]),
+                Vec3A::from(vertex_positions[index[2].into_usize()]),
+            ];
+            let tri_normals = vertex_normals.map(|normals| {
+                [
+                    Vec3A::from(normals[index[0].into_usize()]),
+                    Vec3A::from(normals[index[1].into_usize()]),
+                    Vec3A::from(normals[index[2].into_usize()]),
+                ]
+            });
+            let intersection = triangle_intersection(
+                tri_vertex_positions,
+                tri_normals,
+                min_pick_distance,
+                mesh_space_ray,
+                backface_culling,
+            );
+            if let Some(i) = intersection {
+                pick_intersection = Some(IntersectionData::new(
+                    mesh_transform.transform_point3(i.position()),
+                    mesh_transform.transform_vector3(i.normal()),
+                    mesh_transform
+                        .transform_vector3(mesh_space_ray.direction() * i.distance())
+                        .length(),
+                    i.triangle().map(|tri| {
+                        Triangle::from([
+                            mesh_transform.transform_point3a(tri.v0),
+                            mesh_transform.transform_point3a(tri.v1),
+                            mesh_transform.transform_point3a(tri.v2),
+                        ])
+                    }),
+                ));
+                min_pick_distance = i.distance();
+            }
+        }
+    } else {
+        for i in (0..vertex_positions.len()).step_by(3) {
+            let tri_vertex_positions = [
+                Vec3A::from(vertex_positions[i]),
+                Vec3A::from(vertex_positions[i + 1]),
+                Vec3A::from(vertex_positions[i + 2]),
+            ];
+            let tri_normals = vertex_normals.map(|normals| {
+                [
+                    Vec3A::from(normals[i]),
+                    Vec3A::from(normals[i + 1]),
+                    Vec3A::from(normals[i + 2]),
+                ]
+            });
+            let intersection = triangle_intersection(
+                tri_vertex_positions,
+                tri_normals,
+                min_pick_distance,
+                mesh_space_ray,
+                backface_culling,
+            );
+            if let Some(i) = intersection {
+                pick_intersection = Some(IntersectionData::new(
+                    mesh_transform.transform_point3(i.position()),
+                    mesh_transform.transform_vector3(i.normal()),
+                    mesh_transform
+                        .transform_vector3(mesh_space_ray.direction() * i.distance())
+                        .length(),
+                    i.triangle().map(|tri| {
+                        Triangle::from([
+                            mesh_transform.transform_point3a(tri.v0),
+                            mesh_transform.transform_point3a(tri.v1),
+                            mesh_transform.transform_point3a(tri.v2),
+                        ])
+                    }),
+                ));
+                min_pick_distance = i.distance();
+            }
+        }
+    }
+    pick_intersection
+}
+
+fn triangle_intersection(
+    tri_vertices: [Vec3A; 3],
+    tri_normals: Option<[Vec3A; 3]>,
+    max_distance: f32,
+    ray: Ray3d,
+    backface_culling: Backfaces,
+) -> Option<IntersectionData> {
+    if tri_vertices
+        .iter()
+        .any(|&vertex| (vertex - ray.origin).length_squared() < max_distance.powi(2))
+    {
+        // Run the raycast on the ray and triangle
+        if let Some(ray_hit) = ray_triangle_intersection(&ray, &tri_vertices, backface_culling) {
+            let distance = *ray_hit.distance();
+            if distance > 0.0 && distance < max_distance {
+                let position = ray.position(distance);
+                let normal = if let Some(normals) = tri_normals {
+                    let u = ray_hit.uv_coords().0;
+                    let v = ray_hit.uv_coords().1;
+                    let w = 1.0 - u - v;
+                    normals[1] * u + normals[2] * v + normals[0] * w
+                } else {
+                    (tri_vertices.v1() - tri_vertices.v0())
+                        .cross(tri_vertices.v2() - tri_vertices.v0())
+                        .normalize()
+                };
+                let intersection = IntersectionData::new(
+                    position,
+                    normal.into(),
+                    distance,
+                    Some(tri_vertices.to_triangle()),
+                );
+                return Some(intersection);
+            }
+        }
+    }
+    None
+}
+
+pub trait TriangleTrait {
+    fn v0(&self) -> Vec3A;
+    fn v1(&self) -> Vec3A;
+    fn v2(&self) -> Vec3A;
+    fn to_triangle(self) -> Triangle;
+}
+impl TriangleTrait for [Vec3A; 3] {
+    fn v0(&self) -> Vec3A {
+        self[0]
+    }
+    fn v1(&self) -> Vec3A {
+        self[1]
+    }
+    fn v2(&self) -> Vec3A {
+        self[2]
+    }
+
+    fn to_triangle(self) -> Triangle {
+        Triangle::from(self)
+    }
+}
+impl TriangleTrait for Triangle {
+    fn v0(&self) -> Vec3A {
+        self.v0
+    }
+
+    fn v1(&self) -> Vec3A {
+        self.v1
+    }
+
+    fn v2(&self) -> Vec3A {
+        self.v2
+    }
+
+    fn to_triangle(self) -> Triangle {
+        self
+    }
+}
 
 #[derive(Copy, Clone, Default)]
 pub enum Backfaces {
