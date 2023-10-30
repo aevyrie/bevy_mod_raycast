@@ -1,12 +1,14 @@
-//! # Retained Mode Raycasting API
+//! # Deferred Raycasting API
 //!
-//! See the `retained` example for reference.
+//! See the `minimal_deferred` example for reference.
 //!
 //! This API requires you add a [`RaycastSource`] to the entity that will be generating rays, and a
 //! [`RaycastMesh`] to all meshes that you want to raycast against. The [`RaycastSource`] has some
 //! built in modes for common use cases. You can set this entity to cast based on where it is
 //! pointing, using [`RaycastMethod::Transform`], or you can use [`RaycastMethod::Screenspace`]
-//! along with a screenspace coordinate if the entity is a camera.
+//! along with a screenspace coordinate if the entity is a camera and you want to shoot out of a
+//! reticle, or you can use [`RaycastMethod::Cursor`] if you want to automatically use the cursor to
+//! build rays.
 //!
 //! These components are both generic, and raycasts will only happen between entities with the same
 //! generic parameter. For example, [`RaycastSource<Foo>`] can cast rays against meshes with
@@ -23,8 +25,8 @@ use bevy::{prelude::*, reflect::TypePath, render::camera::Camera, window::Primar
 
 use crate::{immediate::*, primitives::*};
 
-pub struct RetainedRaycastingPlugin<T>(pub PhantomData<fn() -> T>);
-impl<T: TypePath + Send + Sync> Plugin for RetainedRaycastingPlugin<T> {
+pub struct DeferredRaycastingPlugin<T>(pub PhantomData<fn() -> T>);
+impl<T: TypePath + Send + Sync> Plugin for DeferredRaycastingPlugin<T> {
     fn build(&self, app: &mut App) {
         app.init_resource::<RaycastPluginState<T>>().add_systems(
             First,
@@ -55,9 +57,9 @@ impl<T: TypePath + Send + Sync> Plugin for RetainedRaycastingPlugin<T> {
         );
     }
 }
-impl<T> Default for RetainedRaycastingPlugin<T> {
+impl<T> Default for DeferredRaycastingPlugin<T> {
     fn default() -> Self {
-        RetainedRaycastingPlugin(PhantomData)
+        DeferredRaycastingPlugin(PhantomData)
     }
 }
 
@@ -309,7 +311,7 @@ impl<T: TypePath> RaycastSource<T> {
     pub fn new_transform_empty() -> Self {
         RaycastSource {
             cast_method: RaycastMethod::Transform,
-            ..Default::default()
+            ..default()
         }
     }
 
@@ -500,10 +502,16 @@ pub mod debug {
     #[allow(clippy::too_many_arguments)]
     pub fn update_debug_cursor<T: TypePath + Send + Sync>(
         mut commands: Commands,
-        mut meshes: Query<&RaycastSource<T>>,
+        mut sources: Query<&RaycastSource<T>>,
         mut gizmos: Gizmos,
     ) {
-        for (is_first, intersection) in meshes.iter().flat_map(|m| {
+        for ray in sources.iter().filter_map(|s| s.ray) {
+            let orientation = Quat::from_rotation_arc(Vec3::NEG_Z, ray.direction());
+            gizmos.ray(ray.origin(), ray.direction(), Color::BLUE);
+            gizmos.sphere(ray.origin(), orientation, 0.1, Color::BLUE);
+        }
+
+        for (is_first, intersection) in sources.iter().flat_map(|m| {
             m.intersections()
                 .iter()
                 .map(|i| i.1.clone())
@@ -516,6 +524,7 @@ pub mod debug {
             };
             gizmos.ray(intersection.position(), intersection.normal(), color);
             gizmos.circle(intersection.position(), intersection.normal(), 0.1, color);
+            gizmos.circle_2d(intersection.position().truncate(), 10.0, color);
         }
     }
 

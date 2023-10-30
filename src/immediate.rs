@@ -1,6 +1,6 @@
 //! # Immediate Mode Raycasting API
 //!
-//! See the `immediate` example for reference.
+//! See the `minimal` example for reference.
 //!
 //! This is the simplest way to get started. Add the [`Raycast`] [`SystemParam`] to your system, and
 //! call [`Raycast::cast_ray`], to get a list of intersections. Raycasts are performed immediately

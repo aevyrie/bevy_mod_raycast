@@ -17,12 +17,12 @@
 //! The plugin provides two ways of raycasting:
 //! - An [immediate-mode API](immediate), which allows you to raycast into the scene on-demand in
 //!   any system. Intersections are returned immediately as a sorted `Vec`.
-//! - A [retained-mode API](retained), where raycasts are performed once every frame based on
+//! - A [deferred API](deferred), where raycasts are performed once every frame based on
 //!    entities tagged with specific components. Intersections can be queried from the ECS.
 //!
 //! ## Choosing an API
 //!
-//! While the retained mode API requires adding components on entities, in return it's generally
+//! While the deferred API requires adding components on entities, in return it's generally
 //! more "hands-off". Once you add the components to entities, the plugin will run raycasts for you
 //! every frame, and you can query your [`RaycastSource`]s to see what they have intersected that
 //! frame.
@@ -52,11 +52,11 @@
 
 #![allow(clippy::type_complexity)]
 
+pub mod deferred;
 pub mod immediate;
 pub mod markers;
 pub mod primitives;
 pub mod raycast;
-pub mod retained;
 
 use bevy::prelude::*;
 #[allow(unused_imports)] // Needed for docs
@@ -64,7 +64,7 @@ use prelude::*;
 
 pub mod prelude {
     pub use crate::{
-        immediate::*, markers::*, primitives::*, raycast::*, retained::*, CursorRay,
+        deferred::*, immediate::*, markers::*, primitives::*, raycast::*, CursorRay,
         DefaultRaycastingPlugin,
     };
 
@@ -130,8 +130,8 @@ pub fn low_latency_window_plugin() -> bevy::window::WindowPlugin {
     bevy::window::WindowPlugin {
         primary_window: Some(bevy::window::Window {
             present_mode: bevy::window::PresentMode::AutoNoVsync,
-            ..Default::default()
+            ..default()
         }),
-        ..Default::default()
+        ..default()
     }
 }

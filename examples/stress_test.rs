@@ -1,7 +1,3 @@
-//! This example will show you how to setup bounding volume to optimize when raycasting over a scene
-//! with many meshes. The bounding volume will be used to check faster for which mesh to actually
-//! raycast on.
-
 use std::ops::Sub;
 
 use bevy::{
@@ -18,7 +14,7 @@ fn main() {
         .add_plugins((
             DefaultPlugins.set(bevy_mod_raycast::low_latency_window_plugin()),
             FrameTimeDiagnosticsPlugin,
-            RetainedRaycastingPlugin::<MyRaycastSet>::default(),
+            DeferredRaycastingPlugin::<MyRaycastSet>::default(),
         ))
         .add_systems(Startup, (setup_scene, setup_ui))
         .add_systems(First, update_status)
@@ -36,11 +32,8 @@ fn setup_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(RaycastPluginState::<MyRaycastSet>::default().with_debug_cursor());
     commands.spawn(DirectionalLightBundle {
         transform: Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, 20.0, 20.0, 0.0)),
-        directional_light: DirectionalLight {
-            illuminance: 5000.0,
-            ..Default::default()
-        },
-        ..Default::default()
+        directional_light: DirectionalLight::default(),
+        ..default()
     });
 
     commands.spawn((
@@ -95,10 +88,10 @@ fn setup_ui(mut commands: Commands) {
             style: Style {
                 align_self: AlignSelf::FlexStart,
                 flex_direction: FlexDirection::Column,
-                ..Default::default()
+                ..default()
             },
             background_color: Color::NONE.into(),
-            ..Default::default()
+            ..default()
         })
         .with_children(|ui| {
             ui.spawn(TextBundle::from_sections([text_section(

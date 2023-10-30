@@ -1,8 +1,8 @@
 //! This example demonstrates how to use the [`Raycast`] system param to run raycasts on-demand, in
-//! an immediate mode style. This is unlike using a [`RaycastSource`] which runs a raycast and
-//! stores the result once per frame.
+//! an immediate mode style. This is unlike using a deferred API, which runs a raycast based on
+//! [`RaycastSource`] components once per frame.
 
-use bevy::{math::vec3, prelude::*};
+use bevy::prelude::*;
 use bevy_mod_raycast::prelude::*;
 
 fn main() {
@@ -17,7 +17,7 @@ const DIST: Vec3 = Vec3::new(0.0, 0.0, -7.0);
 
 fn raycast(mut raycast: Raycast, mut gizmos: Gizmos, time: Res<Time>) {
     let t = time.elapsed_seconds();
-    let pos = vec3(t.sin(), (t * 1.5).cos() * 2.0, t.cos()) * 1.5 + DIST;
+    let pos = Vec3::new(t.sin(), (t * 1.5).cos() * 2.0, t.cos()) * 1.5 + DIST;
     let dir = (DIST - pos).normalize();
     // This is all that is needed to raycast into the world! You can also use the normal, non-debug
     // version (raycast.cast_ray) when you don't need to visualize the ray or intersections.

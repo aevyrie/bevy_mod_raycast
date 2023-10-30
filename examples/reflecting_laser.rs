@@ -73,7 +73,7 @@ fn setup_scene(
 ) {
     commands.spawn(DirectionalLightBundle {
         transform: Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, -0.1, 0.2, 0.0)),
-        ..Default::default()
+        ..default()
     });
     commands.spawn((
         Camera3dBundle {

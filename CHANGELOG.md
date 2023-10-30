@@ -1,6 +1,6 @@
 # 0.15.0
 
-- Changed: immediate and retained raycasting APIs organized into respective modules.
+- Changed: immediate and deferred raycasting APIs organized into respective modules.
 - Added: the `DefaultRaycastingPlugin` now builds a ray using the mouse cursor every frame and
   stores it in the `CursorRay` resource.
 - Added: `RaycastMethod::Cursor` variant added to `RaycastSource` settings for the common use case

@@ -43,7 +43,7 @@ fn setup_scene(
             })),
             material: materials.add(Color::rgb(1.0, 1.0, 1.0).into()),
             transform: Transform::from_translation(Vec3::new(0.0, 0.0, -5.0)),
-            ..Default::default()
+            ..default()
         },
         SimplifiedMesh {
             mesh: meshes.add(Mesh::from(shape::UVSphere::default())),
@@ -51,7 +51,7 @@ fn setup_scene(
     ));
     commands.spawn(PointLightBundle {
         transform: Transform::from_translation(Vec3::new(4.0, 8.0, 4.0)),
-        ..Default::default()
+        ..default()
     });
 }
 
@@ -62,10 +62,10 @@ fn setup_ui(mut commands: Commands) {
             style: Style {
                 align_self: AlignSelf::FlexStart,
                 flex_direction: FlexDirection::Column,
-                ..Default::default()
+                ..default()
             },
             background_color: Color::NONE.into(),
-            ..Default::default()
+            ..default()
         })
         .with_children(|ui| {
             ui.spawn(TextBundle {
@@ -88,9 +88,9 @@ fn setup_ui(mut commands: Commands) {
                             },
                         },
                     ],
-                    ..Default::default()
+                    ..default()
                 },
-                ..Default::default()
+                ..default()
             })
             .insert(FpsText);
 
@@ -114,9 +114,9 @@ fn setup_ui(mut commands: Commands) {
                             },
                         },
                     ],
-                    ..Default::default()
+                    ..default()
                 },
-                ..Default::default()
+                ..default()
             })
             .insert(SimplifiedStatus);
         });
