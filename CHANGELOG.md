@@ -7,6 +7,8 @@
   of using the mouse cursor.
 - Added: `debug_cast_ray` mirrors the `cast_ray` method, but handles debug drawing the ray and any
   intersections.
+- Changed: removed unused `Reflect` derive from `RaycastSettings`. This struct is neither a resource
+  nor a component.
 
 # 0.14.1
 

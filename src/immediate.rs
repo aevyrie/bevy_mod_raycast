@@ -29,7 +29,7 @@ pub enum RaycastVisibility {
 }
 
 /// Settings for a raycast.
-#[derive(Clone, Reflect)]
+#[derive(Clone)]
 pub struct RaycastSettings<'a> {
     /// Determines how raycasting should consider entity visibility.
     pub visibility: RaycastVisibility,
