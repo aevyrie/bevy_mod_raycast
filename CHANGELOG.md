@@ -9,6 +9,7 @@
   intersections.
 - Changed: removed unused `Reflect` derive from `RaycastSettings`. This struct is neither a resource
   nor a component.
+- Changed: unified the look of debug gizmos across the immediate and deferred APIs.
 
 # 0.14.1
 
