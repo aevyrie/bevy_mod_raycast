@@ -58,7 +58,14 @@ pub mod markers;
 pub mod primitives;
 pub mod raycast;
 
-use bevy::prelude::*;
+use bevy_app::prelude::*;
+use bevy_derive::Deref;
+use bevy_ecs::prelude::*;
+use bevy_render::camera::Camera;
+use bevy_transform::components::GlobalTransform;
+use bevy_utils::default;
+use bevy_window::Window;
+
 #[allow(unused_imports)] // Needed for docs
 use prelude::*;
 
@@ -79,7 +86,7 @@ impl Plugin for DefaultRaycastingPlugin {
         app.add_systems(First, update_cursor_ray)
             .add_systems(
                 PostUpdate,
-                update_cursor_ray.after(bevy::transform::TransformSystem::TransformPropagate),
+                update_cursor_ray.after(bevy_transform::TransformSystem::TransformPropagate),
             )
             .init_resource::<CursorRay>();
     }
@@ -96,7 +103,7 @@ pub struct CursorRay(pub Option<Ray3d>);
 
 /// Updates the [`CursorRay`] every frame.
 pub fn update_cursor_ray(
-    primary_window: Query<Entity, With<bevy::window::PrimaryWindow>>,
+    primary_window: Query<Entity, With<bevy_window::PrimaryWindow>>,
     windows: Query<&Window>,
     cameras: Query<(&Camera, &GlobalTransform)>,
     mut cursor_ray: ResMut<CursorRay>,
@@ -104,7 +111,7 @@ pub fn update_cursor_ray(
     cursor_ray.0 = cameras
         .iter()
         .filter_map(|(camera, transform)| {
-            if let bevy::render::camera::RenderTarget::Window(window_ref) = camera.target {
+            if let bevy_render::camera::RenderTarget::Window(window_ref) = camera.target {
                 Some(((camera, transform), window_ref))
             } else {
                 None
@@ -126,10 +133,10 @@ pub fn update_cursor_ray(
 /// Used for examples to reduce picking latency. Not relevant code for the examples.
 #[doc(hidden)]
 #[allow(dead_code)]
-pub fn low_latency_window_plugin() -> bevy::window::WindowPlugin {
-    bevy::window::WindowPlugin {
-        primary_window: Some(bevy::window::Window {
-            present_mode: bevy::window::PresentMode::AutoNoVsync,
+pub fn low_latency_window_plugin() -> bevy_window::WindowPlugin {
+    bevy_window::WindowPlugin {
+        primary_window: Some(bevy_window::Window {
+            present_mode: bevy_window::PresentMode::AutoNoVsync,
             ..default()
         }),
         ..default()

@@ -1,8 +1,9 @@
-use bevy::prelude::*;
+use bevy_asset::Handle;
+use bevy_ecs::component::Component;
 
 #[derive(Component)]
 pub struct SimplifiedMesh {
-    pub mesh: Handle<bevy::render::mesh::Mesh>,
+    pub mesh: Handle<bevy_render::mesh::Mesh>,
 }
 
 #[derive(Component)]

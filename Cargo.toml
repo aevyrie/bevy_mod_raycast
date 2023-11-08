@@ -11,10 +11,18 @@ categories = ["game-engines", "rendering"]
 resolver = "2"
 
 [dependencies]
-bevy = { version = "0.11", default-features = false, features = [
-    "bevy_render",
-    "bevy_asset",
-] }
+bevy_app = { version = "0.11", default-features = false }
+bevy_asset = { version = "0.11", default-features = false }
+bevy_derive = { version = "0.11", default-features = false }
+bevy_ecs = { version = "0.11", default-features = false }
+bevy_gizmos = { version = "0.11", optional = true, default-features = false }
+bevy_math = { version = "0.11", default-features = false }
+bevy_reflect = { version = "0.11", default-features = false }
+bevy_render = { version = "0.11", default-features = false }
+bevy_sprite = { version = "0.11", optional = true, default-features = false }
+bevy_transform = { version = "0.11", default-features = false }
+bevy_utils = { version = "0.11", default-features = false }
+bevy_window = { version = "0.11", default-features = false }
 crossbeam-channel = "0.5"
 
 [dev-dependencies]
@@ -29,8 +37,8 @@ criterion = "0.5"
 
 [features]
 default = ["2d", "debug"]
-2d = ["bevy/bevy_sprite"]
-debug = ["bevy/bevy_gizmos"]
+2d = ["bevy_sprite"]
+debug = ["bevy_gizmos"]
 
 [[bench]]
 name = "ray_mesh_intersection"
