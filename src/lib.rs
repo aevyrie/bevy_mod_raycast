@@ -1,4 +1,4 @@
-//! A small [`bevy`] plugin for raycasting against [`Mesh`]es.
+//! A small `bevy` plugin for raycasting against [`Mesh`](bevy_render::mesh::Mesh)es.
 //!
 //! ```
 //! # use bevy::prelude::*;

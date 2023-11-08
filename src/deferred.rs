@@ -153,7 +153,7 @@ impl<T> RaycastPluginState<T> {
 ///
 /// # Requirements
 ///
-/// The marked entity must also have a [Mesh] component.
+/// The marked entity must also have a [Mesh](bevy_render::mesh::Mesh) component.
 #[derive(Component, Debug, Reflect)]
 #[reflect(Component)]
 pub struct RaycastMesh<T: TypePath> {
@@ -312,7 +312,7 @@ impl<T: TypePath> RaycastSource<T> {
     /// present on this entity.
     ///
     /// # Warning
-    /// Only use this if the entity this is associated with will have its [Transform] or
+    /// Only use this if the entity this is associated with will have its [Transform](bevy_transform::components::Transform) or
     /// [GlobalTransform] specified elsewhere. If the [GlobalTransform] is not set, this ray casting
     /// source will never be able to generate a raycast.
     pub fn new_transform_empty() -> Self {
