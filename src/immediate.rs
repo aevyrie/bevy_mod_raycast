@@ -9,18 +9,16 @@
 
 use bevy_asset::{Assets, Handle};
 use bevy_ecs::{prelude::*, system::lifetimeless::Read, system::SystemParam};
-use bevy_math::{Quat, Vec3};
 use bevy_reflect::Reflect;
-use bevy_render::color::Color;
-use bevy_render::{mesh::Mesh, primitives::Aabb, view::ComputedVisibility};
+use bevy_render::{prelude::*, primitives::Aabb, view::ComputedVisibility};
 use bevy_transform::components::GlobalTransform;
-use bevy_utils::{
-    tracing::{debug, debug_span, info_span},
-    FloatOrd,
-};
+use bevy_utils::{tracing::*, FloatOrd};
 
 #[cfg(feature = "debug")]
-use bevy_gizmos::gizmos::Gizmos;
+use {
+    bevy_gizmos::gizmos::Gizmos,
+    bevy_math::{Quat, Vec3},
+};
 
 use crate::prelude::*;
 
