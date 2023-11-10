@@ -7,11 +7,17 @@
 //! when you call the `cast_ray` method. See the [`Raycast`] documentation for more details. You
 //! don't even need to add a plugin to your application.
 
-use bevy::{
-    ecs::system::{lifetimeless::Read, SystemParam},
-    prelude::*,
-    render::primitives::Aabb,
-    utils::FloatOrd,
+use bevy_asset::{Assets, Handle};
+use bevy_ecs::{prelude::*, system::lifetimeless::Read, system::SystemParam};
+use bevy_reflect::Reflect;
+use bevy_render::{prelude::*, primitives::Aabb};
+use bevy_transform::components::GlobalTransform;
+use bevy_utils::{tracing::*, FloatOrd};
+
+#[cfg(feature = "debug")]
+use {
+    bevy_gizmos::gizmos::Gizmos,
+    bevy_math::{Quat, Vec3},
 };
 
 use crate::prelude::*;
@@ -82,7 +88,7 @@ impl<'a> Default for RaycastSettings<'a> {
 }
 
 #[cfg(feature = "2d")]
-type MeshFilter = Or<(With<Handle<Mesh>>, With<bevy::sprite::Mesh2dHandle>)>;
+type MeshFilter = Or<(With<Handle<Mesh>>, With<bevy_sprite::Mesh2dHandle>)>;
 #[cfg(not(feature = "2d"))]
 type MeshFilter = With<Handle<Mesh>>;
 
@@ -173,7 +179,7 @@ pub struct Raycast<'w, 's> {
         'w,
         's,
         (
-            Read<bevy::sprite::Mesh2dHandle>,
+            Read<bevy_sprite::Mesh2dHandle>,
             Option<Read<SimplifiedMesh>>,
             Read<GlobalTransform>,
         ),

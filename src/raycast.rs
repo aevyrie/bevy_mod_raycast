@@ -1,13 +1,11 @@
 use std::f32::EPSILON;
 
-use bevy::{
-    math::Vec3A,
-    prelude::*,
-    render::{
-        mesh::{Indices, VertexAttributeValues},
-        render_resource::PrimitiveTopology,
-    },
+use bevy_math::{Mat4, Vec3A};
+use bevy_render::{
+    mesh::{Indices, Mesh, VertexAttributeValues},
+    render_resource::PrimitiveTopology,
 };
+use bevy_utils::tracing::{error, warn};
 
 use crate::primitives::*;
 
