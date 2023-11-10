@@ -1,3 +1,9 @@
+# 0.16.0
+
+- Changed: updated to bevy 0.12.
+- Changed: plugin depends on bevy sub-crates (e.g. `bevy_ecs`) instead of `bevy` to reduce
+  dependency count.
+
 # 0.15.0
 
 - Changed: immediate and deferred raycasting APIs organized into respective modules.
