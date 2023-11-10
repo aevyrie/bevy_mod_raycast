@@ -154,7 +154,8 @@ pub struct Raycast<'w, 's> {
         'w,
         's,
         (
-            Read<ComputedVisibility>,
+            Read<InheritedVisibility>,
+            Read<ViewVisibility>,
             Read<Aabb>,
             Read<GlobalTransform>,
             Entity,
@@ -238,13 +239,12 @@ impl<'w, 's> Raycast<'w, 's> {
         // of entities that are in the path of the ray.
         let (aabb_hits_tx, aabb_hits_rx) = crossbeam_channel::unbounded::<(FloatOrd, Entity)>();
         let visibility_setting = settings.visibility;
-        self.culling_query
-            .par_iter()
-            .for_each(|(visibility, aabb, transform, entity)| {
+        self.culling_query.par_iter().for_each(
+            |(inherited_visibility, view_visibility, aabb, transform, entity)| {
                 let should_raycast = match visibility_setting {
                     RaycastVisibility::Ignore => true,
-                    RaycastVisibility::MustBeVisible => visibility.is_visible_in_hierarchy(),
-                    RaycastVisibility::MustBeVisibleAndInView => visibility.is_visible_in_view(),
+                    RaycastVisibility::MustBeVisible => inherited_visibility.get(),
+                    RaycastVisibility::MustBeVisibleAndInView => view_visibility.get(),
                 };
                 if should_raycast {
                     if let Some([near, _]) = ray
@@ -254,7 +254,8 @@ impl<'w, 's> Raycast<'w, 's> {
                         aabb_hits_tx.send((FloatOrd(near), entity)).ok();
                     }
                 }
-            });
+            },
+        );
         *self.culled_list = aabb_hits_rx.try_iter().collect();
         self.culled_list.sort_by_key(|(aabb_near, _)| *aabb_near);
         drop(ray_cull_guard);

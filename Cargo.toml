@@ -1,6 +1,6 @@
 [package]
 name = "bevy_mod_raycast"
-version = "0.15.0"
+version = "0.16.0"
 authors = ["Aevyrie <aevyrie@gmail.com>"]
 edition = "2021"
 license = "MIT"
@@ -11,22 +11,22 @@ categories = ["game-engines", "rendering"]
 resolver = "2"
 
 [dependencies]
-bevy_app = { version = "0.11", default-features = false }
-bevy_asset = { version = "0.11", default-features = false }
-bevy_derive = { version = "0.11", default-features = false }
-bevy_ecs = { version = "0.11", default-features = false }
-bevy_gizmos = { version = "0.11", optional = true, default-features = false }
-bevy_math = { version = "0.11", default-features = false }
-bevy_reflect = { version = "0.11", default-features = false }
-bevy_render = { version = "0.11", default-features = false }
-bevy_sprite = { version = "0.11", optional = true, default-features = false }
-bevy_transform = { version = "0.11", default-features = false }
-bevy_utils = { version = "0.11", default-features = false }
-bevy_window = { version = "0.11", default-features = false }
+bevy_app = { version = "0.12", default-features = false }
+bevy_asset = { version = "0.12", default-features = false }
+bevy_derive = { version = "0.12", default-features = false }
+bevy_ecs = { version = "0.12", default-features = false }
+bevy_gizmos = { version = "0.12", optional = true, default-features = false }
+bevy_math = { version = "0.12", default-features = false }
+bevy_reflect = { version = "0.12", default-features = false }
+bevy_render = { version = "0.12", default-features = false }
+bevy_sprite = { version = "0.12", optional = true, default-features = false }
+bevy_transform = { version = "0.12", default-features = false }
+bevy_utils = { version = "0.12", default-features = false }
+bevy_window = { version = "0.12", default-features = false }
 crossbeam-channel = "0.5"
 
 [dev-dependencies]
-bevy = { version = "0.11", default-features = true, features = [
+bevy = { version = "0.12", default-features = true, features = [
     "default_font",
     "ktx2",
     "tonemapping_luts",

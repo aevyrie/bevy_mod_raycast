@@ -30,10 +30,11 @@ fn my_raycast_system(mut raycast: Raycast) {
 
 <details>
 <summary><h2>Bevy Version Support</h2></summary>
-I intend to track the `main` branch of Bevy. PRs supporting this are welcome! 
+I intend to track the `main` branch of Bevy. PRs supporting this are welcome!
 
 | bevy | bevy_mod_raycast |
 | ---- | ---------------- |
+| 0.12 | 0.16             |
 | 0.11 | 0.9 - 0.15       |
 | 0.10 | 0.8              |
 | 0.9  | 0.7              |
