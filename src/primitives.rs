@@ -12,8 +12,10 @@ pub enum Primitive3d {
 pub struct IntersectionData {
     position: Vec3,
     normal: Vec3,
+    barycentric_coord: Vec3,
     distance: f32,
     triangle: Option<Triangle>,
+    triangle_index: Option<usize>,
 }
 
 impl From<rays::PrimitiveIntersection> for IntersectionData {
@@ -22,18 +24,29 @@ impl From<rays::PrimitiveIntersection> for IntersectionData {
             position: data.position(),
             normal: data.normal(),
             distance: data.distance(),
+            barycentric_coord: Vec3::ZERO,
             triangle: None,
+            triangle_index: None,
         }
     }
 }
 
 impl IntersectionData {
-    pub fn new(position: Vec3, normal: Vec3, distance: f32, triangle: Option<Triangle>) -> Self {
+    pub fn new(
+        position: Vec3,
+        normal: Vec3,
+        barycentric: Vec3,
+        distance: f32,
+        triangle: Option<Triangle>,
+        triangle_index: Option<usize>,
+    ) -> Self {
         Self {
             position,
             normal,
+            barycentric_coord: barycentric,
             distance,
             triangle,
+            triangle_index,
         }
     }
 
@@ -49,6 +62,12 @@ impl IntersectionData {
         self.normal
     }
 
+    /// Get the intersection data's barycentric coord.
+    #[must_use]
+    pub fn barycentric_coord(&self) -> Vec3 {
+        self.barycentric_coord
+    }
+
     /// Get the intersection data's distance.
     #[must_use]
     pub fn distance(&self) -> f32 {
@@ -59,6 +78,12 @@ impl IntersectionData {
     #[must_use]
     pub fn triangle(&self) -> Option<Triangle> {
         self.triangle
+    }
+
+    /// Get the intersection data's triangle index.
+    #[must_use]
+    pub fn triangle_index(&self) -> Option<usize> {
+        self.triangle_index
     }
 }
 
