@@ -10,7 +10,7 @@
 use bevy_asset::{Assets, Handle};
 use bevy_ecs::{prelude::*, system::lifetimeless::Read, system::SystemParam};
 use bevy_reflect::Reflect;
-use bevy_render::{prelude::*, primitives::Aabb, view::ComputedVisibility};
+use bevy_render::{prelude::*, primitives::Aabb};
 use bevy_transform::components::GlobalTransform;
 use bevy_utils::{tracing::*, FloatOrd};
 
