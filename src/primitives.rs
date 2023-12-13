@@ -14,6 +14,7 @@ pub struct IntersectionData {
     normal: Vec3,
     distance: f32,
     triangle: Option<Triangle>,
+    indices: Option<[usize; 3]>,
 }
 
 impl From<rays::PrimitiveIntersection> for IntersectionData {
@@ -23,17 +24,25 @@ impl From<rays::PrimitiveIntersection> for IntersectionData {
             normal: data.normal(),
             distance: data.distance(),
             triangle: None,
+            indices: None,
         }
     }
 }
 
 impl IntersectionData {
-    pub fn new(position: Vec3, normal: Vec3, distance: f32, triangle: Option<Triangle>) -> Self {
+    pub fn new(
+        position: Vec3,
+        normal: Vec3,
+        distance: f32,
+        triangle: Option<Triangle>,
+        indices: Option<[usize; 3]>,
+    ) -> Self {
         Self {
             position,
             normal,
             distance,
             triangle,
+            indices,
         }
     }
 
@@ -59,6 +68,11 @@ impl IntersectionData {
     #[must_use]
     pub fn triangle(&self) -> Option<Triangle> {
         self.triangle
+    }
+
+    /// Get the intersection triangle's indices.
+    pub fn indices(&self) -> Option<[usize; 3]> {
+        self.indices
     }
 }
 

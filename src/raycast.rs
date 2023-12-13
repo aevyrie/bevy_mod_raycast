@@ -150,6 +150,11 @@ pub fn ray_mesh_intersection(
                             mesh_transform.transform_point3a(tri.v2),
                         ])
                     }),
+                    Some([
+                        index[0].into_usize(),
+                        index[1].into_usize(),
+                        index[2].into_usize(),
+                    ]),
                 ));
                 min_pick_distance = i.distance();
             }
@@ -175,6 +180,7 @@ pub fn ray_mesh_intersection(
                 mesh_space_ray,
                 backface_culling,
             );
+            let indices = Some([i, i + 1, i + 2]);
             if let Some(i) = intersection {
                 pick_intersection = Some(IntersectionData::new(
                     mesh_transform.transform_point3(i.position()),
@@ -189,6 +195,7 @@ pub fn ray_mesh_intersection(
                             mesh_transform.transform_point3a(tri.v2),
                         ])
                     }),
+                    indices,
                 ));
                 min_pick_distance = i.distance();
             }
@@ -228,6 +235,7 @@ fn triangle_intersection(
                     normal.into(),
                     distance,
                     Some(tri_vertices.to_triangle()),
+                    None,
                 );
                 return Some(intersection);
             }
