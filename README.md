@@ -13,7 +13,7 @@ A small [Bevy](https://github.com/bevyengine/bevy) plugin for mesh raycasting.
 
 ## Getting Started
 
-Using the [`Raycast`](https://docs.rs/bevy_mod_raycast/latest/bevy_mod_raycast/system_param/struct.Raycast.html) system param, you don't even need to add a plugin, you can directly raycast into the ECS:
+Using the [`Raycast`](https://docs.rs/bevy_mod_raycast/latest/bevy_mod_raycast/immediate/struct.Raycast.html) system param, you don't even need to add a plugin, you can directly raycast into the ECS:
 
 ```rs
 use bevy_mod_raycast::prelude::*;
