@@ -91,8 +91,7 @@ impl IntersectionData {
 /// the `Ray3d` direction is normalized, because it can only be instantiated with the constructor.
 pub mod rays {
     use super::Primitive3d;
-    use bevy_math::{prelude::*, Vec3A};
-    use bevy_reflect::Reflect;
+    use bevy_math::{prelude::*, Ray3d, Vec3A};
     use bevy_render::{camera::Camera, primitives::Aabb};
     use bevy_transform::components::GlobalTransform;
     use bevy_window::Window;
@@ -131,151 +130,106 @@ pub mod rays {
         }
     }
 
-    /// A 3D ray, with an origin and direction. The direction is guaranteed to be normalized.
-    #[derive(Reflect, Debug, PartialEq, Copy, Clone, Default)]
-    pub struct Ray3d {
-        pub(crate) origin: Vec3A,
-        pub(crate) direction: Vec3A,
+    pub fn to_transform(ray: Ray3d) -> Mat4 {
+        to_aligned_transform(ray, [0., 1., 0.].into())
     }
 
-    impl Ray3d {
-        /// Constructs a `Ray3d`, normalizing the direction vector.
-        pub fn new(origin: Vec3, direction: Vec3) -> Self {
-            Ray3d {
-                origin: origin.into(),
-                direction: direction.normalize().into(),
-            }
+    /// Create a transform whose origin is at the origin of the ray and
+    /// whose up-axis is aligned with the direction of the ray. Use `up` to
+    /// specify which axis of the transform should align with the ray.
+    pub fn to_aligned_transform(ray: Ray3d, up: Vec3) -> Mat4 {
+        let position = ray.origin;
+        let normal = ray.direction;
+        let new_rotation = Quat::from_rotation_arc(up, *normal);
+        Mat4::from_rotation_translation(new_rotation, position)
+    }
+
+    pub fn ray_from_transform(transform: Mat4) -> Ray3d {
+        let pick_position_ndc = Vec3::from([0.0, 0.0, -1.0]);
+        let pick_position = transform.project_point3(pick_position_ndc);
+        let (_, _, source_origin) = transform.to_scale_rotation_translation();
+        let ray_direction = pick_position - source_origin;
+        Ray3d::new(source_origin, ray_direction)
+    }
+
+    pub fn ray_from_screenspace(
+        cursor_pos_screen: Vec2,
+        camera: &Camera,
+        camera_transform: &GlobalTransform,
+        window: &Window,
+    ) -> Option<Ray3d> {
+        let mut viewport_pos = cursor_pos_screen;
+        if let Some(viewport) = &camera.viewport {
+            viewport_pos -= viewport.physical_position.as_vec2() / window.scale_factor() as f32;
+        }
+        camera
+            .viewport_to_world(camera_transform, viewport_pos)
+            .map(Ray3d::from)
+    }
+
+    /// Checks if the ray intersects with an AABB of a mesh, returning `[near, far]` if it does.
+    pub fn intersects_aabb(ray: Ray3d, aabb: &Aabb, model_to_world: &Mat4) -> Option<[f32; 2]> {
+        // Transform the ray to model space
+        let world_to_model = model_to_world.inverse();
+        let ray_dir: Vec3A = world_to_model.transform_vector3(*ray.direction).into();
+        let ray_origin: Vec3A = world_to_model.transform_point3(ray.origin).into();
+        // Check if the ray intersects the mesh's AABB. It's useful to work in model space
+        // because we can do an AABB intersection test, instead of an OBB intersection test.
+
+        let t_0: Vec3A = (aabb.min() - ray_origin) / ray_dir;
+        let t_1: Vec3A = (aabb.max() - ray_origin) / ray_dir;
+        let t_min: Vec3A = t_0.min(t_1);
+        let t_max: Vec3A = t_0.max(t_1);
+
+        let mut hit_near = t_min.x;
+        let mut hit_far = t_max.x;
+
+        if hit_near > t_max.y || t_min.y > hit_far {
+            return None;
         }
 
-        /// Position vector describing the ray origin
-        pub fn origin(&self) -> Vec3 {
-            self.origin.into()
+        if t_min.y > hit_near {
+            hit_near = t_min.y;
+        }
+        if t_max.y < hit_far {
+            hit_far = t_max.y;
         }
 
-        /// Unit vector describing the ray direction
-        pub fn direction(&self) -> Vec3 {
-            self.direction.into()
+        if (hit_near > t_max.z) || (t_min.z > hit_far) {
+            return None;
         }
 
-        pub fn position(&self, distance: f32) -> Vec3 {
-            (self.origin + self.direction * distance).into()
+        if t_min.z > hit_near {
+            hit_near = t_min.z;
         }
-
-        pub fn to_transform(self) -> Mat4 {
-            self.to_aligned_transform([0., 1., 0.].into())
+        if t_max.z < hit_far {
+            hit_far = t_max.z;
         }
+        Some([hit_near, hit_far])
+    }
 
-        /// Create a transform whose origin is at the origin of the ray and
-        /// whose up-axis is aligned with the direction of the ray. Use `up` to
-        /// specify which axis of the transform should align with the ray.
-        pub fn to_aligned_transform(self, up: Vec3) -> Mat4 {
-            let position = self.origin();
-            let normal = self.direction();
-            let new_rotation = Quat::from_rotation_arc(up, normal);
-            Mat4::from_rotation_translation(new_rotation, position)
-        }
-
-        pub fn from_transform(transform: Mat4) -> Self {
-            let pick_position_ndc = Vec3::from([0.0, 0.0, -1.0]);
-            let pick_position = transform.project_point3(pick_position_ndc);
-            let (_, _, source_origin) = transform.to_scale_rotation_translation();
-            let ray_direction = pick_position - source_origin;
-            Ray3d::new(source_origin, ray_direction)
-        }
-
-        pub fn from_screenspace(
-            cursor_pos_screen: Vec2,
-            camera: &Camera,
-            camera_transform: &GlobalTransform,
-            window: &Window,
-        ) -> Option<Self> {
-            let mut viewport_pos = cursor_pos_screen;
-            if let Some(viewport) = &camera.viewport {
-                viewport_pos -= viewport.physical_position.as_vec2() / window.scale_factor() as f32;
-            }
-            camera
-                .viewport_to_world(camera_transform, viewport_pos)
-                .map(Ray3d::from)
-        }
-
-        /// Checks if the ray intersects with an AABB of a mesh, returning `[near, far]` if it does.
-        pub fn intersects_aabb(&self, aabb: &Aabb, model_to_world: &Mat4) -> Option<[f32; 2]> {
-            // Transform the ray to model space
-            let world_to_model = model_to_world.inverse();
-            let ray_dir: Vec3A = world_to_model.transform_vector3(self.direction()).into();
-            let ray_origin: Vec3A = world_to_model.transform_point3(self.origin()).into();
-            // Check if the ray intersects the mesh's AABB. It's useful to work in model space
-            // because we can do an AABB intersection test, instead of an OBB intersection test.
-
-            let t_0: Vec3A = (aabb.min() - ray_origin) / ray_dir;
-            let t_1: Vec3A = (aabb.max() - ray_origin) / ray_dir;
-            let t_min: Vec3A = t_0.min(t_1);
-            let t_max: Vec3A = t_0.max(t_1);
-
-            let mut hit_near = t_min.x;
-            let mut hit_far = t_max.x;
-
-            if hit_near > t_max.y || t_min.y > hit_far {
-                return None;
-            }
-
-            if t_min.y > hit_near {
-                hit_near = t_min.y;
-            }
-            if t_max.y < hit_far {
-                hit_far = t_max.y;
-            }
-
-            if (hit_near > t_max.z) || (t_min.z > hit_far) {
-                return None;
-            }
-
-            if t_min.z > hit_near {
-                hit_near = t_min.z;
-            }
-            if t_max.z < hit_far {
-                hit_far = t_max.z;
-            }
-            Some([hit_near, hit_far])
-        }
-
-        /// Checks if the ray intersects with a primitive shape
-        pub fn intersects_primitive(&self, shape: Primitive3d) -> Option<PrimitiveIntersection> {
-            match shape {
-                Primitive3d::Plane {
-                    point: plane_origin,
-                    normal: plane_normal,
-                } => {
-                    // assuming vectors are all normalized
-                    let denominator = self.direction().dot(plane_normal);
-                    if denominator.abs() > f32::EPSILON {
-                        let point_to_point = plane_origin - self.origin();
-                        let intersect_dist = plane_normal.dot(point_to_point) / denominator;
-                        let intersect_position = self.direction() * intersect_dist + self.origin();
-                        Some(PrimitiveIntersection::new(
-                            intersect_position,
-                            plane_normal,
-                            intersect_dist,
-                        ))
-                    } else {
-                        None
-                    }
+    /// Checks if the ray intersects with a primitive shape
+    pub fn intersects_primitive(ray: Ray3d, shape: Primitive3d) -> Option<PrimitiveIntersection> {
+        match shape {
+            Primitive3d::Plane {
+                point: plane_origin,
+                normal: plane_normal,
+            } => {
+                // assuming vectors are all normalized
+                let denominator = ray.direction.dot(plane_normal);
+                if denominator.abs() > f32::EPSILON {
+                    let point_to_point = plane_origin - ray.origin;
+                    let intersect_dist = plane_normal.dot(point_to_point) / denominator;
+                    let intersect_position = ray.direction * intersect_dist + ray.origin;
+                    Some(PrimitiveIntersection::new(
+                        intersect_position,
+                        plane_normal,
+                        intersect_dist,
+                    ))
+                } else {
+                    None
                 }
             }
-        }
-
-        pub fn set_origin(&mut self, origin: Vec3) {
-            self.origin = origin.into();
-        }
-
-        pub fn set_direction(&mut self, direction: Vec3) {
-            self.direction = direction.normalize().into();
-        }
-    }
-
-    impl From<Ray> for Ray3d {
-        fn from(ray: Ray) -> Self {
-            Ray3d::new(ray.origin, ray.direction)
         }
     }
 }

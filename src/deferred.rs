@@ -23,7 +23,7 @@ use std::{
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use bevy_math::{Mat4, Vec2};
+use bevy_math::{Mat4, Ray3d, Vec2};
 use bevy_reflect::{Reflect, TypePath};
 use bevy_render::camera::Camera;
 use bevy_transform::components::GlobalTransform;
@@ -207,7 +207,7 @@ pub struct RaycastSource<T: TypePath> {
     pub should_early_exit: bool,
     /// Determines how raycasting should consider entity visibility.
     pub visibility: RaycastVisibility,
-    #[reflect(skip_serializing)]
+    #[reflect(ignore)]
     pub ray: Option<Ray3d>,
     #[reflect(ignore)]
     intersections: Vec<(Entity, IntersectionData)>,
@@ -257,7 +257,7 @@ impl<T: TypePath> RaycastSource<T> {
     ) -> Self {
         RaycastSource {
             cast_method: RaycastMethod::Screenspace(cursor_pos_screen),
-            ray: Ray3d::from_screenspace(cursor_pos_screen, camera, camera_transform, window),
+            ray: ray_from_screenspace(cursor_pos_screen, camera, camera_transform, window),
             ..self
         }
     }
@@ -265,7 +265,7 @@ impl<T: TypePath> RaycastSource<T> {
     pub fn with_ray_transform(self, transform: Mat4) -> Self {
         RaycastSource {
             cast_method: RaycastMethod::Transform,
-            ray: Some(Ray3d::from_transform(transform)),
+            ray: Some(ray_from_transform(transform)),
             ..self
         }
     }
@@ -352,7 +352,7 @@ impl<T: TypePath> RaycastSource<T> {
 
     /// Run an intersection check between this [`RaycastSource`] and a 3D primitive [`Primitive3d`].
     pub fn intersect_primitive(&self, shape: Primitive3d) -> Option<IntersectionData> {
-        Some(self.ray?.intersects_primitive(shape)?.into())
+        Some(intersects_primitive(self.ray?, shape)?.into())
     }
 
     /// Get a copy of the ray cast source's ray.
@@ -405,18 +405,18 @@ pub fn build_rays<T: TypePath>(
             RaycastMethod::Cursor => {
                 query_window(&window, camera, transform).and_then(|(window, camera, transform)| {
                     window.cursor_position().and_then(|cursor_pos| {
-                        Ray3d::from_screenspace(cursor_pos, camera, transform, window)
+                        ray_from_screenspace(cursor_pos, camera, transform, window)
                     })
                 })
             }
             RaycastMethod::Screenspace(cursor_pos_screen) => {
                 query_window(&window, camera, transform).and_then(|(window, camera, transform)| {
-                    Ray3d::from_screenspace(*cursor_pos_screen, camera, transform, window)
+                    ray_from_screenspace(*cursor_pos_screen, camera, transform, window)
                 })
             }
             RaycastMethod::Transform => transform
                 .map(|t| t.compute_matrix())
-                .map(Ray3d::from_transform),
+                .map(ray_from_transform),
         };
     }
 }
@@ -506,7 +506,7 @@ pub mod debug {
 
     use bevy_ecs::system::{Commands, Query};
     use bevy_gizmos::gizmos::Gizmos;
-    use bevy_math::{Quat, Vec3};
+    use bevy_math::{primitives::Direction3d, Quat, Vec3};
     use bevy_reflect::TypePath;
     use bevy_render::color::Color;
     use bevy_utils::tracing::info;
@@ -522,9 +522,9 @@ pub mod debug {
         mut gizmos: Gizmos,
     ) {
         for ray in sources.iter().filter_map(|s| s.ray) {
-            let orientation = Quat::from_rotation_arc(Vec3::NEG_Z, ray.direction());
-            gizmos.ray(ray.origin(), ray.direction(), Color::BLUE);
-            gizmos.sphere(ray.origin(), orientation, 0.1, Color::BLUE);
+            let orientation = Quat::from_rotation_arc(Vec3::NEG_Z, *ray.direction);
+            gizmos.ray(ray.origin, *ray.direction, Color::BLUE);
+            gizmos.sphere(ray.origin, orientation, 0.1, Color::BLUE);
         }
 
         for (is_first, intersection) in sources.iter().flat_map(|m| {
@@ -539,7 +539,12 @@ pub mod debug {
                 false => Color::PINK,
             };
             gizmos.ray(intersection.position(), intersection.normal(), color);
-            gizmos.circle(intersection.position(), intersection.normal(), 0.1, color);
+            gizmos.circle(
+                intersection.position(),
+                Direction3d::new_unchecked(intersection.normal()),
+                0.1,
+                color,
+            );
             gizmos.circle_2d(intersection.position().truncate(), 10.0, color);
         }
     }

@@ -1,4 +1,5 @@
 use bevy::math::{Mat4, Vec3};
+use bevy_math::Ray3d;
 use bevy_mod_raycast::prelude::*;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
@@ -54,7 +55,7 @@ fn ray_mesh_intersection(c: &mut Criterion) {
                     &mesh_to_world,
                     &mesh.positions,
                     Some(&mesh.normals),
-                    &ray,
+                    ray,
                     Some(&mesh.indices),
                     Backfaces::Cull,
                 ));
@@ -78,7 +79,7 @@ fn ray_mesh_intersection_no_intersection(c: &mut Criterion) {
                     &mesh_to_world,
                     &mesh.positions,
                     Some(&mesh.normals),
-                    &ray,
+                    ray,
                     Some(&mesh.indices),
                     Backfaces::Cull,
                 ));

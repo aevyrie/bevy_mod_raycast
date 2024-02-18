@@ -1,6 +1,6 @@
 use std::f32::EPSILON;
 
-use bevy_math::{Mat4, Vec3, Vec3A};
+use bevy_math::{Mat4, Ray3d, Vec3, Vec3A};
 use bevy_render::{
     mesh::{Indices, Mesh, VertexAttributeValues},
     render_resource::PrimitiveTopology,
@@ -13,7 +13,7 @@ use crate::primitives::*;
 pub fn ray_intersection_over_mesh(
     mesh: &Mesh,
     mesh_transform: &Mat4,
-    ray: &Ray3d,
+    ray: Ray3d,
     backface_culling: Backfaces,
 ) -> Option<IntersectionData> {
     if mesh.primitive_topology() != PrimitiveTopology::TriangleList {
@@ -91,7 +91,7 @@ pub fn ray_mesh_intersection(
     mesh_transform: &Mat4,
     vertex_positions: &[[f32; 3]],
     vertex_normals: Option<&[[f32; 3]]>,
-    ray: &Ray3d,
+    ray: Ray3d,
     indices: Option<&Vec<impl IntoUsize>>,
     backface_culling: Backfaces,
 ) -> Option<IntersectionData> {
@@ -103,8 +103,8 @@ pub fn ray_mesh_intersection(
     let world_to_mesh = mesh_transform.inverse();
 
     let mesh_space_ray = Ray3d::new(
-        world_to_mesh.transform_point3(ray.origin()),
-        world_to_mesh.transform_vector3(ray.direction()),
+        world_to_mesh.transform_point3(ray.origin),
+        world_to_mesh.transform_vector3(*ray.direction),
     );
 
     if let Some(indices) = indices {
@@ -143,7 +143,7 @@ pub fn ray_mesh_intersection(
                     mesh_transform.transform_vector3(i.normal()),
                     i.barycentric_coord(),
                     mesh_transform
-                        .transform_vector3(mesh_space_ray.direction() * i.distance())
+                        .transform_vector3(mesh_space_ray.direction * i.distance())
                         .length(),
                     i.triangle().map(|tri| {
                         Triangle::from([
@@ -185,7 +185,7 @@ pub fn ray_mesh_intersection(
                     mesh_transform.transform_vector3(i.normal()),
                     i.barycentric_coord(),
                     mesh_transform
-                        .transform_vector3(mesh_space_ray.direction() * i.distance())
+                        .transform_vector3(mesh_space_ray.direction * i.distance())
                         .length(),
                     i.triangle().map(|tri| {
                         Triangle::from([
@@ -212,13 +212,13 @@ fn triangle_intersection(
 ) -> Option<IntersectionData> {
     if tri_vertices
         .iter()
-        .any(|&vertex| (vertex - ray.origin).length_squared() < max_distance.powi(2))
+        .any(|&vertex| (vertex - Vec3A::from(ray.origin)).length_squared() < max_distance.powi(2))
     {
         // Run the raycast on the ray and triangle
         if let Some(ray_hit) = ray_triangle_intersection(&ray, &tri_vertices, backface_culling) {
             let distance = *ray_hit.distance();
             if distance > 0.0 && distance < max_distance {
-                let position = ray.position(distance);
+                let position = ray.get_point(distance);
                 let u = ray_hit.uv_coords().0;
                 let v = ray_hit.uv_coords().1;
                 let w = 1.0 - u - v;
@@ -328,7 +328,7 @@ pub fn raycast_moller_trumbore(
     // Source: https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/moller-trumbore-ray-triangle-intersection
     let vector_v0_to_v1: Vec3A = triangle.v1() - triangle.v0();
     let vector_v0_to_v2: Vec3A = triangle.v2() - triangle.v0();
-    let p_vec: Vec3A = ray.direction.cross(vector_v0_to_v2);
+    let p_vec: Vec3A = (Vec3A::from(*ray.direction)).cross(vector_v0_to_v2);
     let determinant: f32 = vector_v0_to_v1.dot(p_vec);
 
     match backface_culling {
@@ -350,14 +350,14 @@ pub fn raycast_moller_trumbore(
 
     let determinant_inverse = 1.0 / determinant;
 
-    let t_vec = ray.origin - triangle.v0();
+    let t_vec = Vec3A::from(ray.origin) - triangle.v0();
     let u = t_vec.dot(p_vec) * determinant_inverse;
     if !(0.0..=1.0).contains(&u) {
         return None;
     }
 
     let q_vec = t_vec.cross(vector_v0_to_v1);
-    let v = ray.direction.dot(q_vec) * determinant_inverse;
+    let v = Vec3A::from(*ray.direction).dot(q_vec) * determinant_inverse;
     if v < 0.0 || u + v > 1.0 {
         return None;
     }

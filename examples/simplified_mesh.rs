@@ -36,17 +36,13 @@ fn setup_scene(
     commands.spawn((
         PbrBundle {
             // This is a very complex mesh that will be hard to raycast on
-            mesh: meshes.add(Mesh::from(shape::UVSphere {
-                radius: 1.0,
-                sectors: 1000,
-                stacks: 1000,
-            })),
-            material: materials.add(Color::rgb(1.0, 1.0, 1.0).into()),
+            mesh: meshes.add(Mesh::from(Sphere::default().mesh().uv(1000, 1000))),
+            material: materials.add(Color::rgb(1.0, 1.0, 1.0)),
             transform: Transform::from_translation(Vec3::new(0.0, 0.0, -5.0)),
             ..default()
         },
         SimplifiedMesh {
-            mesh: meshes.add(Mesh::from(shape::UVSphere::default())),
+            mesh: meshes.add(Mesh::from(Sphere::default())),
         },
     ));
     commands.spawn(PointLightBundle {
@@ -133,7 +129,7 @@ fn manage_simplified_mesh(
     mut commands: Commands,
     query: Query<(Entity, Option<&SimplifiedMesh>), With<Handle<Mesh>>>,
     mut status_query: Query<&mut Text, With<SimplifiedStatus>>,
-    keyboard: Res<Input<KeyCode>>,
+    keyboard: Res<ButtonInput<KeyCode>>,
     mut meshes: ResMut<Assets<Mesh>>,
 ) {
     if keyboard.just_pressed(KeyCode::Space) {
@@ -141,7 +137,7 @@ fn manage_simplified_mesh(
             if let Ok(mut text) = status_query.get_single_mut() {
                 if simplified_mesh.is_none() {
                     commands.entity(entity).insert(SimplifiedMesh {
-                        mesh: meshes.add(Mesh::from(shape::UVSphere::default())),
+                        mesh: meshes.add(Mesh::from(Sphere::default())),
                     });
                     text.sections[1].value = "ON".to_string();
                     text.sections[1].style.color = Color::GREEN;
@@ -157,7 +153,7 @@ fn manage_simplified_mesh(
 
 fn update_fps(diagnostics: Res<DiagnosticsStore>, mut query: Query<&mut Text, With<FpsText>>) {
     for mut text in &mut query {
-        if let Some(fps) = diagnostics.get(FrameTimeDiagnosticsPlugin::FPS) {
+        if let Some(fps) = diagnostics.get(&FrameTimeDiagnosticsPlugin::FPS) {
             if let Some(average) = fps.average() {
                 // Update the value of the second section
                 text.sections[1].value = format!("{:.2}", average);
