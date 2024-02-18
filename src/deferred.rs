@@ -164,8 +164,12 @@ pub struct RaycastMesh<T: TypePath> {
 }
 
 impl<T: TypePath> RaycastMesh<T> {
-    /// Get a reference to the ray cast source's intersections. Returns an empty list if there are
-    /// no intersections.
+    /// Get a reference to the ray cast source's intersections.
+    ///
+    /// Here the [`Entity`] is the entity of the [`RaycastSource`] component.
+    /// Returns the list of intersections with all the sources with matching generic parameter
+    /// that intersected this mesh during the last raycast system run.
+    /// Returns an empty list if there are no intersections.
     pub fn intersections(&self) -> &[(Entity, IntersectionData)] {
         &self.intersections
     }
