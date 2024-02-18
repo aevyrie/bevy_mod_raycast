@@ -1,6 +1,6 @@
 use std::f32::EPSILON;
 
-use bevy_math::{Mat4, Vec3A};
+use bevy_math::{Mat4, Vec3, Vec3A};
 use bevy_render::{
     mesh::{Indices, Mesh, VertexAttributeValues},
     render_resource::PrimitiveTopology,
@@ -117,6 +117,7 @@ pub fn ray_mesh_intersection(
         // positions for each triangle, so we'll take indices in chunks of three, where each
         // chunk of three indices are references to the three vertices of a triangle.
         for index in indices.chunks(3) {
+            let triangle_index = Some(index[0].into_usize());
             let tri_vertex_positions = [
                 Vec3A::from(vertex_positions[index[0].into_usize()]),
                 Vec3A::from(vertex_positions[index[1].into_usize()]),
@@ -140,6 +141,7 @@ pub fn ray_mesh_intersection(
                 pick_intersection = Some(IntersectionData::new(
                     mesh_transform.transform_point3(i.position()),
                     mesh_transform.transform_vector3(i.normal()),
+                    i.barycentric_coord(),
                     mesh_transform
                         .transform_vector3(mesh_space_ray.direction() * i.distance())
                         .length(),
@@ -150,12 +152,14 @@ pub fn ray_mesh_intersection(
                             mesh_transform.transform_point3a(tri.v2),
                         ])
                     }),
+                    triangle_index,
                 ));
                 min_pick_distance = i.distance();
             }
         }
     } else {
         for i in (0..vertex_positions.len()).step_by(3) {
+            let triangle_index = Some(i);
             let tri_vertex_positions = [
                 Vec3A::from(vertex_positions[i]),
                 Vec3A::from(vertex_positions[i + 1]),
@@ -179,6 +183,7 @@ pub fn ray_mesh_intersection(
                 pick_intersection = Some(IntersectionData::new(
                     mesh_transform.transform_point3(i.position()),
                     mesh_transform.transform_vector3(i.normal()),
+                    i.barycentric_coord(),
                     mesh_transform
                         .transform_vector3(mesh_space_ray.direction() * i.distance())
                         .length(),
@@ -189,6 +194,7 @@ pub fn ray_mesh_intersection(
                             mesh_transform.transform_point3a(tri.v2),
                         ])
                     }),
+                    triangle_index,
                 ));
                 min_pick_distance = i.distance();
             }
@@ -213,10 +219,11 @@ fn triangle_intersection(
             let distance = *ray_hit.distance();
             if distance > 0.0 && distance < max_distance {
                 let position = ray.position(distance);
+                let u = ray_hit.uv_coords().0;
+                let v = ray_hit.uv_coords().1;
+                let w = 1.0 - u - v;
+                let barycentric = Vec3::new(u, v, w);
                 let normal = if let Some(normals) = tri_normals {
-                    let u = ray_hit.uv_coords().0;
-                    let v = ray_hit.uv_coords().1;
-                    let w = 1.0 - u - v;
                     normals[1] * u + normals[2] * v + normals[0] * w
                 } else {
                     (tri_vertices.v1() - tri_vertices.v0())
@@ -226,8 +233,10 @@ fn triangle_intersection(
                 let intersection = IntersectionData::new(
                     position,
                     normal.into(),
+                    barycentric,
                     distance,
                     Some(tri_vertices.to_triangle()),
+                    None,
                 );
                 return Some(intersection);
             }
