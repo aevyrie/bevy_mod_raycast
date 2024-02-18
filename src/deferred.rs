@@ -208,7 +208,7 @@ pub struct RaycastSource<T: TypePath> {
     /// Determines how raycasting should consider entity visibility.
     pub visibility: RaycastVisibility,
     #[reflect(skip_serializing)]
-    pub ray: Option<Ray3d>,
+    pub ray: Option<Ray3dExt>,
     #[reflect(ignore)]
     intersections: Vec<(Entity, IntersectionData)>,
     #[reflect(ignore)]
@@ -257,7 +257,7 @@ impl<T: TypePath> RaycastSource<T> {
     ) -> Self {
         RaycastSource {
             cast_method: RaycastMethod::Screenspace(cursor_pos_screen),
-            ray: Ray3d::from_screenspace(cursor_pos_screen, camera, camera_transform, window),
+            ray: Ray3dExt::from_screenspace(cursor_pos_screen, camera, camera_transform, window),
             ..self
         }
     }
@@ -265,7 +265,7 @@ impl<T: TypePath> RaycastSource<T> {
     pub fn with_ray_transform(self, transform: Mat4) -> Self {
         RaycastSource {
             cast_method: RaycastMethod::Transform,
-            ray: Some(Ray3d::from_transform(transform)),
+            ray: Some(Ray3dExt::from_transform(transform)),
             ..self
         }
     }
@@ -356,7 +356,7 @@ impl<T: TypePath> RaycastSource<T> {
     }
 
     /// Get a copy of the ray cast source's ray.
-    pub fn get_ray(&self) -> Option<Ray3d> {
+    pub fn get_ray(&self) -> Option<Ray3dExt> {
         self.ray
     }
 
@@ -405,18 +405,18 @@ pub fn build_rays<T: TypePath>(
             RaycastMethod::Cursor => {
                 query_window(&window, camera, transform).and_then(|(window, camera, transform)| {
                     window.cursor_position().and_then(|cursor_pos| {
-                        Ray3d::from_screenspace(cursor_pos, camera, transform, window)
+                        Ray3dExt::from_screenspace(cursor_pos, camera, transform, window)
                     })
                 })
             }
             RaycastMethod::Screenspace(cursor_pos_screen) => {
                 query_window(&window, camera, transform).and_then(|(window, camera, transform)| {
-                    Ray3d::from_screenspace(*cursor_pos_screen, camera, transform, window)
+                    Ray3dExt::from_screenspace(*cursor_pos_screen, camera, transform, window)
                 })
             }
             RaycastMethod::Transform => transform
                 .map(|t| t.compute_matrix())
-                .map(Ray3d::from_transform),
+                .map(Ray3dExt::from_transform),
         };
     }
 }
@@ -511,6 +511,7 @@ pub mod debug {
     use bevy_render::color::Color;
     use bevy_utils::tracing::info;
     use std::marker::PhantomData;
+    use bevy_math::primitives::Direction3d;
 
     use crate::prelude::*;
 
@@ -539,7 +540,7 @@ pub mod debug {
                 false => Color::PINK,
             };
             gizmos.ray(intersection.position(), intersection.normal(), color);
-            gizmos.circle(intersection.position(), intersection.normal(), 0.1, color);
+            gizmos.circle(intersection.position(), Direction3d::try_from(intersection.normal()).unwrap(), 0.1, color);
             gizmos.circle_2d(intersection.position().truncate(), 10.0, color);
         }
     }

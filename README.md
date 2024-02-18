@@ -19,7 +19,7 @@ Using the [`Raycast`](https://docs.rs/bevy_mod_raycast/latest/bevy_mod_raycast/i
 use bevy_mod_raycast::prelude::*;
 
 fn my_raycast_system(mut raycast: Raycast) {
-    let ray = Ray3d::new(Vec3::ZERO, Vec3::X);
+    let ray = Ray3dExt::new(Vec3::ZERO, Vec3::X);
     let hits = raycast.cast_ray(ray, &RaycastSettings::default());
 }
 ```

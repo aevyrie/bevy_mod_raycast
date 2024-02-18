@@ -88,7 +88,7 @@ impl IntersectionData {
 }
 
 /// Encapsulates Ray3D, preventing use of struct literal syntax. This allows us to guarantee that
-/// the `Ray3d` direction is normalized, because it can only be instantiated with the constructor.
+/// the `Ray3dExt` direction is normalized, because it can only be instantiated with the constructor.
 pub mod rays {
     use super::Primitive3d;
     use bevy_math::{prelude::*, Vec3A};
@@ -132,16 +132,17 @@ pub mod rays {
     }
 
     /// A 3D ray, with an origin and direction. The direction is guaranteed to be normalized.
+    /// It implements some traits bevy's current Ray3d implementation does not.
     #[derive(Reflect, Debug, PartialEq, Copy, Clone, Default)]
-    pub struct Ray3d {
+    pub struct Ray3dExt {
         pub(crate) origin: Vec3A,
         pub(crate) direction: Vec3A,
     }
 
-    impl Ray3d {
-        /// Constructs a `Ray3d`, normalizing the direction vector.
+    impl Ray3dExt {
+        /// Constructs a `Ray3dExt`, normalizing the direction vector.
         pub fn new(origin: Vec3, direction: Vec3) -> Self {
-            Ray3d {
+            Ray3dExt {
                 origin: origin.into(),
                 direction: direction.normalize().into(),
             }
@@ -180,7 +181,7 @@ pub mod rays {
             let pick_position = transform.project_point3(pick_position_ndc);
             let (_, _, source_origin) = transform.to_scale_rotation_translation();
             let ray_direction = pick_position - source_origin;
-            Ray3d::new(source_origin, ray_direction)
+            Ray3dExt::new(source_origin, ray_direction)
         }
 
         pub fn from_screenspace(
@@ -195,7 +196,7 @@ pub mod rays {
             }
             camera
                 .viewport_to_world(camera_transform, viewport_pos)
-                .map(Ray3d::from)
+                .map(Ray3dExt::from)
         }
 
         /// Checks if the ray intersects with an AABB of a mesh, returning `[near, far]` if it does.
@@ -273,9 +274,9 @@ pub mod rays {
         }
     }
 
-    impl From<Ray> for Ray3d {
-        fn from(ray: Ray) -> Self {
-            Ray3d::new(ray.origin, ray.direction)
+    impl From<Ray3d> for Ray3dExt {
+        fn from(ray: Ray3d) -> Self {
+            Ray3dExt::new(ray.origin, *ray.direction)
         }
     }
 }

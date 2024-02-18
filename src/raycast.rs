@@ -13,7 +13,7 @@ use crate::primitives::*;
 pub fn ray_intersection_over_mesh(
     mesh: &Mesh,
     mesh_transform: &Mat4,
-    ray: &Ray3d,
+    ray: &Ray3dExt,
     backface_culling: Backfaces,
 ) -> Option<IntersectionData> {
     if mesh.primitive_topology() != PrimitiveTopology::TriangleList {
@@ -91,7 +91,7 @@ pub fn ray_mesh_intersection(
     mesh_transform: &Mat4,
     vertex_positions: &[[f32; 3]],
     vertex_normals: Option<&[[f32; 3]]>,
-    ray: &Ray3d,
+    ray: &Ray3dExt,
     indices: Option<&Vec<impl IntoUsize>>,
     backface_culling: Backfaces,
 ) -> Option<IntersectionData> {
@@ -102,7 +102,7 @@ pub fn ray_mesh_intersection(
 
     let world_to_mesh = mesh_transform.inverse();
 
-    let mesh_space_ray = Ray3d::new(
+    let mesh_space_ray = Ray3dExt::new(
         world_to_mesh.transform_point3(ray.origin()),
         world_to_mesh.transform_vector3(ray.direction()),
     );
@@ -207,7 +207,7 @@ fn triangle_intersection(
     tri_vertices: [Vec3A; 3],
     tri_normals: Option<[Vec3A; 3]>,
     max_distance: f32,
-    ray: Ray3d,
+    ray: Ray3dExt,
     backface_culling: Backfaces,
 ) -> Option<IntersectionData> {
     if tri_vertices
@@ -294,7 +294,7 @@ pub enum Backfaces {
 /// Takes a ray and triangle and computes the intersection and normal
 #[inline(always)]
 pub fn ray_triangle_intersection(
-    ray: &Ray3d,
+    ray: &Ray3dExt,
     triangle: &impl TriangleTrait,
     backface_culling: Backfaces,
 ) -> Option<RayHit> {
@@ -321,7 +321,7 @@ impl RayHit {
 
 /// Implementation of the Möller-Trumbore ray-triangle intersection test
 pub fn raycast_moller_trumbore(
-    ray: &Ray3d,
+    ray: &Ray3dExt,
     triangle: &impl TriangleTrait,
     backface_culling: Backfaces,
 ) -> Option<RayHit> {
@@ -385,7 +385,7 @@ mod tests {
     #[test]
     fn raycast_triangle_mt() {
         let triangle = Triangle::from([V0.into(), V1.into(), V2.into()]);
-        let ray = Ray3d::new(Vec3::ZERO, Vec3::X);
+        let ray = Ray3dExt::new(Vec3::ZERO, Vec3::X);
         let result = ray_triangle_intersection(&ray, &triangle, Backfaces::Include);
         assert!(result.unwrap().distance - 1.0 <= f32::EPSILON);
     }
@@ -393,7 +393,7 @@ mod tests {
     #[test]
     fn raycast_triangle_mt_culling() {
         let triangle = Triangle::from([V2.into(), V1.into(), V0.into()]);
-        let ray = Ray3d::new(Vec3::ZERO, Vec3::X);
+        let ray = Ray3dExt::new(Vec3::ZERO, Vec3::X);
         let result = ray_triangle_intersection(&ray, &triangle, Backfaces::Cull);
         assert!(result.is_none());
     }

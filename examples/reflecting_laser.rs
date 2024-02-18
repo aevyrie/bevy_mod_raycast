@@ -30,7 +30,7 @@ fn bouncing_raycast(
     let t = ((time.elapsed_seconds() - 4.0).max(0.0) * LASER_SPEED).cos() * std::f32::consts::PI;
     let ray_pos = Vec3::new(t.sin(), (3.0 * t).cos() * 0.5, t.cos()) * 0.5;
     let ray_dir = (-ray_pos).normalize();
-    let ray = Ray3d::new(ray_pos, ray_dir);
+    let ray = Ray3dExt::new(ray_pos, ray_dir);
     gizmos.sphere(ray_pos, Quat::IDENTITY, 0.1, Color::WHITE);
     bounce_ray(ray, &mut raycast, &mut gizmos, Color::RED);
 
@@ -40,9 +40,9 @@ fn bouncing_raycast(
 }
 
 fn bounce_ray(
-    mut ray: Ray3d,
+    mut ray: Ray3dExt,
     raycast: &mut Raycast<'_, '_>,
-    gizmos: &mut Gizmos<'_>,
+    gizmos: &mut Gizmos<'_, '_>,
     color: Color,
 ) {
     let mut intersections = Vec::with_capacity(MAX_BOUNCES + 1);
@@ -89,8 +89,11 @@ fn setup_scene(
     ));
     // Make a box of planes facing inward so the laser gets trapped inside:
     let plane = PbrBundle {
-        mesh: meshes.add(shape::Plane::default().into()),
-        material: materials.add(Color::GRAY.with_a(0.01).into()),
+        mesh: meshes.add(Plane3d::default()),
+        material: materials.add(StandardMaterial {
+            base_color: Color::GRAY.with_a(0.01),
+            ..default()
+        }),
         ..default()
     };
     let pbr_bundle = move |translation, rotation| PbrBundle {

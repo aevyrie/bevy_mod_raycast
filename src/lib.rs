@@ -5,7 +5,7 @@
 //! use bevy_mod_raycast::prelude::*;
 //!
 //! fn raycast_system(mut raycast: Raycast) {
-//!     let ray = Ray3d::new(Vec3::ZERO, Vec3::X);
+//!     let ray = Ray3dExt::new(Vec3::ZERO, Vec3::X);
 //!     let hits = raycast.cast_ray(ray, &RaycastSettings::default());
 //! }
 //! ```
@@ -99,7 +99,7 @@ impl Plugin for DefaultRaycastingPlugin {
 /// account for any updates to camera position done in [`Update`]. The ray built in `PostUpdate`
 /// will account for the camera position being updated and any camera transform propagation.
 #[derive(Resource, Default, Deref)]
-pub struct CursorRay(pub Option<Ray3d>);
+pub struct CursorRay(pub Option<Ray3dExt>);
 
 /// Updates the [`CursorRay`] every frame.
 pub fn update_cursor_ray(
@@ -125,7 +125,7 @@ pub fn update_cursor_ray(
         .filter_map(|(cam, window_entity)| windows.get(window_entity).ok().map(|w| (cam, w)))
         .filter_map(|(cam, window)| window.cursor_position().map(|pos| (cam, window, pos)))
         .filter_map(|((camera, transform), window, cursor)| {
-            Ray3d::from_screenspace(cursor, camera, transform, window)
+            Ray3dExt::from_screenspace(cursor, camera, transform, window)
         })
         .next();
 }

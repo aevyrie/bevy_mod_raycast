@@ -9,6 +9,7 @@
 
 use bevy_asset::{Assets, Handle};
 use bevy_ecs::{prelude::*, system::lifetimeless::Read, system::SystemParam};
+use bevy_math::prelude::Direction3d;
 use bevy_reflect::Reflect;
 use bevy_render::{prelude::*, primitives::Aabb};
 use bevy_transform::components::GlobalTransform;
@@ -106,7 +107,7 @@ type MeshFilter = With<Handle<Mesh>>;
 /// # use bevy_mod_raycast::prelude::*;
 /// # use bevy::prelude::*;
 /// fn raycast_system(mut raycast: Raycast) {
-///     let ray = Ray3d::new(Vec3::ZERO, Vec3::X);
+///     let ray = Ray3dExt::new(Vec3::ZERO, Vec3::X);
 ///     let hits = raycast.cast_ray(ray, &RaycastSettings::default());
 /// }
 /// ```
@@ -121,8 +122,8 @@ type MeshFilter = With<Handle<Mesh>>;
 /// # use bevy::prelude::*;
 /// # #[derive(Component)]
 /// # struct Foo;
-/// fn raycast_system(mut raycast: Raycast, foo_query: Query<With<Foo>>) {
-///     let ray = Ray3d::new(Vec3::ZERO, Vec3::X);
+/// fn raycast_system(mut raycast: Raycast, foo_query: Query<Entity, With<Foo>>) {
+///     let ray = Ray3dExt::new(Vec3::ZERO, Vec3::X);
 ///
 ///     // Only raycast against entities with the `Foo` component.
 ///     let filter = |entity| foo_query.contains(entity);
@@ -191,7 +192,7 @@ impl<'w, 's> Raycast<'w, 's> {
     /// Like [`Raycast::cast_ray`], but debug-draws the ray and intersection.
     pub fn debug_cast_ray(
         &mut self,
-        ray: Ray3d,
+        ray: Ray3dExt,
         settings: &RaycastSettings,
         gizmos: &mut Gizmos,
     ) -> &[(Entity, IntersectionData)] {
@@ -212,7 +213,7 @@ impl<'w, 's> Raycast<'w, 's> {
                 false => Color::PINK,
             };
             gizmos.ray(intersection.position(), intersection.normal(), color);
-            gizmos.circle(intersection.position(), intersection.normal(), 0.1, color);
+            gizmos.circle(intersection.position(), Direction3d::try_from(intersection.normal()).unwrap(), 0.1, color);
         }
 
         if let Some(hit) = hits.first() {
@@ -225,7 +226,7 @@ impl<'w, 's> Raycast<'w, 's> {
     /// Casts the `ray` into the world and returns a sorted list of intersections, nearest first.
     pub fn cast_ray(
         &mut self,
-        ray: Ray3d,
+        ray: Ray3dExt,
         settings: &RaycastSettings,
     ) -> &[(Entity, IntersectionData)] {
         let ray_cull = info_span!("ray culling");

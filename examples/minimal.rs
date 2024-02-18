@@ -21,7 +21,7 @@ fn raycast(mut raycast: Raycast, mut gizmos: Gizmos, time: Res<Time>) {
     let dir = (DIST - pos).normalize();
     // This is all that is needed to raycast into the world! You can also use the normal, non-debug
     // version (raycast.cast_ray) when you don't need to visualize the ray or intersections.
-    raycast.debug_cast_ray(Ray3d::new(pos, dir), &default(), &mut gizmos);
+    raycast.debug_cast_ray(Ray3dExt::new(pos, dir), &default(), &mut gizmos);
 }
 
 fn setup(
@@ -32,8 +32,11 @@ fn setup(
     commands.spawn(Camera3dBundle::default());
     commands.spawn(PointLightBundle::default());
     commands.spawn(PbrBundle {
-        mesh: meshes.add(Mesh::try_from(shape::Capsule::default()).unwrap()),
-        material: materials.add(Color::rgb(1.0, 1.0, 1.0).into()),
+        mesh: meshes.add(Mesh::try_from(Capsule3d::default()).unwrap()),
+        material: materials.add(StandardMaterial {
+            base_color: Color::rgb(1.0, 1.0, 1.0),
+            ..default()
+        }),
         transform: Transform::from_translation(DIST),
         ..default()
     });
