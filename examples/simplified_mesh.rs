@@ -36,7 +36,7 @@ fn setup_scene(
     commands.spawn((
         PbrBundle {
             // This is a very complex mesh that will be hard to raycast on
-            mesh: meshes.add(Mesh::from(shape::UVSphere {//TODO represent as Sphere as UVSphere is deprecated now
+            mesh: meshes.add(Mesh::from(shape::UVSphere {//TODO represent differently as UVSphere is deprecated now
                 radius: 1.0,
                 sectors: 1000,
                 stacks: 1000,
