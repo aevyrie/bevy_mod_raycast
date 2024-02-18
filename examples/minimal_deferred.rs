@@ -1,4 +1,4 @@
-//! This example demonstrates how to use the [`bevy_mod_raycast::deferred`]` API. Unlike the
+//! This example demonstrates how to use the [`bevy_mod_raycast::deferred`] API. Unlike the
 //! [`Raycast`] system param, this API is declarative, and does not return a result immediately.
 //! Instead, behavior is defined using components, and raycasting is done once per frame.
 
@@ -16,7 +16,7 @@ fn main() {
         .run();
 }
 
-const DIST: Vec3 = Vec3::new(0.0, 0.0, -7.0);
+const RAY_DIST: Vec3 = Vec3::new(0.0, 0.0, -7.0);
 
 #[derive(Reflect)]
 struct MyRaycastSet; // Groups raycast sources with meshes, can use `()` instead.
@@ -26,8 +26,8 @@ struct MovingRaycaster;
 
 fn move_ray(time: Res<Time>, mut query: Query<&mut Transform, With<MovingRaycaster>>) {
     let t = time.elapsed_seconds();
-    let pos = Vec3::new(t.sin(), (t * 1.5).cos() * 2.0, t.cos()) * 1.5 + DIST;
-    let dir = (DIST - pos).normalize();
+    let pos = Vec3::new(t.sin(), (t * 1.5).cos() * 2.0, t.cos()) * 1.5 + RAY_DIST;
+    let dir = (RAY_DIST - pos).normalize();
     *query.single_mut() = Transform::from_translation(pos).looking_to(dir, Vec3::Y);
 }
 
@@ -49,7 +49,7 @@ fn setup(
         PbrBundle {
             mesh: meshes.add(Mesh::from(Capsule3d::default())),
             material: materials.add(Color::rgb(1.0, 1.0, 1.0)),
-            transform: Transform::from_translation(DIST),
+            transform: Transform::from_translation(RAY_DIST),
             ..default()
         },
         RaycastMesh::<MyRaycastSet>::default(), // Make this mesh ray cast-able

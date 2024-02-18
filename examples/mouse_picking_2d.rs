@@ -3,7 +3,10 @@ use bevy_mod_raycast::prelude::*;
 
 fn main() {
     App::new()
-        .add_plugins((DefaultPlugins, DeferredRaycastingPlugin::<()>::default()))
+        .add_plugins((
+            DefaultPlugins.set(bevy_mod_raycast::low_latency_window_plugin()),
+            DeferredRaycastingPlugin::<()>::default(),
+        ))
         .insert_resource(RaycastPluginState::<()>::default().with_debug_cursor())
         .add_systems(Startup, setup)
         .add_systems(Update, print_intersections::<()>)

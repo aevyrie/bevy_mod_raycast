@@ -217,7 +217,7 @@ impl<'w, 's> Raycast<'w, 's> {
             gizmos.ray(intersection.position(), intersection.normal(), color);
             gizmos.circle(
                 intersection.position(),
-                Direction3d::new_unchecked(intersection.normal()),
+                Direction3d::new_unchecked(intersection.normal().normalize()),
                 0.1,
                 color,
             );

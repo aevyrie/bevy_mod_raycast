@@ -8,7 +8,10 @@ use bevy_mod_raycast::prelude::*;
 
 fn main() {
     App::new()
-        .add_plugins((DefaultPlugins, DefaultRaycastingPlugin))
+        .add_plugins((
+            DefaultPlugins.set(bevy_mod_raycast::low_latency_window_plugin()),
+            DefaultRaycastingPlugin,
+        ))
         .add_systems(Startup, setup_scene)
         .add_systems(Update, bouncing_raycast)
         .insert_resource(ClearColor(Color::BLACK))
