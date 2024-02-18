@@ -134,7 +134,7 @@ pub fn ray_mesh_intersection(
                 tri_vertex_positions,
                 tri_normals,
                 min_pick_distance,
-                mesh_space_ray,
+                &mesh_space_ray,
                 backface_culling,
             );
             if let Some(i) = intersection {
@@ -146,11 +146,11 @@ pub fn ray_mesh_intersection(
                         .transform_vector3(mesh_space_ray.direction * i.distance())
                         .length(),
                     i.triangle().map(|tri| {
-                        Triangle::from([
-                            mesh_transform.transform_point3a(tri.v0),
-                            mesh_transform.transform_point3a(tri.v1),
-                            mesh_transform.transform_point3a(tri.v2),
-                        ])
+                        [
+                            mesh_transform.transform_point3a(tri[0]),
+                            mesh_transform.transform_point3a(tri[1]),
+                            mesh_transform.transform_point3a(tri[2]),
+                        ]
                     }),
                     triangle_index,
                 ));
@@ -176,7 +176,7 @@ pub fn ray_mesh_intersection(
                 tri_vertex_positions,
                 tri_normals,
                 min_pick_distance,
-                mesh_space_ray,
+                &mesh_space_ray,
                 backface_culling,
             );
             if let Some(i) = intersection {
@@ -188,11 +188,11 @@ pub fn ray_mesh_intersection(
                         .transform_vector3(mesh_space_ray.direction * i.distance())
                         .length(),
                     i.triangle().map(|tri| {
-                        Triangle::from([
-                            mesh_transform.transform_point3a(tri.v0),
-                            mesh_transform.transform_point3a(tri.v1),
-                            mesh_transform.transform_point3a(tri.v2),
-                        ])
+                        [
+                            mesh_transform.transform_point3a(tri[0]),
+                            mesh_transform.transform_point3a(tri[1]),
+                            mesh_transform.transform_point3a(tri[2]),
+                        ]
                     }),
                     triangle_index,
                 ));
@@ -203,85 +203,40 @@ pub fn ray_mesh_intersection(
     pick_intersection
 }
 
+#[inline(always)]
 fn triangle_intersection(
     tri_vertices: [Vec3A; 3],
     tri_normals: Option<[Vec3A; 3]>,
     max_distance: f32,
-    ray: Ray3d,
+    ray: &Ray3d,
     backface_culling: Backfaces,
 ) -> Option<IntersectionData> {
-    if tri_vertices
-        .iter()
-        .any(|&vertex| (vertex - Vec3A::from(ray.origin)).length_squared() < max_distance.powi(2))
-    {
-        // Run the raycast on the ray and triangle
-        if let Some(ray_hit) = ray_triangle_intersection(&ray, &tri_vertices, backface_culling) {
-            let distance = *ray_hit.distance();
-            if distance > 0.0 && distance < max_distance {
-                let position = ray.get_point(distance);
-                let u = ray_hit.uv_coords().0;
-                let v = ray_hit.uv_coords().1;
-                let w = 1.0 - u - v;
-                let barycentric = Vec3::new(u, v, w);
-                let normal = if let Some(normals) = tri_normals {
-                    normals[1] * u + normals[2] * v + normals[0] * w
-                } else {
-                    (tri_vertices.v1() - tri_vertices.v0())
-                        .cross(tri_vertices.v2() - tri_vertices.v0())
-                        .normalize()
-                };
-                let intersection = IntersectionData::new(
-                    position,
-                    normal.into(),
-                    barycentric,
-                    distance,
-                    Some(tri_vertices.to_triangle()),
-                    None,
-                );
-                return Some(intersection);
-            }
-        }
-    }
-    None
-}
-
-pub trait TriangleTrait {
-    fn v0(&self) -> Vec3A;
-    fn v1(&self) -> Vec3A;
-    fn v2(&self) -> Vec3A;
-    fn to_triangle(self) -> Triangle;
-}
-impl TriangleTrait for [Vec3A; 3] {
-    fn v0(&self) -> Vec3A {
-        self[0]
-    }
-    fn v1(&self) -> Vec3A {
-        self[1]
-    }
-    fn v2(&self) -> Vec3A {
-        self[2]
-    }
-
-    fn to_triangle(self) -> Triangle {
-        Triangle::from(self)
-    }
-}
-impl TriangleTrait for Triangle {
-    fn v0(&self) -> Vec3A {
-        self.v0
-    }
-
-    fn v1(&self) -> Vec3A {
-        self.v1
-    }
-
-    fn v2(&self) -> Vec3A {
-        self.v2
-    }
-
-    fn to_triangle(self) -> Triangle {
-        self
-    }
+    // Run the raycast on the ray and triangle
+    let ray_hit = ray_triangle_intersection(ray, &tri_vertices, backface_culling)?;
+    let distance = *ray_hit.distance();
+    if distance < 0.0 || distance > max_distance {
+        return None;
+    };
+    let position = ray.get_point(distance);
+    let u = ray_hit.uv_coords().0;
+    let v = ray_hit.uv_coords().1;
+    let w = 1.0 - u - v;
+    let barycentric = Vec3::new(u, v, w);
+    let normal = if let Some(normals) = tri_normals {
+        normals[1] * u + normals[2] * v + normals[0] * w
+    } else {
+        (tri_vertices[1] - tri_vertices[0])
+            .cross(tri_vertices[2] - tri_vertices[0])
+            .normalize()
+    };
+    Some(IntersectionData::new(
+        position,
+        normal.into(),
+        barycentric,
+        distance,
+        Some(tri_vertices),
+        None,
+    ))
 }
 
 #[derive(Copy, Clone, Default)]
@@ -295,39 +250,12 @@ pub enum Backfaces {
 #[inline(always)]
 pub fn ray_triangle_intersection(
     ray: &Ray3d,
-    triangle: &impl TriangleTrait,
-    backface_culling: Backfaces,
-) -> Option<RayHit> {
-    raycast_moller_trumbore(ray, triangle, backface_culling)
-}
-
-#[derive(Default, Debug)]
-pub struct RayHit {
-    distance: f32,
-    uv_coords: (f32, f32),
-}
-
-impl RayHit {
-    /// Get a reference to the intersection's uv coords.
-    pub fn uv_coords(&self) -> &(f32, f32) {
-        &self.uv_coords
-    }
-
-    /// Get a reference to the intersection's distance.
-    pub fn distance(&self) -> &f32 {
-        &self.distance
-    }
-}
-
-/// Implementation of the Möller-Trumbore ray-triangle intersection test
-pub fn raycast_moller_trumbore(
-    ray: &Ray3d,
-    triangle: &impl TriangleTrait,
+    triangle: &[Vec3A; 3],
     backface_culling: Backfaces,
 ) -> Option<RayHit> {
     // Source: https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/moller-trumbore-ray-triangle-intersection
-    let vector_v0_to_v1: Vec3A = triangle.v1() - triangle.v0();
-    let vector_v0_to_v2: Vec3A = triangle.v2() - triangle.v0();
+    let vector_v0_to_v1: Vec3A = triangle[1] - triangle[0];
+    let vector_v0_to_v2: Vec3A = triangle[2] - triangle[0];
     let p_vec: Vec3A = (Vec3A::from(*ray.direction)).cross(vector_v0_to_v2);
     let determinant: f32 = vector_v0_to_v1.dot(p_vec);
 
@@ -350,7 +278,7 @@ pub fn raycast_moller_trumbore(
 
     let determinant_inverse = 1.0 / determinant;
 
-    let t_vec = Vec3A::from(ray.origin) - triangle.v0();
+    let t_vec = Vec3A::from(ray.origin) - triangle[0];
     let u = t_vec.dot(p_vec) * determinant_inverse;
     if !(0.0..=1.0).contains(&u) {
         return None;
@@ -371,6 +299,24 @@ pub fn raycast_moller_trumbore(
     })
 }
 
+#[derive(Default, Debug)]
+pub struct RayHit {
+    distance: f32,
+    uv_coords: (f32, f32),
+}
+
+impl RayHit {
+    /// Get a reference to the intersection's uv coords.
+    pub fn uv_coords(&self) -> &(f32, f32) {
+        &self.uv_coords
+    }
+
+    /// Get a reference to the intersection's distance.
+    pub fn distance(&self) -> &f32 {
+        &self.distance
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use bevy::math::Vec3;
@@ -384,7 +330,7 @@ mod tests {
 
     #[test]
     fn raycast_triangle_mt() {
-        let triangle = Triangle::from([V0.into(), V1.into(), V2.into()]);
+        let triangle = [V0.into(), V1.into(), V2.into()];
         let ray = Ray3d::new(Vec3::ZERO, Vec3::X);
         let result = ray_triangle_intersection(&ray, &triangle, Backfaces::Include);
         assert!(result.unwrap().distance - 1.0 <= f32::EPSILON);
@@ -392,7 +338,7 @@ mod tests {
 
     #[test]
     fn raycast_triangle_mt_culling() {
-        let triangle = Triangle::from([V2.into(), V1.into(), V0.into()]);
+        let triangle = [V2.into(), V1.into(), V0.into()];
         let ray = Ray3d::new(Vec3::ZERO, Vec3::X);
         let result = ray_triangle_intersection(&ray, &triangle, Backfaces::Cull);
         assert!(result.is_none());

@@ -14,7 +14,7 @@ pub struct IntersectionData {
     normal: Vec3,
     barycentric_coord: Vec3,
     distance: f32,
-    triangle: Option<Triangle>,
+    triangle: Option<[Vec3A; 3]>,
     triangle_index: Option<usize>,
 }
 
@@ -37,7 +37,7 @@ impl IntersectionData {
         normal: Vec3,
         barycentric: Vec3,
         distance: f32,
-        triangle: Option<Triangle>,
+        triangle: Option<[Vec3A; 3]>,
         triangle_index: Option<usize>,
     ) -> Self {
         Self {
@@ -76,7 +76,7 @@ impl IntersectionData {
 
     /// Get the intersection data's triangle.
     #[must_use]
-    pub fn triangle(&self) -> Option<Triangle> {
+    pub fn triangle(&self) -> Option<[Vec3A; 3]> {
         self.triangle
     }
 
@@ -230,41 +230,6 @@ pub mod rays {
                     None
                 }
             }
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Copy, Clone, Reflect)]
-pub struct Triangle {
-    pub v0: Vec3A,
-    pub v1: Vec3A,
-    pub v2: Vec3A,
-}
-impl From<(Vec3A, Vec3A, Vec3A)> for Triangle {
-    fn from(vertices: (Vec3A, Vec3A, Vec3A)) -> Self {
-        Triangle {
-            v0: vertices.0,
-            v1: vertices.1,
-            v2: vertices.2,
-        }
-    }
-}
-impl From<Vec<Vec3A>> for Triangle {
-    fn from(vertices: Vec<Vec3A>) -> Self {
-        Triangle {
-            #[allow(clippy::get_first)]
-            v0: *vertices.get(0).unwrap(),
-            v1: *vertices.get(1).unwrap(),
-            v2: *vertices.get(2).unwrap(),
-        }
-    }
-}
-impl From<[Vec3A; 3]> for Triangle {
-    fn from(vertices: [Vec3A; 3]) -> Self {
-        Triangle {
-            v0: vertices[0],
-            v1: vertices[1],
-            v2: vertices[2],
         }
     }
 }
