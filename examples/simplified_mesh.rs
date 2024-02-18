@@ -36,13 +36,13 @@ fn setup_scene(
     commands.spawn((
         PbrBundle {
             // This is a very complex mesh that will be hard to raycast on
-            mesh: meshes.add(Mesh::from(Sphere::default().mesh().uv(1000, 1000))),
+            mesh: meshes.add(Sphere::default().mesh().uv(1000, 1000)),
             material: materials.add(Color::rgb(1.0, 1.0, 1.0)),
             transform: Transform::from_translation(Vec3::new(0.0, 0.0, -5.0)),
             ..default()
         },
         SimplifiedMesh {
-            mesh: meshes.add(Mesh::from(Sphere::default())),
+            mesh: meshes.add(Sphere::default()),
         },
     ));
     commands.spawn(PointLightBundle {

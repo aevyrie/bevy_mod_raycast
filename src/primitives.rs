@@ -160,7 +160,7 @@ pub mod rays {
     ) -> Option<Ray3d> {
         let mut viewport_pos = cursor_pos_screen;
         if let Some(viewport) = &camera.viewport {
-            viewport_pos -= viewport.physical_position.as_vec2() / window.scale_factor() as f32;
+            viewport_pos -= viewport.physical_position.as_vec2() / window.scale_factor();
         }
         camera
             .viewport_to_world(camera_transform, viewport_pos)
@@ -252,6 +252,7 @@ impl From<(Vec3A, Vec3A, Vec3A)> for Triangle {
 impl From<Vec<Vec3A>> for Triangle {
     fn from(vertices: Vec<Vec3A>) -> Self {
         Triangle {
+            #[allow(clippy::get_first)]
             v0: *vertices.get(0).unwrap(),
             v1: *vertices.get(1).unwrap(),
             v2: *vertices.get(2).unwrap(),

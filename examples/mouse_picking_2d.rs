@@ -18,7 +18,7 @@ fn setup(
     commands.spawn((Camera2dBundle::default(), RaycastSource::<()>::new_cursor()));
     commands.spawn((
         MaterialMesh2dBundle {
-            mesh: meshes.add(Mesh::from(shape::Circle::default())).into(),
+            mesh: meshes.add(Circle::default()).into(),
             transform: Transform::default().with_scale(Vec3::splat(128.)),
             material: materials.add(ColorMaterial::from(Color::PURPLE)),
             ..default()
