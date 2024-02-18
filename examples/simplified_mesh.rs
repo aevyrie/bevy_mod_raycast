@@ -49,7 +49,7 @@ fn setup_scene(
             ..default()
         },
         SimplifiedMesh {
-            mesh: meshes.add(Mesh::from(Sphere::default())),
+            mesh: meshes.add(Mesh::from(Sphere::new(1.0))),
         },
     ));
     commands.spawn(PointLightBundle {
@@ -144,7 +144,7 @@ fn manage_simplified_mesh(
             if let Ok(mut text) = status_query.get_single_mut() {
                 if simplified_mesh.is_none() {
                     commands.entity(entity).insert(SimplifiedMesh {
-                        mesh: meshes.add(Mesh::from(Sphere::default())),
+                        mesh: meshes.add(Mesh::from(Sphere::new(1.0))),
                     });
                     text.sections[1].value = "ON".to_string();
                     text.sections[1].style.color = Color::GREEN;
