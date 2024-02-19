@@ -1,5 +1,7 @@
 # 0.17.0
 
+Raycasting is now 20-50% faster.
+
 - Changed: updated to Bevy 0.13.
 - Removed: This crate's `Ray3d` type has been replaced with Bevy's new `Ray3d` type.
   - Methods on `Ray3d` have been replaced with standalone functions.
