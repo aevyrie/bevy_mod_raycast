@@ -122,7 +122,7 @@ type MeshFilter = With<Handle<Mesh>>;
 /// # use bevy::prelude::*;
 /// # #[derive(Component)]
 /// # struct Foo;
-/// fn raycast_system(mut raycast: Raycast, foo_query: Query<With<Foo>>) {
+/// fn raycast_system(mut raycast: Raycast, foo_query: Query<(), With<Foo>>) {
 ///     let ray = Ray3d::new(Vec3::ZERO, Vec3::X);
 ///
 ///     // Only raycast against entities with the `Foo` component.
