@@ -47,7 +47,7 @@ fn setup(
     ));
     commands.spawn((
         PbrBundle {
-            mesh: meshes.add(Mesh::from(Capsule3d::default())),
+            mesh: meshes.add(Capsule3d::default()),
             material: materials.add(Color::rgb(1.0, 1.0, 1.0)),
             transform: Transform::from_translation(RAY_DIST),
             ..default()

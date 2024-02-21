@@ -137,7 +137,7 @@ fn manage_simplified_mesh(
             if let Ok(mut text) = status_query.get_single_mut() {
                 if simplified_mesh.is_none() {
                     commands.entity(entity).insert(SimplifiedMesh {
-                        mesh: meshes.add(Mesh::from(Sphere::default())),
+                        mesh: meshes.add(Sphere::default()),
                     });
                     text.sections[1].value = "ON".to_string();
                     text.sections[1].style.color = Color::GREEN;
