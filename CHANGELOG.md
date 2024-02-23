@@ -1,6 +1,18 @@
+# 0.17.0
+
+Raycasting is now 20-50% faster.
+
+- Changed: updated to Bevy 0.13.
+- Removed: This crate's `Ray3d` type has been replaced with Bevy's new `Ray3d` type.
+  - Methods on `Ray3d` have been replaced with standalone functions.
+  - This has resulted in a ~10% drop in performance in benchmarks.
+- Changed: `Ray3d::from_transform` is now `ray_from_transform`
+- Changed: `Ray3d::from_screenspace` is now `ray_from_screenspace`
+- Changed: `Triangle` removed in favor of a simpler `[Vec3A; 3]`.
+
 # 0.16.0
 
-- Changed: updated to bevy 0.12.
+- Changed: updated to Bevy 0.12.
 - Changed: plugin depends on bevy sub-crates (e.g. `bevy_ecs`) instead of `bevy` to reduce
   dependency count.
 

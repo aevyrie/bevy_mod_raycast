@@ -127,7 +127,7 @@ struct FpsText;
 // Insert or remove aabb components from the meshes being raycasted on.
 fn update_status(
     mut commands: Commands,
-    keyboard: Res<Input<KeyCode>>,
+    keyboard: Res<ButtonInput<KeyCode>>,
     mut enabled: Local<Option<(bool, bool)>>,
     // Bounding toggle
     mut bound_status: Query<&mut Text, (With<BoundVolStatus>, Without<EarlyExitStatus>)>,
@@ -151,7 +151,7 @@ fn update_status(
         }
     };
 
-    if keyboard.just_pressed(KeyCode::Key1) {
+    if keyboard.just_pressed(KeyCode::Digit1) {
         enabled.0 = !enabled.0;
         for (entity, mut aabb) in &mut aabbs {
             if enabled.0 {
@@ -165,7 +165,7 @@ fn update_status(
     }
     bool_to_text(enabled.0, bound_status.single_mut().as_mut());
 
-    if keyboard.just_pressed(KeyCode::Key2) {
+    if keyboard.just_pressed(KeyCode::Digit2) {
         enabled.1 = !enabled.1;
         for mut source in &mut sources {
             source.should_early_exit = enabled.1;
@@ -176,7 +176,7 @@ fn update_status(
 
 fn update_fps(diagnostics: Res<DiagnosticsStore>, mut query: Query<&mut Text, With<FpsText>>) {
     for mut text in &mut query {
-        if let Some(fps) = diagnostics.get(FrameTimeDiagnosticsPlugin::FPS) {
+        if let Some(fps) = diagnostics.get(&FrameTimeDiagnosticsPlugin::FPS) {
             if let Some(average) = fps.smoothed() {
                 // Update the value of the second section
                 text.sections[1].value = format!("{:.2}", average);

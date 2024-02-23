@@ -8,7 +8,10 @@ use bevy_mod_raycast::prelude::*;
 
 fn main() {
     App::new()
-        .add_plugins((DefaultPlugins, DefaultRaycastingPlugin))
+        .add_plugins((
+            DefaultPlugins.set(bevy_mod_raycast::low_latency_window_plugin()),
+            DefaultRaycastingPlugin,
+        ))
         .add_systems(Startup, setup_scene)
         .add_systems(Update, bouncing_raycast)
         .insert_resource(ClearColor(Color::BLACK))
@@ -39,25 +42,20 @@ fn bouncing_raycast(
     }
 }
 
-fn bounce_ray(
-    mut ray: Ray3d,
-    raycast: &mut Raycast<'_, '_>,
-    gizmos: &mut Gizmos<'_>,
-    color: Color,
-) {
+fn bounce_ray(mut ray: Ray3d, raycast: &mut Raycast, gizmos: &mut Gizmos, color: Color) {
     let mut intersections = Vec::with_capacity(MAX_BOUNCES + 1);
-    intersections.push((ray.origin(), Color::rgb(30.0, 0.0, 0.0)));
+    intersections.push((ray.origin, Color::rgb(30.0, 0.0, 0.0)));
 
     for i in 0..MAX_BOUNCES {
         if let Some((_, hit)) = raycast.cast_ray(ray, &RaycastSettings::default()).first() {
             let bright = 1.0 + 10.0 * (1.0 - i as f32 / MAX_BOUNCES as f32);
             intersections.push((hit.position(), color * bright));
             gizmos.sphere(hit.position(), Quat::IDENTITY, 0.005, color * bright * 2.0);
-            let ray_dir = ray.direction();
+            let ray_dir = ray.direction;
             // reflect the ray
             let proj = (ray_dir.dot(hit.normal()) / hit.normal().dot(hit.normal())) * hit.normal();
-            ray.set_direction(ray_dir - 2.0 * proj);
-            ray.set_origin(hit.position() + ray.direction() * 1e-6);
+            ray.direction = Direction3d::new(*ray_dir - 2.0 * proj).unwrap();
+            ray.origin = hit.position() + ray.direction * 1e-6;
         } else {
             break;
         }
@@ -89,8 +87,8 @@ fn setup_scene(
     ));
     // Make a box of planes facing inward so the laser gets trapped inside:
     let plane = PbrBundle {
-        mesh: meshes.add(shape::Plane::default().into()),
-        material: materials.add(Color::GRAY.with_a(0.01).into()),
+        mesh: meshes.add(Plane3d::default()),
+        material: materials.add(Color::GRAY.with_a(0.01)),
         ..default()
     };
     let pbr_bundle = move |translation, rotation| PbrBundle {

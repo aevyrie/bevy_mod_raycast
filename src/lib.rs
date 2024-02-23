@@ -61,6 +61,7 @@ pub mod raycast;
 use bevy_app::prelude::*;
 use bevy_derive::Deref;
 use bevy_ecs::prelude::*;
+use bevy_math::Ray3d;
 use bevy_render::camera::Camera;
 use bevy_transform::components::GlobalTransform;
 use bevy_utils::default;
@@ -125,7 +126,7 @@ pub fn update_cursor_ray(
         .filter_map(|(cam, window_entity)| windows.get(window_entity).ok().map(|w| (cam, w)))
         .filter_map(|(cam, window)| window.cursor_position().map(|pos| (cam, window, pos)))
         .filter_map(|((camera, transform), window, cursor)| {
-            Ray3d::from_screenspace(cursor, camera, transform, window)
+            ray_from_screenspace(cursor, camera, transform, window)
         })
         .next();
 }

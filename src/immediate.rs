@@ -9,6 +9,7 @@
 
 use bevy_asset::{Assets, Handle};
 use bevy_ecs::{prelude::*, system::lifetimeless::Read, system::SystemParam};
+use bevy_math::Ray3d;
 use bevy_reflect::Reflect;
 use bevy_render::{prelude::*, primitives::Aabb};
 use bevy_transform::components::GlobalTransform;
@@ -121,7 +122,7 @@ type MeshFilter = With<Handle<Mesh>>;
 /// # use bevy::prelude::*;
 /// # #[derive(Component)]
 /// # struct Foo;
-/// fn raycast_system(mut raycast: Raycast, foo_query: Query<With<Foo>>) {
+/// fn raycast_system(mut raycast: Raycast, foo_query: Query<(), With<Foo>>) {
 ///     let ray = Ray3d::new(Vec3::ZERO, Vec3::X);
 ///
 ///     // Only raycast against entities with the `Foo` component.
@@ -195,9 +196,11 @@ impl<'w, 's> Raycast<'w, 's> {
         settings: &RaycastSettings,
         gizmos: &mut Gizmos,
     ) -> &[(Entity, IntersectionData)] {
-        let orientation = Quat::from_rotation_arc(Vec3::NEG_Z, ray.direction());
-        gizmos.ray(ray.origin(), ray.direction(), Color::BLUE);
-        gizmos.sphere(ray.origin(), orientation, 0.1, Color::BLUE);
+        use bevy_math::primitives::Direction3d;
+
+        let orientation = Quat::from_rotation_arc(Vec3::NEG_Z, *ray.direction);
+        gizmos.ray(ray.origin, *ray.direction, Color::BLUE);
+        gizmos.sphere(ray.origin, orientation, 0.1, Color::BLUE);
 
         let hits = self.cast_ray(ray, settings);
 
@@ -212,7 +215,12 @@ impl<'w, 's> Raycast<'w, 's> {
                 false => Color::PINK,
             };
             gizmos.ray(intersection.position(), intersection.normal(), color);
-            gizmos.circle(intersection.position(), intersection.normal(), 0.1, color);
+            gizmos.circle(
+                intersection.position(),
+                Direction3d::new_unchecked(intersection.normal().normalize()),
+                0.1,
+                color,
+            );
         }
 
         if let Some(hit) = hits.first() {
@@ -247,8 +255,7 @@ impl<'w, 's> Raycast<'w, 's> {
                     RaycastVisibility::MustBeVisibleAndInView => view_visibility.get(),
                 };
                 if should_raycast {
-                    if let Some([near, _]) = ray
-                        .intersects_aabb(aabb, &transform.compute_matrix())
+                    if let Some([near, _]) = intersects_aabb(ray, aabb, &transform.compute_matrix())
                         .filter(|[_, far]| *far >= 0.0)
                     {
                         aabb_hits_tx.send((FloatOrd(near), entity)).ok();
@@ -289,7 +296,7 @@ impl<'w, 's> Raycast<'w, 's> {
                         };
                         let transform = transform.compute_matrix();
                         let intersection =
-                            ray_intersection_over_mesh(mesh, &transform, &ray, backfaces);
+                            ray_intersection_over_mesh(mesh, &transform, ray, backfaces);
                         if let Some(intersection) = intersection {
                             let distance = FloatOrd(intersection.distance());
                             if (settings.early_exit_test)(*entity)
