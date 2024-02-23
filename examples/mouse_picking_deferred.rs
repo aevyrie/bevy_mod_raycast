@@ -28,7 +28,7 @@ fn setup(
     commands.spawn(PointLightBundle::default());
     commands.spawn((
         PbrBundle {
-            mesh: meshes.add(Mesh::from(Sphere::default())),
+            mesh: meshes.add(Sphere::default()),
             material: materials.add(Color::GRAY),
             transform: Transform::from_xyz(0.0, 0.0, -5.0),
             ..default()

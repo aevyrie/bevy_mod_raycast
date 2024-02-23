@@ -54,7 +54,7 @@ fn bounce_ray(mut ray: Ray3d, raycast: &mut Raycast, gizmos: &mut Gizmos, color:
             let ray_dir = ray.direction;
             // reflect the ray
             let proj = (ray_dir.dot(hit.normal()) / hit.normal().dot(hit.normal())) * hit.normal();
-            ray.direction = (*ray_dir - 2.0 * proj).try_into().unwrap();
+            ray.direction = Direction3d::new(*ray_dir - 2.0 * proj).unwrap();
             ray.origin = hit.position() + ray.direction * 1e-6;
         } else {
             break;
