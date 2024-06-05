@@ -1,6 +1,7 @@
 use std::ops::Sub;
 
 use bevy::{
+    color::palettes::css,
     diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
     math::Vec3A,
     prelude::*,
@@ -144,10 +145,10 @@ fn update_status(
     let bool_to_text = |is_enabled: bool, text: &mut Text| {
         if is_enabled {
             text.sections[1].value = "ON".to_string();
-            text.sections[1].style.color = Color::GREEN;
+            text.sections[1].style.color = css::GREEN.into();
         } else {
             text.sections[1].value = "OFF".to_string();
-            text.sections[1].style.color = Color::RED;
+            text.sections[1].style.color = css::RED.into();
         }
     };
 

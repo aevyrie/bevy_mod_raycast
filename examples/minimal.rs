@@ -33,7 +33,7 @@ fn setup(
     commands.spawn(PointLightBundle::default());
     commands.spawn(PbrBundle {
         mesh: meshes.add(Capsule3d::default()),
-        material: materials.add(Color::rgb(1.0, 1.0, 1.0)),
+        material: materials.add(Color::srgb(1.0, 1.0, 1.0)),
         transform: Transform::from_translation(RAY_DIST),
         ..default()
     });

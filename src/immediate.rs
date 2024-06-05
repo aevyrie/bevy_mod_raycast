@@ -9,11 +9,11 @@
 
 use bevy_asset::{Assets, Handle};
 use bevy_ecs::{prelude::*, system::lifetimeless::Read, system::SystemParam};
-use bevy_math::Ray3d;
+use bevy_math::{FloatOrd, Ray3d};
 use bevy_reflect::Reflect;
 use bevy_render::{prelude::*, primitives::Aabb};
 use bevy_transform::components::GlobalTransform;
-use bevy_utils::{tracing::*, FloatOrd};
+use bevy_utils::tracing::*;
 
 #[cfg(feature = "debug")]
 use {
@@ -196,11 +196,12 @@ impl<'w, 's> Raycast<'w, 's> {
         settings: &RaycastSettings,
         gizmos: &mut Gizmos,
     ) -> &[(Entity, IntersectionData)] {
-        use bevy_math::primitives::Direction3d;
+        use bevy_color::palettes::css;
+        use bevy_math::Dir3;
 
         let orientation = Quat::from_rotation_arc(Vec3::NEG_Z, *ray.direction);
-        gizmos.ray(ray.origin, *ray.direction, Color::BLUE);
-        gizmos.sphere(ray.origin, orientation, 0.1, Color::BLUE);
+        gizmos.ray(ray.origin, *ray.direction, css::BLUE);
+        gizmos.sphere(ray.origin, orientation, 0.1, css::BLUE);
 
         let hits = self.cast_ray(ray, settings);
 
@@ -211,13 +212,13 @@ impl<'w, 's> Raycast<'w, 's> {
             .map(|(i, hit)| (i == 0, hit))
         {
             let color = match is_first {
-                true => Color::GREEN,
-                false => Color::PINK,
+                true => css::GREEN,
+                false => css::PINK,
             };
             gizmos.ray(intersection.position(), intersection.normal(), color);
             gizmos.circle(
                 intersection.position(),
-                Direction3d::new_unchecked(intersection.normal().normalize()),
+                Dir3::new_unchecked(intersection.normal().normalize()),
                 0.1,
                 color,
             );

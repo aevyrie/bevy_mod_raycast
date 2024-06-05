@@ -3,6 +3,7 @@
 //! intersection with the mesh.
 
 use bevy::{
+    color::palettes::css,
     diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
     prelude::*,
 };
@@ -37,7 +38,7 @@ fn setup_scene(
         PbrBundle {
             // This is a very complex mesh that will be hard to raycast on
             mesh: meshes.add(Sphere::default().mesh().uv(1000, 1000)),
-            material: materials.add(Color::rgb(1.0, 1.0, 1.0)),
+            material: materials.add(Color::srgb(1.0, 1.0, 1.0)),
             transform: Transform::from_translation(Vec3::new(0.0, 0.0, -5.0)),
             ..default()
         },
@@ -105,7 +106,7 @@ fn setup_ui(mut commands: Commands) {
                             value: "ON".to_string(),
                             style: TextStyle {
                                 font_size: 30.0,
-                                color: Color::GREEN,
+                                color: css::GREEN.into(),
                                 ..default()
                             },
                         },
@@ -140,11 +141,11 @@ fn manage_simplified_mesh(
                         mesh: meshes.add(Sphere::default()),
                     });
                     text.sections[1].value = "ON".to_string();
-                    text.sections[1].style.color = Color::GREEN;
+                    text.sections[1].style.color = css::GREEN.into();
                 } else {
                     commands.entity(entity).remove::<SimplifiedMesh>();
                     text.sections[1].value = "OFF".to_string();
-                    text.sections[1].style.color = Color::RED;
+                    text.sections[1].style.color = css::RED.into();
                 }
             }
         }
