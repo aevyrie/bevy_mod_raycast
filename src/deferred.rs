@@ -504,11 +504,11 @@ pub fn update_target_intersections<T: TypePath + Send + Sync>(
 pub mod debug {
     #![allow(unused)]
 
+    use bevy_color::palettes::css;
     use bevy_ecs::system::{Commands, Query};
     use bevy_gizmos::gizmos::Gizmos;
-    use bevy_math::{primitives::Direction3d, Quat, Vec3};
+    use bevy_math::{Dir3, Quat, Vec3};
     use bevy_reflect::TypePath;
-    use bevy_render::color::Color;
     use bevy_utils::tracing::info;
     use std::marker::PhantomData;
 
@@ -523,8 +523,8 @@ pub mod debug {
     ) {
         for ray in sources.iter().filter_map(|s| s.ray) {
             let orientation = Quat::from_rotation_arc(Vec3::NEG_Z, *ray.direction);
-            gizmos.ray(ray.origin, *ray.direction, Color::BLUE);
-            gizmos.sphere(ray.origin, orientation, 0.1, Color::BLUE);
+            gizmos.ray(ray.origin, *ray.direction, css::BLUE);
+            gizmos.sphere(ray.origin, orientation, 0.1, css::BLUE);
         }
 
         for (is_first, intersection) in sources.iter().flat_map(|m| {
@@ -535,13 +535,13 @@ pub mod debug {
                 .map(|(i, hit)| (i == 0, hit))
         }) {
             let color = match is_first {
-                true => Color::GREEN,
-                false => Color::PINK,
+                true => css::GREEN,
+                false => css::PINK,
             };
             gizmos.ray(intersection.position(), intersection.normal(), color);
             gizmos.circle(
                 intersection.position(),
-                Direction3d::new_unchecked(intersection.normal().normalize()),
+                Dir3::new_unchecked(intersection.normal().normalize()),
                 0.1,
                 color,
             );

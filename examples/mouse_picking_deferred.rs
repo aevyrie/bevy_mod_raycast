@@ -2,7 +2,7 @@
 //! parameter. By contrast this example instead uses the deferred API, where raycasts are declared
 //! using components, and the plugin handles the raycasting. Note we use `()` as the raycasting set.
 
-use bevy::prelude::*;
+use bevy::{color::palettes::css, prelude::*};
 use bevy_mod_raycast::prelude::*;
 
 fn main() {
@@ -29,7 +29,7 @@ fn setup(
     commands.spawn((
         PbrBundle {
             mesh: meshes.add(Sphere::default()),
-            material: materials.add(Color::GRAY),
+            material: materials.add(Color::from(css::GRAY)),
             transform: Transform::from_xyz(0.0, 0.0, -5.0),
             ..default()
         },
