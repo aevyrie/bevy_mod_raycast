@@ -17,15 +17,17 @@
 //! The plugin provides two ways of raycasting:
 //! - An [immediate-mode API](immediate), which allows you to raycast into the scene on-demand in
 //!   any system. Intersections are returned immediately as a sorted `Vec`.
-//! - A [deferred API](deferred), where raycasts are performed once every frame based on
-//!    entities tagged with specific components. Intersections can be queried from the ECS.
+//! - A [deferred API](deferred), where raycasts are performed once every frame based on entities
+//!    tagged with specific components. Intersections can be queried from the ECS.
+//!
+//! The plugin also provides the [`CursorRayPlugin`] for automatically generating a world space 3D
+//! ray corresponding to the mouse cursor. This is useful for mouse picking.
 //!
 //! ## Choosing an API
 //!
-//! While the deferred API requires adding components on entities, in return it's generally
-//! more "hands-off". Once you add the components to entities, the plugin will run raycasts for you
-//! every frame, and you can query your [`RaycastSource`]s to see what they have intersected that
-//! frame.
+//! While the deferred API requires adding components on entities, in return it's generally more
+//! "hands-off". Once you add the components to entities, the plugin will run raycasts for you every
+//! frame, and you can query your [`RaycastSource`]s to see what they have intersected that frame.
 //!
 //! You can also think of this as being the "declarative" API. Instead of defining how the raycast
 //! happens, you instead describe what you want. For example, "this entity should cast rays in the
@@ -52,83 +54,23 @@
 
 #![allow(clippy::type_complexity)]
 
+pub mod cursor;
 pub mod deferred;
 pub mod immediate;
 pub mod markers;
 pub mod primitives;
 pub mod raycast;
 
-use bevy_app::prelude::*;
-use bevy_derive::Deref;
-use bevy_ecs::prelude::*;
-use bevy_math::Ray3d;
-use bevy_render::camera::Camera;
-use bevy_transform::components::GlobalTransform;
 use bevy_utils::default;
-use bevy_window::Window;
 
 #[allow(unused_imports)] // Needed for docs
 use prelude::*;
 
 pub mod prelude {
-    pub use crate::{
-        deferred::*, immediate::*, markers::*, primitives::*, raycast::*, CursorRay,
-        DefaultRaycastingPlugin,
-    };
+    pub use crate::{cursor::*, deferred::*, immediate::*, markers::*, primitives::*, raycast::*};
 
     #[cfg(feature = "debug")]
     pub use crate::debug::*;
-}
-
-#[derive(Default)]
-pub struct DefaultRaycastingPlugin;
-impl Plugin for DefaultRaycastingPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_systems(First, update_cursor_ray)
-            .add_systems(
-                PostUpdate,
-                update_cursor_ray.after(bevy_transform::TransformSystem::TransformPropagate),
-            )
-            .init_resource::<CursorRay>();
-    }
-}
-
-/// Holds the latest cursor position as a 3d ray.
-///
-/// Requires the [`DefaultRaycastingPlugin`] is added to your app. This is updated in both [`First`]
-/// and [`PostUpdate`]. The ray built in `First` will have the latest cursor position, but will not
-/// account for any updates to camera position done in [`Update`]. The ray built in `PostUpdate`
-/// will account for the camera position being updated and any camera transform propagation.
-#[derive(Resource, Default, Deref)]
-pub struct CursorRay(pub Option<Ray3d>);
-
-/// Updates the [`CursorRay`] every frame.
-pub fn update_cursor_ray(
-    primary_window: Query<Entity, With<bevy_window::PrimaryWindow>>,
-    windows: Query<&Window>,
-    cameras: Query<(&Camera, &GlobalTransform)>,
-    mut cursor_ray: ResMut<CursorRay>,
-) {
-    cursor_ray.0 = cameras
-        .iter()
-        .filter_map(|(camera, transform)| {
-            if let bevy_render::camera::RenderTarget::Window(window_ref) = camera.target {
-                Some(((camera, transform), window_ref))
-            } else {
-                None
-            }
-        })
-        .filter_map(|(cam, window_ref)| {
-            window_ref
-                .normalize(primary_window.get_single().ok())
-                .map(|window_ref| (cam, window_ref.entity()))
-        })
-        .filter_map(|(cam, window_entity)| windows.get(window_entity).ok().map(|w| (cam, w)))
-        .filter_map(|(cam, window)| window.cursor_position().map(|pos| (cam, window, pos)))
-        .filter_map(|((camera, transform), window, cursor)| {
-            ray_from_screenspace(cursor, camera, transform, window)
-        })
-        .next();
 }
 
 /// Used for examples to reduce picking latency. Not relevant code for the examples.

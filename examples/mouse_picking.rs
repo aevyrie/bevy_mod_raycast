@@ -8,7 +8,7 @@ use bevy_mod_raycast::prelude::*;
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(bevy_mod_raycast::low_latency_window_plugin()))
-        .add_plugins(DefaultRaycastingPlugin)
+        .add_plugins(CursorRayPlugin)
         .add_systems(Startup, setup)
         .add_systems(Update, raycast)
         .run();

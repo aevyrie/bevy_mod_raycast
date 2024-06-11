@@ -350,11 +350,6 @@ impl<T: TypePath> RaycastSource<T> {
         }
     }
 
-    /// Run an intersection check between this [`RaycastSource`] and a 3D primitive [`Primitive3d`].
-    pub fn intersect_primitive(&self, shape: Primitive3d) -> Option<IntersectionData> {
-        Some(intersects_primitive(self.ray?, shape)?.into())
-    }
-
     /// Get a copy of the ray cast source's ray.
     pub fn get_ray(&self) -> Option<Ray3d> {
         self.ray

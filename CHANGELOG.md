@@ -1,3 +1,9 @@
+# 0.18.0
+
+- Changed: updated to Bevy 0.14.
+- Changed: `DefaultPlugin` renamed `CursorRayPlugin` to reflect what it actually does.
+- Removed: all primitive raycasts have been removed. Users should use `bevy_math` instead.
+
 # 0.17.0
 
 Raycasting is now 20-50% faster.

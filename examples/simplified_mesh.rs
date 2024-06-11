@@ -13,7 +13,7 @@ fn main() {
     App::new()
         .add_plugins((
             DefaultPlugins.set(bevy_mod_raycast::low_latency_window_plugin()),
-            DefaultRaycastingPlugin,
+            CursorRayPlugin,
             FrameTimeDiagnosticsPlugin,
         ))
         .add_systems(Startup, (setup_scene, setup_ui))

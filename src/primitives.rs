@@ -3,11 +3,6 @@ use bevy_reflect::Reflect;
 
 pub use rays::*;
 
-#[non_exhaustive]
-pub enum Primitive3d {
-    Plane { point: Vec3, normal: Vec3 },
-}
-
 #[derive(Debug, Clone, Reflect)]
 pub struct IntersectionData {
     position: Vec3,
@@ -90,7 +85,6 @@ impl IntersectionData {
 /// Encapsulates Ray3D, preventing use of struct literal syntax. This allows us to guarantee that
 /// the `Ray3d` direction is normalized, because it can only be instantiated with the constructor.
 pub mod rays {
-    use super::Primitive3d;
     use bevy_math::{prelude::*, Ray3d, Vec3A};
     use bevy_render::{camera::Camera, primitives::Aabb};
     use bevy_transform::components::GlobalTransform;
@@ -206,30 +200,5 @@ pub mod rays {
             hit_far = t_max.z;
         }
         Some([hit_near, hit_far])
-    }
-
-    /// Checks if the ray intersects with a primitive shape
-    pub fn intersects_primitive(ray: Ray3d, shape: Primitive3d) -> Option<PrimitiveIntersection> {
-        match shape {
-            Primitive3d::Plane {
-                point: plane_origin,
-                normal: plane_normal,
-            } => {
-                // assuming vectors are all normalized
-                let denominator = ray.direction.dot(plane_normal);
-                if denominator.abs() > f32::EPSILON {
-                    let point_to_point = plane_origin - ray.origin;
-                    let intersect_dist = plane_normal.dot(point_to_point) / denominator;
-                    let intersect_position = ray.direction * intersect_dist + ray.origin;
-                    Some(PrimitiveIntersection::new(
-                        intersect_position,
-                        plane_normal,
-                        intersect_dist,
-                    ))
-                } else {
-                    None
-                }
-            }
-        }
     }
 }
