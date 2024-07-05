@@ -1,5 +1,3 @@
-use std::f32::EPSILON;
-
 use bevy_math::{Mat4, Ray3d, Vec3, Vec3A};
 use bevy_render::{
     mesh::{Indices, Mesh, VertexAttributeValues},
@@ -264,13 +262,13 @@ pub fn ray_triangle_intersection(
             // if the determinant is negative the triangle is back facing
             // if the determinant is close to 0, the ray misses the triangle
             // This test checks both cases
-            if determinant < EPSILON {
+            if determinant < f32::EPSILON {
                 return None;
             }
         }
         Backfaces::Include => {
             // ray and triangle are parallel if det is close to 0
-            if determinant.abs() < EPSILON {
+            if determinant.abs() < f32::EPSILON {
                 return None;
             }
         }

@@ -34,6 +34,7 @@ I intend to track the `main` branch of Bevy. PRs supporting this are welcome!
 
 | bevy | bevy_mod_raycast |
 | ---- | ---------------- |
+| 0.14 | 0.18             |
 | 0.13 | 0.17             |
 | 0.12 | 0.16             |
 | 0.11 | 0.9 - 0.15       |
