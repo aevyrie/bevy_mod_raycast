@@ -171,7 +171,6 @@ pub fn ray_mesh_intersection(
             min_pick_distance = i.distance();
         }
     }
-
     pick_intersection
 }
 
