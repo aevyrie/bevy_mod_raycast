@@ -114,18 +114,18 @@ pub fn ray_mesh_intersection(
         // Now that we're in the vector of vertex indices, we want to look at the vertex
         // positions for each triangle, so we'll take indices in chunks of three, where each
         // chunk of three indices are references to the three vertices of a triangle.
-        for index in indices.chunks(3) {
-            let triangle_index = Some(index[0].into_usize());
+        for i in (0..indices.len()).step_by(3) {
+            let triangle_index = Some(i);
             let tri_vertex_positions = [
-                Vec3A::from(vertex_positions[index[0].into_usize()]),
-                Vec3A::from(vertex_positions[index[1].into_usize()]),
-                Vec3A::from(vertex_positions[index[2].into_usize()]),
+                Vec3A::from(vertex_positions[indices[i].into_usize()]),
+                Vec3A::from(vertex_positions[indices[i + 1].into_usize()]),
+                Vec3A::from(vertex_positions[indices[i + 2].into_usize()]),
             ];
             let tri_normals = vertex_normals.map(|normals| {
                 [
-                    Vec3A::from(normals[index[0].into_usize()]),
-                    Vec3A::from(normals[index[1].into_usize()]),
-                    Vec3A::from(normals[index[2].into_usize()]),
+                    Vec3A::from(normals[indices[i].into_usize()]),
+                    Vec3A::from(normals[indices[i + 1].into_usize()]),
+                    Vec3A::from(normals[indices[i + 2].into_usize()]),
                 ]
             });
             let intersection = triangle_intersection(
