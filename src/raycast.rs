@@ -105,99 +105,73 @@ pub fn ray_mesh_intersection(
         world_to_mesh.transform_vector3(*ray.direction),
     );
 
-    if let Some(indices) = indices {
-        // Make sure this chunk has 3 vertices to avoid a panic.
-        if indices.len() % 3 != 0 {
-            warn!("Index list not a multiple of 3");
-            return None;
-        }
-        // Now that we're in the vector of vertex indices, we want to look at the vertex
-        // positions for each triangle, so we'll take indices in chunks of three, where each
-        // chunk of three indices are references to the three vertices of a triangle.
-        for i in (0..indices.len()).step_by(3) {
-            let triangle_index = Some(i);
-            let tri_vertex_positions = [
-                Vec3A::from(vertex_positions[indices[i].into_usize()]),
-                Vec3A::from(vertex_positions[indices[i + 1].into_usize()]),
-                Vec3A::from(vertex_positions[indices[i + 2].into_usize()]),
-            ];
-            let tri_normals = vertex_normals.map(|normals| {
-                [
-                    Vec3A::from(normals[indices[i].into_usize()]),
-                    Vec3A::from(normals[indices[i + 1].into_usize()]),
-                    Vec3A::from(normals[indices[i + 2].into_usize()]),
-                ]
-            });
-            let intersection = triangle_intersection(
-                tri_vertex_positions,
-                tri_normals,
-                min_pick_distance,
-                &mesh_space_ray,
-                backface_culling,
-            );
-            if let Some(i) = intersection {
-                pick_intersection = Some(IntersectionData::new(
-                    mesh_transform.transform_point3(i.position()),
-                    mesh_transform.transform_vector3(i.normal()),
-                    i.barycentric_coord(),
-                    mesh_transform
-                        .transform_vector3(mesh_space_ray.direction * i.distance())
-                        .length(),
-                    i.triangle().map(|tri| {
-                        [
-                            mesh_transform.transform_point3a(tri[0]),
-                            mesh_transform.transform_point3a(tri[1]),
-                            mesh_transform.transform_point3a(tri[2]),
-                        ]
-                    }),
-                    triangle_index,
-                ));
-                min_pick_distance = i.distance();
-            }
-        }
+    let length = if let Some(indices) = indices {
+        indices.len()
     } else {
-        for i in (0..vertex_positions.len()).step_by(3) {
-            let triangle_index = Some(i);
-            let tri_vertex_positions = [
-                Vec3A::from(vertex_positions[i]),
-                Vec3A::from(vertex_positions[i + 1]),
-                Vec3A::from(vertex_positions[i + 2]),
-            ];
-            let tri_normals = vertex_normals.map(|normals| {
-                [
-                    Vec3A::from(normals[i]),
-                    Vec3A::from(normals[i + 1]),
-                    Vec3A::from(normals[i + 2]),
-                ]
-            });
-            let intersection = triangle_intersection(
-                tri_vertex_positions,
-                tri_normals,
-                min_pick_distance,
-                &mesh_space_ray,
-                backface_culling,
-            );
-            if let Some(i) = intersection {
-                pick_intersection = Some(IntersectionData::new(
-                    mesh_transform.transform_point3(i.position()),
-                    mesh_transform.transform_vector3(i.normal()),
-                    i.barycentric_coord(),
-                    mesh_transform
-                        .transform_vector3(mesh_space_ray.direction * i.distance())
-                        .length(),
-                    i.triangle().map(|tri| {
-                        [
-                            mesh_transform.transform_point3a(tri[0]),
-                            mesh_transform.transform_point3a(tri[1]),
-                            mesh_transform.transform_point3a(tri[2]),
-                        ]
-                    }),
-                    triangle_index,
-                ));
-                min_pick_distance = i.distance();
-            }
+        vertex_positions.len()
+    };
+
+    // Make sure the mesh has a multiple of 3 vertices to avoid a panic.
+    if length % 3 != 0 {
+        warn!("Mesh does not have a multiple of 3 vertices");
+        return None;
+    }
+
+    for i in (0..length).step_by(3) {
+        let triangle_index = Some(i);
+
+        let index = if let Some(indices) = indices {
+            // for indexed meshed look up the vertex indices:
+            (
+                indices[i].into_usize(),
+                indices[i + 1].into_usize(),
+                indices[i + 2].into_usize(),
+            )
+        } else {
+            // for non-indexed meshes use the indices directly:
+            (i, i + 1, i + 2)
+        };
+
+        let tri_vertex_positions = [
+            Vec3A::from(vertex_positions[index.0]),
+            Vec3A::from(vertex_positions[index.1]),
+            Vec3A::from(vertex_positions[index.2]),
+        ];
+        let tri_normals = vertex_normals.map(|normals| {
+            [
+                Vec3A::from(normals[index.0]),
+                Vec3A::from(normals[index.1]),
+                Vec3A::from(normals[index.2]),
+            ]
+        });
+        let intersection = triangle_intersection(
+            tri_vertex_positions,
+            tri_normals,
+            min_pick_distance,
+            &mesh_space_ray,
+            backface_culling,
+        );
+        if let Some(i) = intersection {
+            pick_intersection = Some(IntersectionData::new(
+                mesh_transform.transform_point3(i.position()),
+                mesh_transform.transform_vector3(i.normal()),
+                i.barycentric_coord(),
+                mesh_transform
+                    .transform_vector3(mesh_space_ray.direction * i.distance())
+                    .length(),
+                i.triangle().map(|tri| {
+                    [
+                        mesh_transform.transform_point3a(tri[0]),
+                        mesh_transform.transform_point3a(tri[1]),
+                        mesh_transform.transform_point3a(tri[2]),
+                    ]
+                }),
+                triangle_index,
+            ));
+            min_pick_distance = i.distance();
         }
     }
+
     pick_intersection
 }
 
