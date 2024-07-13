@@ -162,6 +162,7 @@ pub mod rays {
     }
 
     /// Checks if the ray intersects with an AABB of a mesh, returning `[near, far]` if it does.
+    /// Intersections on the edge of meshes may return [NaN, NaN]
     pub fn intersects_aabb(ray: Ray3d, aabb: &Aabb, model_to_world: &Mat4) -> Option<[f32; 2]> {
         // Transform the ray to model space
         let world_to_model = model_to_world.inverse();

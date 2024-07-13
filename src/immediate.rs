@@ -257,7 +257,8 @@ impl<'w, 's> Raycast<'w, 's> {
                 };
                 if should_raycast {
                     if let Some([near, _]) = intersects_aabb(ray, aabb, &transform.compute_matrix())
-                        .filter(|[_, far]| *far >= 0.0)
+                        // intersections on edge of mesh may return [NaN,NaN]
+                        .filter(|[_, far]| *far >= 0.0 || far.is_nan())
                     {
                         aabb_hits_tx.send((FloatOrd(near), entity)).ok();
                     }
