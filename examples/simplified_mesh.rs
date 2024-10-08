@@ -33,7 +33,7 @@ fn setup_scene(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    commands.spawn(Camera3dBundle::default());
+    commands.spawn((Camera3dBundle::default(), CursorRayCam));
     commands.spawn((
         PbrBundle {
             // This is a very complex mesh that will be hard to raycast on

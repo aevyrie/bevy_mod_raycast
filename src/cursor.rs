@@ -8,7 +8,7 @@ use bevy_window::Window;
 
 use crate::ray_from_screenspace;
 
-/// Automatically generates a ray in world space corresponding to the mouse cursor, and stores it in
+/// Automatically generates a ray in world space corresponding to the mouse cursor and [`CursorRayCam`] marked camera(s), then stores it in
 /// [`CursorRay`].
 #[derive(Default)]
 pub struct CursorRayPlugin;
@@ -23,6 +23,10 @@ impl Plugin for CursorRayPlugin {
     }
 }
 
+/// Marks the camera this component is attached to as a [`CursorRay`] ray source.
+#[derive(Component)]
+pub struct CursorRayCam;
+
 /// Holds the latest cursor position as a 3d ray.
 ///
 /// Requires the [`CursorRayPlugin`] is added to your app. This is updated in both [`First`] and
@@ -36,7 +40,7 @@ pub struct CursorRay(pub Option<Ray3d>);
 pub fn update_cursor_ray(
     primary_window: Query<Entity, With<bevy_window::PrimaryWindow>>,
     windows: Query<&Window>,
-    cameras: Query<(&Camera, &GlobalTransform)>,
+    cameras: Query<(&Camera, &GlobalTransform), With<CursorRayCam>>,
     mut cursor_ray: ResMut<CursorRay>,
 ) {
     cursor_ray.0 = cameras

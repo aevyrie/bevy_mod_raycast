@@ -94,6 +94,7 @@ fn setup_scene(
             ..default()
         },
         BloomSettings::default(),
+        CursorRayCam,
     ));
     // Make a box of planes facing inward so the laser gets trapped inside:
     let plane = PbrBundle {
