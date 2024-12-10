@@ -25,7 +25,7 @@ struct MyRaycastSet; // Groups raycast sources with meshes, can use `()` instead
 struct MovingRaycaster;
 
 fn move_ray(time: Res<Time>, mut query: Query<&mut Transform, With<MovingRaycaster>>) {
-    let t = time.elapsed_seconds();
+    let t = time.elapsed_secs();
     let pos = Vec3::new(t.sin(), (t * 1.5).cos() * 2.0, t.cos()) * 1.5 + RAY_DIST;
     let dir = (RAY_DIST - pos).normalize();
     *query.single_mut() = Transform::from_translation(pos).looking_to(dir, Vec3::Y);
@@ -36,22 +36,20 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    commands.spawn(Camera3dBundle::default());
-    commands.spawn(PointLightBundle::default());
+    commands.spawn(Camera3d::default());
+    commands.spawn(PointLight::default());
     // Unlike the immediate mode API where the raycast is built every frame in a system, instead we
     // spawn an entity and mark it as a raycasting source, using its `GlobalTransform`.
     commands.spawn((
         MovingRaycaster,
-        SpatialBundle::default(),
+        Transform::default(),
+        Visibility::default(),
         RaycastSource::<MyRaycastSet>::new_transform_empty(),
     ));
     commands.spawn((
-        PbrBundle {
-            mesh: meshes.add(Capsule3d::default()),
-            material: materials.add(Color::srgb(1.0, 1.0, 1.0)),
-            transform: Transform::from_translation(RAY_DIST),
-            ..default()
-        },
+        Mesh3d(meshes.add(Capsule3d::default())),
+        MeshMaterial3d(materials.add(Color::srgb(1.0, 1.0, 1.0))),
+        Transform::from_translation(RAY_DIST),
         RaycastMesh::<MyRaycastSet>::default(), // Make this mesh ray cast-able
     ));
 }

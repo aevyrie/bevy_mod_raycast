@@ -1,3 +1,8 @@
+# 0.19.0
+
+- Changed: updated to Bevy 0.15.
+- Use `Dir3` instead of `Vec3` for normalized directions in `Ray3d::new`
+
 # 0.18.0
 
 - Changed: updated to Bevy 0.14.

@@ -22,17 +22,14 @@ fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     commands.spawn((
-        Camera3dBundle::default(),
+        Camera3d::default(),
         RaycastSource::<()>::new_cursor(), // Set this camera as a raycaster using the mouse cursor
     ));
-    commands.spawn(PointLightBundle::default());
+    commands.spawn(PointLight::default());
     commands.spawn((
-        PbrBundle {
-            mesh: meshes.add(Sphere::default()),
-            material: materials.add(Color::from(css::GRAY)),
-            transform: Transform::from_xyz(0.0, 0.0, -5.0),
-            ..default()
-        },
+        Mesh3d(meshes.add(Sphere::default())),
+        MeshMaterial3d(materials.add(Color::from(css::GRAY))),
+        Transform::from_xyz(0.0, 0.0, -5.0),
         RaycastMesh::<()>::default(), // Make this mesh ray cast-able;
     ));
 }
