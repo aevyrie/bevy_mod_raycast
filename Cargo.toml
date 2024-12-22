@@ -11,23 +11,23 @@ categories = ["game-engines", "rendering"]
 resolver = "2"
 
 [dependencies]
-bevy_app = { version = "0.14.0", default-features = false }
-bevy_asset = { version = "0.14.0", default-features = false }
-bevy_derive = { version = "0.14.0", default-features = false }
-bevy_ecs = { version = "0.14.0", default-features = false }
-bevy_gizmos = { version = "0.14.0", optional = true, default-features = false }
-bevy_math = { version = "0.14.0", default-features = false }
-bevy_reflect = { version = "0.14.0", default-features = false }
-bevy_render = { version = "0.14.0", default-features = false }
-bevy_sprite = { version = "0.14.0", optional = true, default-features = false }
-bevy_transform = { version = "0.14.0", default-features = false }
-bevy_utils = { version = "0.14.0", default-features = false }
-bevy_window = { version = "0.14.0", default-features = false }
-bevy_color = { version = "0.14.0", default-features = false }
+bevy_app = { version = "0.15.0", default-features = false }
+bevy_asset = { version = "0.15.0", default-features = false }
+bevy_derive = { version = "0.15.0", default-features = false }
+bevy_ecs = { version = "0.15.0", default-features = false }
+bevy_gizmos = { version = "0.15.0", optional = true, default-features = false }
+bevy_math = { version = "0.15.0", default-features = false }
+bevy_reflect = { version = "0.15.0", default-features = false }
+bevy_render = { version = "0.15.0", default-features = false }
+bevy_sprite = { version = "0.15.0", optional = true, default-features = false }
+bevy_transform = { version = "0.15.0", default-features = false }
+bevy_utils = { version = "0.15.0", default-features = false }
+bevy_window = { version = "0.15.0", default-features = false }
+bevy_color = { version = "0.15.0", default-features = false }
 crossbeam-channel = "0.5"
 
 [dev-dependencies]
-bevy = { version = "0.14.0", default-features = true, features = [
+bevy = { version = "0.15.0", default-features = true, features = [
     "default_font",
     "ktx2",
     "tonemapping_luts",

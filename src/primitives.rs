@@ -143,7 +143,7 @@ pub mod rays {
         let pick_position = transform.project_point3(pick_position_ndc);
         let (_, _, source_origin) = transform.to_scale_rotation_translation();
         let ray_direction = pick_position - source_origin;
-        Ray3d::new(source_origin, ray_direction)
+        Ray3d::new(source_origin, Dir3::new(ray_direction).unwrap())
     }
 
     pub fn ray_from_screenspace(
@@ -159,6 +159,7 @@ pub mod rays {
         camera
             .viewport_to_world(camera_transform, viewport_pos)
             .map(Ray3d::from)
+            .ok()
     }
 
     /// Checks if the ray intersects with an AABB of a mesh, returning `[near, far]` if it does.
