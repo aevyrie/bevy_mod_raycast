@@ -89,7 +89,7 @@ impl<'a> Default for RaycastSettings<'a> {
 }
 
 #[cfg(feature = "2d")]
-type MeshFilter = With<Mesh2d>;
+type MeshFilter = Or<(With<Mesh3d>, With<Mesh2d>)>;
 #[cfg(not(feature = "2d"))]
 type MeshFilter = With<Mesh3d>;
 
