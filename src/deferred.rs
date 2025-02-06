@@ -535,13 +535,10 @@ pub mod debug {
                 false => css::PINK,
             };
             gizmos.ray(intersection.position(), intersection.normal(), color);
-            let orientation = Quat::from_rotation_arc(Vec3::NEG_Z, intersection.normal().normalize());
+            let orientation =
+                Quat::from_rotation_arc(Vec3::NEG_Z, intersection.normal().normalize());
             let point = bevy_math::Isometry3d::new(intersection.position(), orientation);
-            gizmos.circle(
-                point,
-                0.1,
-                color,
-            );
+            gizmos.circle(point, 0.1, color);
             gizmos.circle_2d(intersection.position().truncate(), 10.0, color);
         }
     }
