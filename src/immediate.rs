@@ -78,7 +78,7 @@ impl<'a> RaycastSettings<'a> {
     }
 }
 
-impl<'a> Default for RaycastSettings<'a> {
+impl Default for RaycastSettings<'_> {
     fn default() -> Self {
         Self {
             visibility: RaycastVisibility::MustBeVisibleAndInView,
@@ -187,7 +187,7 @@ pub struct Raycast<'w, 's> {
     >,
 }
 
-impl<'w, 's> Raycast<'w, 's> {
+impl Raycast<'_, '_> {
     #[cfg(feature = "debug")]
     /// Like [`Raycast::cast_ray`], but debug-draws the ray and intersection.
     pub fn debug_cast_ray(
