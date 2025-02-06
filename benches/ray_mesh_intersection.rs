@@ -1,5 +1,5 @@
 use bevy::math::{Mat4, Vec3};
-use bevy_math::Ray3d;
+use bevy_math::{Dir3, Ray3d};
 use bevy_mod_raycast::prelude::*;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
@@ -46,7 +46,10 @@ fn ray_mesh_intersection(c: &mut Criterion) {
 
     for vertices_per_side in [10_u32, 100, 1000] {
         group.bench_function(format!("{}_vertices", vertices_per_side.pow(2)), |b| {
-            let ray = Ray3d::new(Vec3::new(0.0, 1.0, 0.0), Vec3::new(0.0, -1.0, 0.0));
+            let ray = Ray3d::new(
+                Vec3::new(0.0, 1.0, 0.0),
+                Dir3::from_xyz_unchecked(0.0, -1.0, 0.0),
+            );
             let mesh_to_world = Mat4::IDENTITY;
             let mesh = mesh_creation(vertices_per_side);
 
@@ -70,7 +73,10 @@ fn ray_mesh_intersection_no_cull(c: &mut Criterion) {
 
     for vertices_per_side in [10_u32, 100, 1000] {
         group.bench_function(format!("{}_vertices", vertices_per_side.pow(2)), |b| {
-            let ray = Ray3d::new(Vec3::new(0.0, 1.0, 0.0), Vec3::new(0.0, -1.0, 0.0));
+            let ray = Ray3d::new(
+                Vec3::new(0.0, 1.0, 0.0),
+                Dir3::from_xyz_unchecked(0.0, -1.0, 0.0),
+            );
             let mesh_to_world = Mat4::IDENTITY;
             let mesh = mesh_creation(vertices_per_side);
 
@@ -94,7 +100,10 @@ fn ray_mesh_intersection_no_intersection(c: &mut Criterion) {
 
     for vertices_per_side in [10_u32, 100, 1000] {
         group.bench_function(format!("{}_vertices", (vertices_per_side).pow(2)), |b| {
-            let ray = Ray3d::new(Vec3::new(0.0, 1.0, 0.0), Vec3::new(1.0, 0.0, 0.0));
+            let ray = Ray3d::new(
+                Vec3::new(0.0, 1.0, 0.0),
+                Dir3::from_xyz_unchecked(1.0, 0.0, 0.0),
+            );
             let mesh_to_world = Mat4::IDENTITY;
             let mesh = mesh_creation(vertices_per_side);
 
