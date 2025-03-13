@@ -25,7 +25,7 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    commands.spawn(Camera3dBundle::default());
+    commands.spawn((Camera3dBundle::default(), CursorRayCam));
     commands.spawn(PointLightBundle::default());
     commands.spawn(PbrBundle {
         mesh: meshes.add(Sphere::default()),
