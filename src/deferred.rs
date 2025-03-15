@@ -519,7 +519,8 @@ pub mod debug {
         for ray in sources.iter().filter_map(|s| s.ray) {
             let orientation = Quat::from_rotation_arc(Vec3::NEG_Z, *ray.direction);
             gizmos.ray(ray.origin, *ray.direction, css::BLUE);
-            gizmos.sphere(ray.origin, orientation, 0.1, css::BLUE);
+            let point = bevy_math::Isometry3d::new(ray.origin, orientation);
+            gizmos.sphere(point, 0.1, css::BLUE);
         }
 
         for (is_first, intersection) in sources.iter().flat_map(|m| {
@@ -534,9 +535,10 @@ pub mod debug {
                 false => css::PINK,
             };
             gizmos.ray(intersection.position(), intersection.normal(), color);
+            let orientation = Quat::from_rotation_arc(Vec3::NEG_Z, intersection.normal().normalize());
+            let point = bevy_math::Isometry3d::new(intersection.position(), orientation);
             gizmos.circle(
-                intersection.position(),
-                Dir3::new_unchecked(intersection.normal().normalize()),
+                point,
                 0.1,
                 color,
             );

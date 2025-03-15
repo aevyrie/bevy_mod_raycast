@@ -33,89 +33,57 @@ fn setup_scene(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    commands.spawn(Camera3dBundle::default());
+    commands.spawn(Camera3d::default());
     commands.spawn((
-        PbrBundle {
-            // This is a very complex mesh that will be hard to raycast on
-            mesh: meshes.add(Sphere::default().mesh().uv(1000, 1000)),
-            material: materials.add(Color::srgb(1.0, 1.0, 1.0)),
-            transform: Transform::from_translation(Vec3::new(0.0, 0.0, -5.0)),
-            ..default()
-        },
+        // This is a very complex mesh that will be hard to raycast on
+        Mesh3d(meshes.add(Sphere::default().mesh().uv(1000, 1000))),
+        MeshMaterial3d(materials.add(Color::srgb(1.0, 1.0, 1.0))),
+        Transform::from_translation(Vec3::new(0.0, 0.0, -5.0)),
         SimplifiedMesh {
             mesh: meshes.add(Sphere::default()),
         },
     ));
-    commands.spawn(PointLightBundle {
-        transform: Transform::from_translation(Vec3::new(4.0, 8.0, 4.0)),
-        ..default()
-    });
+    commands.spawn((
+        PointLight::default(),
+        Transform::from_translation(Vec3::new(4.0, 8.0, 4.0)),
+    ));
 }
 
 // Set up UI to show status of simplified mesh
 fn setup_ui(mut commands: Commands) {
     commands
-        .spawn(NodeBundle {
-            style: Style {
+        .spawn((
+            Node {
                 align_self: AlignSelf::FlexStart,
                 flex_direction: FlexDirection::Column,
                 ..default()
             },
-            background_color: Color::NONE.into(),
-            ..default()
-        })
+            BackgroundColor(Color::NONE.into()),
+        ))
         .with_children(|ui| {
-            ui.spawn(TextBundle {
-                text: Text {
-                    sections: vec![
-                        TextSection {
-                            value: "Press spacebar to toggle - FPS: ".to_string(),
-                            style: TextStyle {
-                                font_size: 30.0,
-                                color: Color::WHITE,
-                                ..default()
-                            },
-                        },
-                        TextSection {
-                            value: "".to_string(),
-                            style: TextStyle {
-                                font_size: 30.0,
-                                color: Color::WHITE,
-                                ..default()
-                            },
-                        },
-                    ],
+            ui.spawn((
+                Text::new("Press spacebar to toggle - FPS: "),
+                TextFont {
+                    font_size: 30.0,
                     ..default()
                 },
-                ..default()
-            })
-            .insert(FpsText);
+                TextColor(Color::WHITE.into()),
+            ))
+            .with_child((FpsText, TextSpan::new("")));
 
-            ui.spawn(TextBundle {
-                text: Text {
-                    sections: vec![
-                        TextSection {
-                            value: "Simplified Mesh: ".to_string(),
-                            style: TextStyle {
-                                font_size: 30.0,
-                                color: Color::WHITE,
-                                ..default()
-                            },
-                        },
-                        TextSection {
-                            value: "ON".to_string(),
-                            style: TextStyle {
-                                font_size: 30.0,
-                                color: css::GREEN.into(),
-                                ..default()
-                            },
-                        },
-                    ],
+            ui.spawn((
+                Text::new("Simplified Mesh: "),
+                TextFont {
+                    font_size: 30.0,
                     ..default()
                 },
-                ..default()
-            })
-            .insert(SimplifiedStatus);
+                TextColor(Color::WHITE.into()),
+            ))
+            .with_child((
+                SimplifiedStatus,
+                TextSpan::new("ON"),
+                TextColor(css::GREEN.into()),
+            ));
         });
 }
 
@@ -128,36 +96,36 @@ struct FpsText;
 // Insert or remove SimplifiedMesh component from the mesh being raycasted on.
 fn manage_simplified_mesh(
     mut commands: Commands,
-    query: Query<(Entity, Option<&SimplifiedMesh>), With<Handle<Mesh>>>,
-    mut status_query: Query<&mut Text, With<SimplifiedStatus>>,
+    query: Query<(Entity, Option<&SimplifiedMesh>), With<Mesh3d>>,
+    mut status_query: Query<(&mut TextSpan, &mut TextColor), With<SimplifiedStatus>>,
     keyboard: Res<ButtonInput<KeyCode>>,
     mut meshes: ResMut<Assets<Mesh>>,
 ) {
     if keyboard.just_pressed(KeyCode::Space) {
         if let Ok((entity, simplified_mesh)) = query.get_single() {
-            if let Ok(mut text) = status_query.get_single_mut() {
+            if let Ok((mut text, mut color)) = status_query.get_single_mut() {
                 if simplified_mesh.is_none() {
                     commands.entity(entity).insert(SimplifiedMesh {
                         mesh: meshes.add(Sphere::default()),
                     });
-                    text.sections[1].value = "ON".to_string();
-                    text.sections[1].style.color = css::GREEN.into();
+                    text.0 = "ON".to_string();
+                    color.0 = css::GREEN.into();
                 } else {
                     commands.entity(entity).remove::<SimplifiedMesh>();
-                    text.sections[1].value = "OFF".to_string();
-                    text.sections[1].style.color = css::RED.into();
+                    text.0 = "OFF".to_string();
+                    color.0 = css::RED.into();
                 }
             }
         }
     }
 }
 
-fn update_fps(diagnostics: Res<DiagnosticsStore>, mut query: Query<&mut Text, With<FpsText>>) {
+fn update_fps(diagnostics: Res<DiagnosticsStore>, mut query: Query<&mut TextSpan, With<FpsText>>) {
     for mut text in &mut query {
         if let Some(fps) = diagnostics.get(&FrameTimeDiagnosticsPlugin::FPS) {
             if let Some(average) = fps.average() {
                 // Update the value of the second section
-                text.sections[1].value = format!("{:.2}", average);
+                text.0 = format!("{:.2}", average);
             }
         }
     }

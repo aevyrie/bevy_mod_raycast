@@ -3,7 +3,7 @@
 
 use std::f32::consts::{FRAC_PI_2, PI};
 
-use bevy::{color::palettes::css, core_pipeline::bloom::BloomSettings, math::vec3, prelude::*};
+use bevy::{color::palettes::css, core_pipeline::tonemapping::Tonemapping, math::vec3, prelude::*};
 use bevy_mod_raycast::prelude::*;
 
 fn main() {
@@ -30,11 +30,11 @@ fn bouncing_raycast(
     time: Res<Time>,
     cursor_ray: Res<CursorRay>,
 ) {
-    let t = ((time.elapsed_seconds() - 4.0).max(0.0) * LASER_SPEED).cos() * std::f32::consts::PI;
+    let t = ((time.elapsed_secs() - 4.0).max(0.0) * LASER_SPEED).cos() * std::f32::consts::PI;
     let ray_pos = Vec3::new(t.sin(), (3.0 * t).cos() * 0.5, t.cos()) * 0.5;
-    let ray_dir = (-ray_pos).normalize();
+    let ray_dir = Dir3::new(-ray_pos).unwrap();
     let ray = Ray3d::new(ray_pos, ray_dir);
-    gizmos.sphere(ray_pos, Quat::IDENTITY, 0.1, Color::WHITE);
+    gizmos.sphere(Isometry3d::from_translation(ray_pos), 0.1, Color::WHITE);
     bounce_ray(ray, &mut raycast, &mut gizmos, Color::from(css::RED));
 
     if let Some(cursor_ray) = **cursor_ray {
@@ -56,8 +56,7 @@ fn bounce_ray(mut ray: Ray3d, raycast: &mut Raycast, gizmos: &mut Gizmos, color:
             let bright = 1.0 + 10.0 * (1.0 - i as f32 / MAX_BOUNCES as f32);
             intersections.push((hit.position(), Color::BLACK.mix(&color, bright)));
             gizmos.sphere(
-                hit.position(),
-                Quat::IDENTITY,
+                Isometry3d::from_translation(hit.position()),
                 0.005,
                 Color::BLACK.mix(&color, bright * 2.0),
             );
@@ -79,32 +78,30 @@ fn setup_scene(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    commands.spawn(DirectionalLightBundle {
-        transform: Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, -0.1, 0.2, 0.0)),
-        ..default()
-    });
     commands.spawn((
-        Camera3dBundle {
-            transform: Transform::from_xyz(1.5, 1.5, 1.5).looking_at(Vec3::ZERO, Vec3::Y),
-            camera: Camera {
-                hdr: true,
-                ..default()
-            },
-            tonemapping: bevy::core_pipeline::tonemapping::Tonemapping::TonyMcMapface,
+        DirectionalLight::default(),
+        Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, -0.1, 0.2, 0.0)),
+    ));
+    commands.spawn((
+        Transform::from_xyz(1.5, 1.5, 1.5).looking_at(Vec3::ZERO, Vec3::Y),
+        Camera3d::default(),
+        Camera {
+            hdr: true,
             ..default()
         },
-        BloomSettings::default(),
+        Tonemapping::TonyMcMapface,
     ));
     // Make a box of planes facing inward so the laser gets trapped inside:
-    let plane = PbrBundle {
-        mesh: meshes.add(Plane3d::default()),
-        material: materials.add(Color::from(css::GRAY).with_alpha(0.01)),
-        ..default()
-    };
-    let pbr_bundle = move |translation, rotation| PbrBundle {
-        transform: Transform::from_translation(translation)
-            .with_rotation(Quat::from_scaled_axis(rotation)),
-        ..plane.clone()
+    let plane = (
+        Mesh3d(meshes.add(Plane3d::default())),
+        MeshMaterial3d(materials.add(Color::from(css::GRAY).with_alpha(0.01))),
+    );
+    let pbr_bundle = move |translation, rotation| {
+        (
+            Transform::from_translation(translation)
+                .with_rotation(Quat::from_scaled_axis(rotation)),
+            plane.clone(),
+        )
     };
     commands.spawn(pbr_bundle(vec3(0.0, 0.5, 0.0), Vec3::X * PI));
     commands.spawn(pbr_bundle(vec3(0.0, -0.5, 0.0), Vec3::ZERO));
