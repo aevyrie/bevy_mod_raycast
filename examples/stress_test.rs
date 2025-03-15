@@ -31,30 +31,28 @@ struct MyRaycastSet;
 
 fn setup_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(RaycastPluginState::<MyRaycastSet>::default().with_debug_cursor());
-    commands.spawn(DirectionalLightBundle {
-        transform: Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, 20.0, 20.0, 0.0)),
-        directional_light: DirectionalLight::default(),
-        ..default()
-    });
+    commands.spawn((
+        Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, 20.0, 20.0, 0.0)),
+        DirectionalLight::default(),
+    ));
 
     commands.spawn((
-        Camera3dBundle::default(),
+        Camera3d::default(),
         RaycastSource::<MyRaycastSet>::new_cursor(),
     ));
 
     let mut i = 0;
     for x in -2..=2 {
         for k in -210..-10 {
-            commands.spawn((bevy::prelude::SceneBundle {
-                scene: asset_server.load("models/monkey/Monkey.gltf#Scene0"),
-                transform: Transform::from_translation(Vec3::new(
+            commands.spawn((
+                SceneRoot(asset_server.load("models/monkey/Monkey.gltf#Scene0")),
+                Transform::from_translation(Vec3::new(
                     x as f32 * k as f32 * -2.0,
                     0.0,
                     k as f32 * 3.0,
                 ))
                 .with_scale(Vec3::splat((k as f32).abs().sub(5.0)) * 0.6),
-                ..default()
-            },));
+            ));
             i += 1;
         }
     }
@@ -64,7 +62,7 @@ fn setup_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
 #[allow(clippy::type_complexity)]
 fn make_scene_pickable(
     mut commands: Commands,
-    mesh_query: Query<Entity, (With<Handle<Mesh>>, Without<RaycastMesh<MyRaycastSet>>)>,
+    mesh_query: Query<Entity, (With<Mesh3d>, Without<RaycastMesh<MyRaycastSet>>)>,
 ) {
     for entity in &mesh_query {
         commands
@@ -75,44 +73,54 @@ fn make_scene_pickable(
 
 // Set up UI to show status of bounding volume
 fn setup_ui(mut commands: Commands) {
-    let text_section = |text: &'static str| TextSection {
-        value: text.into(),
-        style: TextStyle {
-            font_size: 40.0,
-            color: Color::WHITE,
-            ..default()
-        },
-    };
-
     commands
-        .spawn(NodeBundle {
-            style: Style {
+        .spawn((
+            Node {
                 align_self: AlignSelf::FlexStart,
                 flex_direction: FlexDirection::Column,
                 ..default()
             },
-            background_color: Color::NONE.into(),
-            ..default()
-        })
+            BackgroundColor(Color::NONE.into()),
+        ))
         .with_children(|ui| {
-            ui.spawn(TextBundle::from_sections([text_section(
-                "Toggle with number keys",
-            )]));
-            ui.spawn(TextBundle::from_sections([
-                text_section("(1) AABB Culling: "),
-                text_section(""),
-            ]))
-            .insert(BoundVolStatus);
-            ui.spawn(TextBundle::from_sections([
-                text_section("(2) Early Exit: "),
-                text_section(""),
-            ]))
-            .insert(EarlyExitStatus);
-            ui.spawn(TextBundle::from_sections([
-                text_section("FPS: "),
-                text_section(""),
-            ]))
-            .insert(FpsText);
+            ui.spawn((
+                Text::new("Toggle with number keys"),
+                TextFont {
+                    font_size: 40.0,
+                    ..default()
+                },
+                TextColor(Color::WHITE.into()),
+            ));
+
+            ui.spawn((
+                Text::new("(1) AABB Culling: "),
+                TextFont {
+                    font_size: 40.0,
+                    ..default()
+                },
+                TextColor(Color::WHITE.into()),
+            ))
+            .with_child((TextSpan::new(""), BoundVolStatus));
+
+            ui.spawn((
+                Text::new("(2) Early Exit: "),
+                TextFont {
+                    font_size: 40.0,
+                    ..default()
+                },
+                TextColor(Color::WHITE.into()),
+            ))
+            .with_child((TextSpan::new(""), EarlyExitStatus));
+
+            ui.spawn((
+                Text::new("FPS: "),
+                TextFont {
+                    font_size: 40.0,
+                    ..default()
+                },
+                TextColor(Color::WHITE.into()),
+            ))
+            .with_child((TextSpan::new(""), FpsText));
         });
 }
 
@@ -131,10 +139,16 @@ fn update_status(
     keyboard: Res<ButtonInput<KeyCode>>,
     mut enabled: Local<Option<(bool, bool)>>,
     // Bounding toggle
-    mut bound_status: Query<&mut Text, (With<BoundVolStatus>, Without<EarlyExitStatus>)>,
+    mut bound_status: Query<
+        (&mut TextSpan, &mut TextColor),
+        (With<BoundVolStatus>, Without<EarlyExitStatus>),
+    >,
     mut aabbs: Query<(Entity, &mut Aabb), With<RaycastMesh<MyRaycastSet>>>,
     // Early exit toggle
-    mut exit_status: Query<&mut Text, (Without<BoundVolStatus>, With<EarlyExitStatus>)>,
+    mut exit_status: Query<
+        (&mut TextSpan, &mut TextColor),
+        (Without<BoundVolStatus>, With<EarlyExitStatus>),
+    >,
     mut sources: Query<&mut RaycastSource<MyRaycastSet>>,
 ) {
     if enabled.is_none() {
@@ -142,13 +156,14 @@ fn update_status(
     }
     let enabled = enabled.as_mut().unwrap();
 
-    let bool_to_text = |is_enabled: bool, text: &mut Text| {
+    let bool_to_text = |is_enabled: bool, status: (Mut<'_, TextSpan>, Mut<'_, TextColor>)| {
+        let (mut text, mut color) = status;
         if is_enabled {
-            text.sections[1].value = "ON".to_string();
-            text.sections[1].style.color = css::GREEN.into();
+            text.0 = "ON".to_string();
+            color.0 = css::GREEN.into();
         } else {
-            text.sections[1].value = "OFF".to_string();
-            text.sections[1].style.color = css::RED.into();
+            text.0 = "OFF".to_string();
+            color.0 = css::RED.into();
         }
     };
 
@@ -164,7 +179,7 @@ fn update_status(
             }
         }
     }
-    bool_to_text(enabled.0, bound_status.single_mut().as_mut());
+    bool_to_text(enabled.0, bound_status.single_mut());
 
     if keyboard.just_pressed(KeyCode::Digit2) {
         enabled.1 = !enabled.1;
@@ -172,15 +187,15 @@ fn update_status(
             source.should_early_exit = enabled.1;
         }
     }
-    bool_to_text(enabled.1, exit_status.single_mut().as_mut());
+    bool_to_text(enabled.1, exit_status.single_mut());
 }
 
-fn update_fps(diagnostics: Res<DiagnosticsStore>, mut query: Query<&mut Text, With<FpsText>>) {
+fn update_fps(diagnostics: Res<DiagnosticsStore>, mut query: Query<&mut TextSpan, With<FpsText>>) {
     for mut text in &mut query {
         if let Some(fps) = diagnostics.get(&FrameTimeDiagnosticsPlugin::FPS) {
             if let Some(average) = fps.smoothed() {
                 // Update the value of the second section
-                text.sections[1].value = format!("{:.2}", average);
+                text.0 = format!("{:.2}", average);
             }
         }
     }

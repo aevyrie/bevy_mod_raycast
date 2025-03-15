@@ -25,12 +25,11 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    commands.spawn(Camera3dBundle::default());
-    commands.spawn(PointLightBundle::default());
-    commands.spawn(PbrBundle {
-        mesh: meshes.add(Sphere::default()),
-        material: materials.add(Color::from(css::GRAY)),
-        transform: Transform::from_xyz(0.0, 0.0, -5.0),
-        ..default()
-    });
+    commands.spawn(Camera3d::default());
+    commands.spawn(PointLight::default());
+    commands.spawn((
+        Mesh3d(meshes.add(Sphere::default())),
+        MeshMaterial3d(materials.add(Color::from(css::GRAY))),
+        Transform::from_xyz(0.0, 0.0, -5.0),
+    ));
 }

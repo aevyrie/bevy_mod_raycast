@@ -78,7 +78,7 @@ impl<'a> RaycastSettings<'a> {
     }
 }
 
-impl<'a> Default for RaycastSettings<'a> {
+impl Default for RaycastSettings<'_> {
     fn default() -> Self {
         Self {
             visibility: RaycastVisibility::MustBeVisibleAndInView,
@@ -89,9 +89,9 @@ impl<'a> Default for RaycastSettings<'a> {
 }
 
 #[cfg(feature = "2d")]
-type MeshFilter = Or<(With<Handle<Mesh>>, With<bevy_sprite::Mesh2dHandle>)>;
+type MeshFilter = Or<(With<Mesh3d>, With<Mesh2d>)>;
 #[cfg(not(feature = "2d"))]
-type MeshFilter = With<Handle<Mesh>>;
+type MeshFilter = With<Mesh3d>;
 
 /// Add this raycasting [`SystemParam`] to your system to raycast into the world with an
 /// immediate-mode API. Call `cast_ray` to immediately perform a raycast and get a result. Under the
@@ -107,7 +107,7 @@ type MeshFilter = With<Handle<Mesh>>;
 /// # use bevy_mod_raycast::prelude::*;
 /// # use bevy::prelude::*;
 /// fn raycast_system(mut raycast: Raycast) {
-///     let ray = Ray3d::new(Vec3::ZERO, Vec3::X);
+///     let ray = Ray3d::new(Vec3::ZERO, Dir3::X);
 ///     let hits = raycast.cast_ray(ray, &RaycastSettings::default());
 /// }
 /// ```
@@ -123,7 +123,7 @@ type MeshFilter = With<Handle<Mesh>>;
 /// # #[derive(Component)]
 /// # struct Foo;
 /// fn raycast_system(mut raycast: Raycast, foo_query: Query<(), With<Foo>>) {
-///     let ray = Ray3d::new(Vec3::ZERO, Vec3::X);
+///     let ray = Ray3d::new(Vec3::ZERO, Dir3::X);
 ///
 ///     // Only raycast against entities with the `Foo` component.
 ///     let filter = |entity| foo_query.contains(entity);
@@ -168,7 +168,7 @@ pub struct Raycast<'w, 's> {
         'w,
         's,
         (
-            Read<Handle<Mesh>>,
+            Read<Mesh3d>,
             Option<Read<SimplifiedMesh>>,
             Option<Read<NoBackfaceCulling>>,
             Read<GlobalTransform>,
@@ -180,14 +180,14 @@ pub struct Raycast<'w, 's> {
         'w,
         's,
         (
-            Read<bevy_sprite::Mesh2dHandle>,
+            Read<Mesh2d>,
             Option<Read<SimplifiedMesh>>,
             Read<GlobalTransform>,
         ),
     >,
 }
 
-impl<'w, 's> Raycast<'w, 's> {
+impl Raycast<'_, '_> {
     #[cfg(feature = "debug")]
     /// Like [`Raycast::cast_ray`], but debug-draws the ray and intersection.
     pub fn debug_cast_ray(
@@ -197,11 +197,11 @@ impl<'w, 's> Raycast<'w, 's> {
         gizmos: &mut Gizmos,
     ) -> &[(Entity, IntersectionData)] {
         use bevy_color::palettes::css;
-        use bevy_math::Dir3;
 
         let orientation = Quat::from_rotation_arc(Vec3::NEG_Z, *ray.direction);
         gizmos.ray(ray.origin, *ray.direction, css::BLUE);
-        gizmos.sphere(ray.origin, orientation, 0.1, css::BLUE);
+        let point = bevy_math::Isometry3d::new(ray.origin, orientation);
+        gizmos.sphere(point, 0.1, css::BLUE);
 
         let hits = self.cast_ray(ray, settings);
 
@@ -216,12 +216,10 @@ impl<'w, 's> Raycast<'w, 's> {
                 false => css::PINK,
             };
             gizmos.ray(intersection.position(), intersection.normal(), color);
-            gizmos.circle(
-                intersection.position(),
-                Dir3::new_unchecked(intersection.normal().normalize()),
-                0.1,
-                color,
-            );
+            let orientation =
+                Quat::from_rotation_arc(Vec3::NEG_Z, intersection.normal().normalize());
+            let point = bevy_math::Isometry3d::new(intersection.position(), orientation);
+            gizmos.circle(point, 0.1, color);
         }
 
         if let Some(hit) = hits.first() {

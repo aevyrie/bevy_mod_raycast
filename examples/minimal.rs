@@ -16,9 +16,9 @@ fn main() {
 const RAY_DIST: Vec3 = Vec3::new(0.0, 0.0, -7.0);
 
 fn raycast(mut raycast: Raycast, mut gizmos: Gizmos, time: Res<Time>) {
-    let t = time.elapsed_seconds();
+    let t = time.elapsed_secs();
     let pos = Vec3::new(t.sin(), (t * 1.5).cos() * 2.0, t.cos()) * 1.5 + RAY_DIST;
-    let dir = (RAY_DIST - pos).normalize();
+    let dir = Dir3::new(RAY_DIST - pos).unwrap();
     // This is all that is needed to raycast into the world! You can also use the normal, non-debug
     // version (raycast.cast_ray) when you don't need to visualize the ray or intersections.
     raycast.debug_cast_ray(Ray3d::new(pos, dir), &default(), &mut gizmos);
@@ -29,12 +29,11 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    commands.spawn(Camera3dBundle::default());
-    commands.spawn(PointLightBundle::default());
-    commands.spawn(PbrBundle {
-        mesh: meshes.add(Capsule3d::default()),
-        material: materials.add(Color::srgb(1.0, 1.0, 1.0)),
-        transform: Transform::from_translation(RAY_DIST),
-        ..default()
-    });
+    commands.spawn(Camera3d::default());
+    commands.spawn(PointLight::default());
+    commands.spawn((
+        Mesh3d(meshes.add(Capsule3d::default())),
+        MeshMaterial3d(materials.add(Color::srgb(1.0, 1.0, 1.0))),
+        Transform::from_translation(RAY_DIST),
+    ));
 }

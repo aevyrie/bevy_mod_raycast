@@ -5,7 +5,7 @@
 //! use bevy_mod_raycast::prelude::*;
 //!
 //! fn raycast_system(mut raycast: Raycast) {
-//!     let ray = Ray3d::new(Vec3::ZERO, Vec3::X);
+//!     let ray = Ray3d::new(Vec3::ZERO, Dir3::X);
 //!     let hits = raycast.cast_ray(ray, &RaycastSettings::default());
 //! }
 //! ```
